@@ -1,0 +1,211 @@
+.layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+/* --- Enunciado ------------------------------------------------------------ */
+
+.statementCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 28px;
+  box-shadow: var(--shadow-s);
+}
+
+.badges {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-heading);
+  color: var(--text-primary);
+  margin: 0 0 14px;
+}
+
+.statement {
+  color: var(--text-secondary);
+  font-size: var(--text-body);
+  line-height: var(--lh-relaxed);
+  margin: 0 0 16px;
+}
+
+.inlineCode {
+  font-family: var(--font-mono);
+  background: var(--surface-sunken);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.example {
+  background: var(--ink-900);
+  color: var(--ink-100);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: var(--text-body-s);
+  box-shadow: var(--shadow-m);
+  margin-bottom: 16px;
+}
+
+.pre {
+  margin: 0;
+  padding: 16px 18px;
+  overflow-x: auto;
+  line-height: var(--lh-relaxed);
+}
+
+/* --- Console -------------------------------------------------------------- */
+
+.console {
+  background: var(--ink-950);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  box-shadow: var(--shadow-m);
+}
+
+.consoleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: var(--ink-800);
+  color: var(--ink-400);
+  font-size: var(--text-caption);
+}
+
+.consoleStatus {
+  font-weight: var(--fw-bold);
+  color: var(--ink-400);
+}
+
+.statusSuccess {
+  color: var(--accent-success);
+}
+
+.statusError {
+  color: var(--accent-danger);
+}
+
+.consoleOutput {
+  margin: 0;
+  padding: 16px 18px;
+  overflow-x: auto;
+  min-height: 80px;
+  font-family: var(--font-mono);
+  font-size: var(--text-body-s);
+  line-height: var(--lh-relaxed);
+  color: var(--ink-100);
+}
+
+.consoleOutputError {
+  color: var(--red-400);
+}
+
+/* --- Editor --------------------------------------------------------------- */
+
+.editorColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.languages {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.language {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--border-subtle);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-caption);
+  cursor: pointer;
+}
+
+.languageActive {
+  border-color: var(--blue-500);
+  background: var(--blue-100);
+  color: var(--blue-700);
+}
+
+.language:disabled {
+  cursor: not-allowed;
+  filter: grayscale(1);
+  opacity: 0.55;
+}
+
+.editorShell {
+  background: var(--ink-900);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  box-shadow: var(--shadow-m);
+}
+
+.editorBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--ink-800);
+  color: var(--ink-400);
+  font-size: var(--text-caption);
+}
+
+.trafficLight {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.trafficRed {
+  background: var(--red-500);
+}
+
+.trafficAmber {
+  background: var(--amber-500);
+}
+
+.trafficGreen {
+  background: var(--green-500);
+}
+
+.fileName {
+  margin-left: 8px;
+}
+
+.editor {
+  width: 100%;
+  background: var(--ink-900);
+  color: var(--ink-100);
+  font-family: var(--font-mono);
+  font-size: var(--text-body-s);
+  line-height: var(--lh-relaxed);
+  border: none;
+  outline: none;
+  resize: vertical;
+  padding: 16px 18px;
+  min-height: 220px;
+  display: block;
+}
+
+.editorActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}

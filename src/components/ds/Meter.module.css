@@ -1,0 +1,52 @@
+.track {
+  width: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  width: var(--meter-value);
+  border-radius: var(--radius-pill);
+  transition: width var(--dur-slow) var(--ease-out);
+}
+
+/* Alturas */
+.thin {
+  height: 8px;
+}
+
+.medium {
+  height: 10px;
+}
+
+.thick {
+  height: 14px;
+}
+
+/* Trilho escuro — barra dentro da faixa preta do topo da partida. */
+.onDark {
+  background: var(--ink-700);
+}
+
+/* Cores de preenchimento */
+.success {
+  background: var(--accent-success);
+}
+
+.primary {
+  background: var(--accent-primary);
+}
+
+.danger {
+  background: var(--accent-danger);
+}
+
+.muted {
+  background: var(--ink-300);
+}
+
+.info {
+  background: var(--blue-300);
+}

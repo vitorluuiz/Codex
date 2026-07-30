@@ -1,0 +1,35 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+}
+
+.popover {
+  position: fixed;
+  top: var(--popover-top);
+  left: var(--popover-left);
+  width: var(--popover-width);
+  z-index: 20;
+}
+
+.arrow {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: var(--surface-card);
+  left: var(--popover-arrow-left);
+  margin-left: -7px;
+  transform: rotate(45deg);
+}
+
+.arrowTop {
+  top: -7px;
+  border-left: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.arrowBottom {
+  bottom: -7px;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}

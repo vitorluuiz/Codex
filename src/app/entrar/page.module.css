@@ -1,0 +1,79 @@
+.page {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+  font-family: var(--font-body);
+}
+
+/* --- Coluna escura -------------------------------------------------------- */
+
+.aside {
+  background: var(--ink-950);
+  color: var(--text-inverse);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 56px;
+  position: relative;
+  overflow: hidden;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 28px;
+  color: #fff;
+}
+
+.asideArt {
+  width: 100%;
+  height: 260px;
+  margin-bottom: 32px;
+}
+
+.asideTitle {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-display-m);
+  line-height: var(--lh-tight);
+  margin: 0 0 16px;
+  max-width: 20ch;
+}
+
+.asideLead {
+  font-size: var(--text-body-l);
+  color: var(--ink-300);
+  line-height: var(--lh-relaxed);
+  margin: 0;
+  max-width: 42ch;
+}
+
+/* --- Coluna do formulário ------------------------------------------------- */
+
+.formColumn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: var(--surface-page);
+}
+
+.formShell {
+  width: 100%;
+  max-width: 400px;
+}
+
+@media (max-width: 900px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+
+  .aside {
+    padding: 32px;
+    gap: 24px;
+  }
+
+  .asideArt {
+    display: none;
+  }
+}

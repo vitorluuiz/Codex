@@ -1,0 +1,318 @@
+/**
+ * Modelo de domínio do Codex.
+ *
+ * Este arquivo é o contrato: `docs/api-rest.md` e `docs/websocket.md` descrevem
+ * exatamente estes formatos. Nada aqui é dado de exemplo — são só os tipos que
+ * a API precisa devolver para a interface conseguir se montar.
+ */
+
+/* -------------------------------------------------------------------------- */
+/* Identidade                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/** Índice na paleta de avatares (0..5). Ver `src/components/avatar/avatars.tsx`. */
+export type AvatarIndex = 0 | 1 | 2 | 3 | 4 | 5;
+
+export type PlanId = 'free' | 'intermediate' | 'pro';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  avatarIndex: AvatarIndex;
+  plan: PlanId;
+}
+
+/** Sessão resolvida no servidor a partir do cookie. */
+export interface Session {
+  user: User | null;
+  /** Presente quando a pessoa entrou numa sala como convidado. */
+  participantId: string | null;
+  roomCode: string | null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Sala e participantes                                                        */
+/* -------------------------------------------------------------------------- */
+
+export type RoomStatus = 'lobby' | 'running' | 'finished';
+export type MatchMode = 'live' | 'self-paced';
+
+export interface Room {
+  id: string;
+  /** Código de 6 dígitos digitado pelo aluno. */
+  code: string;
+  status: RoomStatus;
+  matchMode: MatchMode | null;
+  capacity: number;
+  locked: boolean;
+  requireAccount: boolean;
+  leader: { id: string; name: string };
+  createdAt: string;
+}
+
+export type ParticipantStatus = 'pending' | 'approved' | 'rejected' | 'removed';
+
+export interface Participant {
+  id: string;
+  roomId: string;
+  displayName: string;
+  avatarIndex: AvatarIndex;
+  /** `true` quando entrou autenticado; `false` para convidado. */
+  loggedIn: boolean;
+  userId: string | null;
+  status: ParticipantStatus;
+  joinedAt: string;
+}
+
+/** Motivos de recusa na entrada — cada um vira um diálogo próprio na UI. */
+export type JoinRejectionReason =
+  | 'not_found'
+  | 'locked'
+  | 'account_required'
+  | 'username_taken'
+  | 'full'
+  | 'network';
+
+/* -------------------------------------------------------------------------- */
+/* Conjuntos e fases                                                           */
+/* -------------------------------------------------------------------------- */
+
+export type PhaseKind = 'quiz' | 'code' | 'text' | 'fill';
+
+export interface PhaseSetSummary {
+  id: string;
+  title: string;
+  phaseCount: number;
+  /** `owned` = criado pelo líder; `community` = publicado por outra pessoa. */
+  source: 'owned' | 'community';
+  /** Preenchido em `owned`. Ex.: "editado há 2 dias". */
+  updatedLabel: string | null;
+  /** Preenchido em `community`. */
+  authorName: string | null;
+}
+
+interface PhaseBase {
+  id: string;
+  setId: string;
+  name: string;
+  basePoints: number;
+  pointsMultiplier: number;
+  timeSeconds: number;
+}
+
+export interface QuizOption {
+  id: string;
+  label: string;
+}
+
+export interface QuizPhase extends PhaseBase {
+  kind: 'quiz';
+  question: string;
+  options: QuizOption[];
+  /** Só é enviado ao líder ou depois do fim da fase. */
+  correctOptionId?: string;
+  explanation?: string;
+}
+
+export interface CodeExample {
+  input: string;
+  output: string;
+}
+
+export interface CodeLanguage {
+  id: string;
+  label: string;
+  /** Linguagens ainda não suportadas aparecem desabilitadas ("Em breve"). */
+  enabled: boolean;
+  starterCode: string;
+}
+
+export interface CodePhase extends PhaseBase {
+  kind: 'code';
+  title: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  tags: string[];
+  /** Enunciado em Markdown reduzido (só `código inline` é interpretado). */
+  statement: string;
+  examples: CodeExample[];
+  languages: CodeLanguage[];
+  fileName: string;
+}
+
+export interface TextPhase extends PhaseBase {
+  kind: 'text';
+  question: string;
+  placeholder?: string;
+  /** Visível apenas para o líder. */
+  expectedAnswer?: string;
+}
+
+/** Um trecho da frase: texto fixo ou uma lacuna a preencher. */
+export type FillSegment =
+  | { type: 'text'; value: string }
+  | { type: 'blank'; index: number };
+
+export interface FillPhase extends PhaseBase {
+  kind: 'fill';
+  segments: FillSegment[];
+  /** Banco de palavras oferecido ao aluno. */
+  words: string[];
+  /** Só é enviado ao líder ou depois do fim da fase. */
+  correctWords?: string[];
+  explanation?: string;
+}
+
+export type Phase = QuizPhase | CodePhase | TextPhase | FillPhase;
+
+/* -------------------------------------------------------------------------- */
+/* Partida                                                                     */
+/* -------------------------------------------------------------------------- */
+
+export interface Match {
+  id: string;
+  roomId: string;
+  mode: MatchMode;
+  status: 'running' | 'paused' | 'finished';
+  currentPhaseIndex: number;
+  totalPhases: number;
+  startedAt: string;
+}
+
+/** Estado da fase em andamento, do ponto de vista de quem pediu. */
+export interface PhaseState {
+  phase: Phase;
+  /** Posição 1-based, usada em "Fase 3 de 8". */
+  phaseNumber: number;
+  totalPhases: number;
+  /** Segundos restantes no instante da resposta; o cliente conta a partir daí. */
+  secondsLeft: number;
+  paused: boolean;
+  submittedCount: number;
+  totalPlayers: number;
+  /** Submissão da própria pessoa, se já tiver enviado. */
+  mySubmission: Submission | null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Respostas                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export type AnswerPayload =
+  | { kind: 'quiz'; optionId: string }
+  | { kind: 'code'; languageId: string; source: string }
+  | { kind: 'text'; value: string }
+  | { kind: 'fill'; blanks: (string | null)[] };
+
+export type GradingStatus = 'pending' | 'graded';
+
+export interface AiSuggestion {
+  title: string;
+  body: string;
+}
+
+export interface Submission {
+  id: string;
+  phaseId: string;
+  participantId: string;
+  answer: AnswerPayload;
+  submittedAt: string;
+  elapsedSeconds: number;
+  grading: GradingStatus;
+  /** Nulo enquanto `grading === 'pending'`. */
+  correct: boolean | null;
+  score: number | null;
+  /** Texto de "Por que essa é a resposta certa" / feedback da IA. */
+  explanation: string | null;
+  /** Só em fases de código. */
+  aiSuggestions: AiSuggestion[] | null;
+  /** Só em fases de código. */
+  testsPassed: { passed: number; total: number } | null;
+}
+
+export interface CodeRunResult {
+  status: 'success' | 'error';
+  output: string;
+  testsPassed: { passed: number; total: number } | null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Métricas do líder                                                           */
+/* -------------------------------------------------------------------------- */
+
+export interface AnswerDistributionEntry {
+  optionId: string;
+  label: string;
+  count: number;
+  correct: boolean;
+}
+
+export interface GradingDistributionEntry {
+  status: 'correct' | 'incorrect' | 'awaiting';
+  count: number;
+}
+
+export interface ResponseTimeBucket {
+  /** Ex.: "0-15s". */
+  label: string;
+  count: number;
+}
+
+export interface LeaderPlayerRow {
+  participantId: string;
+  name: string;
+  avatarIndex: AvatarIndex;
+  status: 'submitted' | 'pending';
+  elapsedSeconds: number | null;
+  correct: boolean | null;
+}
+
+export interface PhaseStats {
+  phaseId: string;
+  submittedCount: number;
+  totalPlayers: number;
+  readyCount: number;
+  accuracyRate: number;
+  correctCount: number;
+  gradedCount: number;
+  avgResponseSeconds: number;
+  fastestResponseSeconds: number;
+  teamAvgScore: number;
+  teamTopScore: number;
+  answerDistribution: AnswerDistributionEntry[];
+  gradingDistribution: GradingDistributionEntry[];
+  responseTimeBuckets: ResponseTimeBucket[];
+  players: LeaderPlayerRow[];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Comparação com a turma e pódio                                              */
+/* -------------------------------------------------------------------------- */
+
+export interface PhaseComparison {
+  myScore: number;
+  phaseScore: number;
+  /** "Top 91%" — percentual de jogadores que a pessoa superou. */
+  percentile: number;
+  /** Histograma de pontuação da turma nesta fase, já ordenado. */
+  histogram: { score: number; isMe: boolean }[];
+  correctAnswerLabel: string | null;
+  correct: boolean | null;
+}
+
+export interface PodiumEntry {
+  participantId: string;
+  name: string;
+  score: number;
+  avatarUrl: string | null;
+  avatarIndex: AvatarIndex;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Escopo do jogador na barra superior                                         */
+/* -------------------------------------------------------------------------- */
+
+export interface PlayerScoreboard {
+  myScore: number;
+  avgScore: number;
+}

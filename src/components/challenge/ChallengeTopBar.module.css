@@ -1,0 +1,218 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px clamp(16px, 4vw, 48px);
+  background: var(--ink-950);
+  color: #fff;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.phaseChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--blue-500);
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-body-s);
+}
+
+.phaseName {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-body-l);
+}
+
+.pointsChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--ink-800);
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-body-s);
+  color: var(--accent-streak);
+}
+
+.multiplier {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-streak);
+  color: var(--ink-950);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+/* --- Cronômetro ----------------------------------------------------------- */
+
+.timer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+}
+
+.timerValue {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 24px;
+}
+
+.timerPaused {
+  color: var(--ink-400);
+}
+
+.timerUrgent {
+  color: var(--accent-danger);
+  animation: pulseTimer 0.6s ease-in-out infinite;
+}
+
+@keyframes pulseTimer {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+/* --- Progresso de envios -------------------------------------------------- */
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.progressLabel {
+  font-size: var(--text-caption);
+  color: var(--ink-300);
+}
+
+/* --- Placar do aluno ------------------------------------------------------ */
+
+.scoreboard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-left: 20px;
+  border-left: 1px solid var(--ink-700);
+}
+
+.scoreCell {
+  text-align: right;
+}
+
+.scoreCellLabel {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-400);
+}
+
+.scoreCellValue {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-body-l);
+}
+
+.scoreMine {
+  color: var(--accent-streak);
+}
+
+.scoreAverage {
+  color: var(--ink-300);
+}
+
+/* --- Menu do líder -------------------------------------------------------- */
+
+.adminTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-l);
+  border: none;
+  background: var(--ink-800);
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.adminTrigger:hover {
+  background: var(--ink-700);
+}
+
+.adminMenu {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+  padding: 8px;
+  box-shadow: var(--shadow-l);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.adminMenuLabel {
+  padding: 8px 12px 4px;
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.adminItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-m);
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+}
+
+.adminItem:hover {
+  background: var(--surface-sunken);
+}
+
+.adminItemDanger {
+  color: var(--accent-danger);
+}
+
+.adminDivider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 0;
+  border: none;
+}

@@ -1,0 +1,32 @@
+.screen {
+  min-height: 100vh;
+  background: var(--surface-page);
+  font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Área do aluno: uma coluna centralizada, comum a todos os tipos de fase. */
+.playerStage {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
+  padding: clamp(16px, 4vw, 48px);
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  align-content: start;
+}
+
+.connectionBanner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--tone-amber-surface);
+  color: var(--amber-600);
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+}

@@ -1,0 +1,92 @@
+:root {
+  --blue-50: #eef4ff;
+  --blue-100: #dbe7ff;
+  --blue-200: #b3ccff;
+  --blue-300: #7fa8ff;
+  --blue-400: #4c85fb;
+  --blue-500: #2f6fed;
+  --blue-600: #1e56d1;
+  --blue-700: #1642a6;
+  --blue-800: #123380;
+  --blue-900: #0f2a66;
+
+  --ink-0: #ffffff;
+  --ink-50: #f6f7fb;
+  --ink-100: #eceef4;
+  --ink-200: #d8dce6;
+  --ink-300: #b7bdcc;
+  --ink-400: #8b93a7;
+  --ink-500: #636b80;
+  --ink-600: #464e63;
+  --ink-700: #2f3548;
+  --ink-800: #1b2033;
+  --ink-900: #10131f;
+  --ink-950: #0a0c14;
+
+  --pink-400: #f472b6;
+  --pink-500: #ec4899;
+  --pink-600: #db2777;
+  --amber-400: #fbbf24;
+  --amber-500: #f59e0b;
+  --amber-600: #d97706;
+  --green-400: #4ade80;
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+  --red-400: #f87171;
+  --red-500: #ef4444;
+  --red-600: #dc2626;
+  --violet-400: #a78bfa;
+  --violet-500: #8b5cf6;
+
+  /* Superfícies suaves derivadas — usadas em tags e badges do design. */
+  --tone-pink-surface: #fce7f3;
+  --tone-green-surface: #dcfce7;
+  --tone-amber-surface: #fef3c7;
+  --bronze: #cd8a5a;
+
+  --text-primary: var(--ink-900);
+  --text-secondary: var(--ink-500);
+  --text-inverse: var(--ink-0);
+  --text-link: var(--blue-600);
+
+  --surface-page: var(--ink-50);
+  --surface-card: var(--ink-0);
+  --surface-sunken: var(--ink-100);
+  --surface-inverse: var(--ink-900);
+
+  --border-subtle: var(--ink-200);
+  --border-strong: var(--ink-300);
+
+  --accent-primary: var(--blue-500);
+  --accent-primary-hover: var(--blue-600);
+  --accent-primary-active: var(--blue-700);
+  --accent-secondary: var(--pink-500);
+  --accent-streak: var(--amber-500);
+  --accent-success: var(--green-500);
+  --accent-danger: var(--red-500);
+
+  --focus-ring: var(--blue-400);
+}
+
+[data-theme='dark'] {
+  --text-primary: var(--ink-50);
+  --text-secondary: var(--ink-400);
+  --text-inverse: var(--ink-900);
+  --text-link: var(--blue-300);
+
+  --surface-page: var(--ink-950);
+  --surface-card: var(--ink-900);
+  --surface-sunken: var(--ink-800);
+  --surface-inverse: var(--ink-0);
+
+  --border-subtle: var(--ink-700);
+  --border-strong: var(--ink-600);
+
+  --accent-primary: var(--blue-400);
+  --accent-primary-hover: var(--blue-300);
+  --accent-primary-active: var(--blue-200);
+
+  --tone-pink-surface: #3d1030;
+  --tone-green-surface: #0d2f1c;
+  --tone-amber-surface: #3a2708;
+}

@@ -1,0 +1,178 @@
+.head {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-heading);
+  color: var(--text-primary);
+  margin: 0 0 4px;
+}
+
+.lead {
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.actionsTight {
+  margin-top: 8px;
+}
+
+/* --- Passo do nome -------------------------------------------------------- */
+
+.roomBadgeRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.roomBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-caption);
+  letter-spacing: 1px;
+  color: var(--text-primary);
+}
+
+.linkButton {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-link);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+  padding: 0;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
+.avatarPicker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.avatarRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatarNav {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  background: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.avatarNav:hover {
+  background: var(--surface-sunken);
+}
+
+.avatarCaption {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 4px;
+}
+
+.dividerLine {
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.dividerLabel {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+/* --- Diálogo de erro ------------------------------------------------------ */
+
+.errorBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  padding-top: 4px;
+}
+
+.errorIcon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.errorMessage {
+  font-size: var(--text-body);
+  color: var(--text-secondary);
+  line-height: var(--lh-relaxed);
+  margin: 0;
+}
+
+.toneDanger {
+  background: var(--red-500);
+}
+
+.toneWarning {
+  background: var(--amber-500);
+}
+
+.toneViolet {
+  background: var(--violet-500);
+}
+
+.tonePink {
+  background: var(--pink-500);
+}
+
+.toneBlue {
+  background: var(--blue-500);
+}
+
+.toneNeutral {
+  background: var(--ink-700);
+}

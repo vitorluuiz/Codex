@@ -1,0 +1,79 @@
+import type { Metadata } from 'next';
+import { notFound, redirect } from 'next/navigation';
+
+import { ChallengeShell } from '@/components/challenge/ChallengeShell';
+import { StateMessage } from '@/components/feedback/StateMessage';
+import { ApiNotConfiguredError } from '@/lib/api/client';
+import { getCurrentPhase, getMatch, getMyScoreboard, getPhaseStats } from '@/lib/api/match';
+import { getRoom } from '@/lib/api/rooms';
+import { getSession } from '@/lib/api/session';
+import type { PhaseStats, PlayerScoreboard } from '@/lib/types';
+
+export const metadata: Metadata = { title: 'Desafio' };
+
+/** A fase corrente muda a cada segundo — sem cache. */
+export const dynamic = 'force-dynamic';
+
+interface PageProps {
+  params: Promise<{ code: string }>;
+}
+
+/**
+ * Server Component da tela de Desafios.
+ *
+ * Busca de uma vez tudo que a casca precisa para o primeiro render — sala,
+ * partida, fase corrente e (conforme o papel) métricas ou placar — e entrega ao
+ * `<ChallengeShell>`, que a partir daí vive de eventos do WebSocket.
+ */
+export default async function MatchPage({ params }: PageProps) {
+  const { code } = await params;
+  const session = await getSession();
+
+  let room;
+  try {
+    room = await getRoom(code);
+  } catch (error) {
+    if (error instanceof ApiNotConfiguredError) {
+      return (
+        <StateMessage
+          variant="centered"
+          title="Partida indisponível"
+          hint="API_BASE_URL / GET /rooms/{code}/match"
+        >
+          A interface está pronta, mas a API da partida ainda não foi configurada. Os contratos
+          esperados estão em `docs/api-rest.md`.
+        </StateMessage>
+      );
+    }
+    throw error;
+  }
+
+  if (!room) notFound();
+
+  const match = await getMatch(code);
+  if (match.status === 'finished') {
+    redirect(`/sala/${code}/lobby`);
+  }
+
+  const isLeader = Boolean(session.user && session.user.id === room.leader.id);
+  const phaseState = await getCurrentPhase(match.id);
+
+  const [stats, scoreboard] = await Promise.all([
+    isLeader
+      ? getPhaseStats(match.id, phaseState.phase.id)
+      : Promise.resolve<PhaseStats | null>(null),
+    isLeader ? Promise.resolve<PlayerScoreboard | null>(null) : getMyScoreboard(match.id),
+  ]);
+
+  return (
+    <ChallengeShell
+      roomCode={code}
+      match={match}
+      isLeader={isLeader}
+      participantId={session.participantId}
+      initialPhaseState={phaseState}
+      initialStats={stats}
+      initialScoreboard={scoreboard}
+    />
+  );
+}

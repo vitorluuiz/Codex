@@ -1,0 +1,10 @@
+/*
+ * As famílias em si são carregadas por `next/font` em src/app/fonts.ts, que
+ * injeta --font-display-src / --font-body-src / --font-mono-src no <html>.
+ * Aqui só ficam os aliases que o design system consome.
+ */
+:root {
+  --font-display: var(--font-display-src), 'Fredoka', system-ui, sans-serif;
+  --font-body: var(--font-body-src), 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: var(--font-mono-src), 'JetBrains Mono', ui-monospace, monospace;
+}

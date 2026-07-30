@@ -1,0 +1,38 @@
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-body);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.neutral {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+}
+
+.blue {
+  background: var(--blue-100);
+  color: var(--blue-700);
+}
+
+.pink {
+  background: var(--tone-pink-surface);
+  color: var(--pink-600);
+}
+
+.green {
+  background: var(--tone-green-surface);
+  color: var(--green-600);
+}
+
+.amber {
+  background: var(--tone-amber-surface);
+  color: var(--amber-600);
+}

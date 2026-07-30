@@ -1,0 +1,22 @@
+.wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.bubble {
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink-900);
+  color: #fff;
+  font-size: var(--text-caption);
+  padding: 6px 10px;
+  border-radius: var(--radius-s);
+  max-width: 260px;
+  text-align: center;
+  font-family: var(--font-body);
+  box-shadow: var(--shadow-m);
+  pointer-events: none;
+  z-index: 30;
+}

@@ -1,0 +1,89 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--font-body);
+}
+
+.label {
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.shell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-m);
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-subtle);
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.shell:focus-within {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 4px rgba(47, 111, 237, 0.15);
+}
+
+.invalid,
+.invalid:focus-within {
+  border-color: var(--accent-danger);
+}
+
+.control {
+  border: none;
+  outline: none;
+  background: transparent;
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-body);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+
+.control::placeholder {
+  color: var(--text-secondary);
+}
+
+.error {
+  font-size: var(--text-caption);
+  color: var(--accent-danger);
+}
+
+/* Variante “código da sala”: dígitos grandes e espaçados. */
+.codeControl {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 4px;
+  text-align: center;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 160px;
+  padding: 16px 18px;
+  border-radius: var(--radius-l);
+  border: 1.5px solid var(--border-subtle);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  line-height: var(--lh-relaxed);
+  resize: vertical;
+  outline: none;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+
+.textarea:focus {
+  border-color: var(--accent-primary);
+}
+
+.textareaCompact {
+  min-height: 100px;
+  padding: 12px 14px;
+  border-radius: var(--radius-m);
+  font-size: var(--text-body-s);
+}

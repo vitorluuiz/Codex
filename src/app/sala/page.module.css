@@ -1,0 +1,29 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Fundo quente exclusivo desta tela, definido no design. */
+  background: #f0eee9;
+  font-family: var(--font-body);
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 36px;
+  box-shadow: var(--shadow-m);
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 18px;
+  color: var(--text-primary);
+  text-align: center;
+  margin-bottom: 24px;
+}

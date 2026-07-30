@@ -1,0 +1,95 @@
+.button {
+  font-family: var(--font-body);
+  font-weight: var(--fw-bold);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.button:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+/* Tamanhos */
+.sm {
+  padding: 8px 16px;
+  font-size: var(--text-body-s);
+  gap: 6px;
+}
+
+.md {
+  padding: 12px 22px;
+  font-size: var(--text-body);
+  gap: 8px;
+}
+
+.lg {
+  padding: 15px 28px;
+  font-size: var(--text-body-l);
+  gap: 10px;
+}
+
+/* Variantes */
+.primary {
+  background: var(--accent-primary);
+  color: #fff;
+  border: none;
+  box-shadow: var(--shadow-s);
+}
+
+.primary:not(:disabled):hover {
+  background: var(--accent-primary-hover);
+}
+
+.secondary {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-strong);
+}
+
+.secondary:not(:disabled):hover {
+  background: var(--surface-sunken);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--text-primary);
+  border: none;
+}
+
+.ghost:not(:disabled):hover {
+  background: var(--surface-sunken);
+}
+
+.danger {
+  background: var(--accent-danger);
+  color: #fff;
+  border: none;
+}
+
+.danger:not(:disabled):hover {
+  filter: brightness(0.92);
+}
+
+/* Modificadores de largura */
+.block {
+  width: 100%;
+}
+
+.wide {
+  padding-left: 40px;
+  padding-right: 40px;
+}
+
+.icon {
+  display: flex;
+}

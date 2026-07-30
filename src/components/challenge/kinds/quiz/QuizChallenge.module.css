@@ -1,0 +1,125 @@
+.prompt {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: clamp(24px, 4vw, 40px);
+  box-shadow: var(--shadow-s);
+  text-align: center;
+}
+
+.eyebrow {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+.question {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: clamp(22px, 3vw, 32px);
+  color: var(--text-primary);
+  line-height: var(--lh-tight);
+  margin: 0;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.tile {
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius-l);
+  padding: 28px 20px;
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-body-l);
+  color: #fff;
+  text-align: left;
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    filter var(--dur-fast) var(--ease-out);
+}
+
+.tile:not(:disabled):hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+}
+
+.tile:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.tile:disabled {
+  cursor: default;
+}
+
+.selected {
+  outline: 4px solid #fff;
+  outline-offset: -4px;
+}
+
+/* Quatro cores fixas por posição, como no design. */
+.tone0 {
+  background: var(--blue-500);
+}
+
+.tone1 {
+  background: var(--pink-500);
+}
+
+.tone2 {
+  background: var(--amber-500);
+}
+
+.tone3 {
+  background: var(--green-500);
+}
+
+.tone4 {
+  background: var(--violet-500);
+}
+
+.tone5 {
+  background: var(--ink-700);
+}
+
+.tileIcon {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+/* Prévia neutra usada no painel do líder. */
+.previewGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.previewTile {
+  padding: 16px 18px;
+  border-radius: var(--radius-l);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-body);
+}
+
+.previewQuestion {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: clamp(20px, 2.6vw, 28px);
+  color: var(--text-primary);
+  margin: 0 0 18px;
+}

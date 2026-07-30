@@ -1,0 +1,28 @@
+.card {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-s);
+}
+
+.inverse {
+  background: var(--surface-inverse);
+  color: var(--text-inverse);
+  border: none;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+/* Raio maior — cartões de destaque das telas de sala e feedback. */
+.roundedXl {
+  border-radius: var(--radius-xl);
+}
+
+/* Preenchimento generoso, responsivo, usado nos painéis grandes. */
+.roomy {
+  padding: clamp(24px, 4vw, 40px);
+}
