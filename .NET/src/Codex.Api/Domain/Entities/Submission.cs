@@ -1,0 +1,36 @@
+namespace Codex.Api.Domain.Entities;
+
+/// <summary>
+/// api-rest.md secao 8, decisao 2 da secao 13: unicidade de "um envio por pessoa por fase" e
+/// garantida por indice unico (RoomQueuePhaseId, ParticipantId) em vez de checagem sujeita a corrida.
+/// </summary>
+public class Submission
+{
+    public Guid Id { get; init; } = Guid.CreateVersion7();
+
+    public Guid MatchId { get; set; }
+    public Match Match { get; init; } = null!;
+
+    public Guid RoomQueuePhaseId { get; set; }
+    public RoomQueuePhase RoomQueuePhase { get; init; } = null!;
+
+    public Guid ParticipantId { get; set; }
+    public Participant Participant { get; init; } = null!;
+
+    /// <summary>Formato por kind (quiz/fill/text/code), ver secao 8 da doc.</summary>
+    public required string AnswerJson { get; set; }
+
+    public DateTimeOffset SubmittedAt { get; init; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Calculado no servidor (SubmittedAt - fase iniciada), nunca recebido do cliente.</summary>
+    public int ElapsedSeconds { get; set; }
+
+    public GradingStatus Grading { get; set; }
+    public bool? Correct { get; set; }
+    public int? Score { get; set; }
+    public string? Explanation { get; set; }
+
+    /// <summary>Preenchido so para fases "code" apos avaliacao por IA/execucao de testes.</summary>
+    public string? AiSuggestionsJson { get; set; }
+    public string? TestsPassedJson { get; set; }
+}
