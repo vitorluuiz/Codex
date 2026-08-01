@@ -25,4 +25,10 @@ public static class ErrorCodes
     public const string PhaseClosed = "PHASE_CLOSED";
     public const string PhaseStillOpen = "PHASE_STILL_OPEN";
     public const string InvalidDirection = "INVALID_DIRECTION";
+
+    // Fora da tabela da secao 1 — o doc so cataloga os erros que tem dialogo proprio na UI.
+    // Estes cobrem casos que o front nao consegue produzir jogando normalmente (corpo invalido,
+    // id de participante inexistente), e caem no tratamento generico de falha da UI.
+    public const string ValidationError = "VALIDATION_ERROR";
+    public const string ParticipantNotFound = "PARTICIPANT_NOT_FOUND";
 }

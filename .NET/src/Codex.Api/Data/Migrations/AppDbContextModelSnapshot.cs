@@ -71,6 +71,12 @@ namespace Codex.Api.Data.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<string>("DisplayNameNormalized")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("text")
+                        .HasComputedColumnSql("lower(\"DisplayName\")", true);
+
                     b.Property<DateTimeOffset>("JoinedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -91,6 +97,11 @@ namespace Codex.Api.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("RoomId", "DisplayNameNormalized")
+                        .IsUnique()
+                        .HasDatabaseName("ix_participants_room_display_name_unique")
+                        .HasFilter("\"Status\" <> 'Rejected'");
 
                     b.HasIndex("RoomId", "Status", "JoinedAt");
 

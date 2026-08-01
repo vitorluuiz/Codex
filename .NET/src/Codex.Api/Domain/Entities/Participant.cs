@@ -9,6 +9,13 @@ public class Participant
     public Room Room { get; init; } = null!;
 
     public required string DisplayName { get; set; }
+
+    /// <summary>
+    /// Coluna gerada pelo banco (lower(DisplayName)). Existe unicamente para sustentar o indice
+    /// unico de nome por sala sem diferenciar maiusculas — nenhum codigo le este valor.
+    /// </summary>
+    public string DisplayNameNormalized { get; private set; } = string.Empty;
+
     public int AvatarIndex { get; set; }
     public bool LoggedIn { get; set; }
 

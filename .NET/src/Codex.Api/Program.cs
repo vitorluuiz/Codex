@@ -2,7 +2,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Codex.Api.Common.Auth;
 using Codex.Api.Common.Errors;
+using Codex.Api.Common.Json;
+using Codex.Api.Common.RateLimiting;
 using Codex.Api.Data;
+using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
 using Codex.Api.Endpoints;
 using Codex.Api.Services;
@@ -16,12 +19,18 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
-// Enums do contrato saem como string camelCase (ex.: UserPlan.Intermediate -> "intermediate"),
-// espelhando api-rest.md. Excecao conhecida: valores kebab-case como "self-paced" precisarao
-// de tratamento a parte quando os endpoints de partida forem implementados (ver api-init.md).
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
+    // MatchMode e o unico enum do contrato em kebab-case ("self-paced", secao 7) e ja aparece
+    // no payload de GET /rooms/{code}. Converters sao avaliados em ordem, entao o especifico
+    // vem antes do geral — invertido, o camelCase pegaria MatchMode primeiro e emitiria
+    // "selfPaced". Isto resolve a ressalva deixada em api-init.md secao 5.
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<MatchMode>(JsonNamingPolicy.KebabCaseLower));
+
+    // Enums do contrato saem como string camelCase (ex.: UserPlan.Intermediate -> "intermediate").
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+
+    options.SerializerOptions.Converters.Add(new UtcDateTimeOffsetJsonConverter());
 });
 
 builder.Services.AddDataProtection()
@@ -30,6 +39,11 @@ builder.Services.AddDataProtection()
 builder.Services.AddSingleton<ISessionTokenService, SessionTokenService>();
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<RoomAccessService>();
+builder.Services.AddScoped<RoomService>();
+builder.Services.AddScoped<ParticipantService>();
+
+builder.Services.AddCodexRateLimiter(builder.Configuration);
 
 builder.Services
     .AddAuthentication(CodexSessionAuthenticationHandler.SchemeName)
@@ -54,10 +68,16 @@ app.UseMiddleware<ServiceTokenMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Depois do roteamento (que o WebApplication insere no inicio do pipeline), senao a particao
+// por codigo de sala nao teria RouteValues["code"] para ler.
+app.UseRateLimiter();
+
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapSessionEndpoints();
 app.MapAuthEndpoints();
+app.MapRoomEndpoints();
+app.MapParticipantEndpoints();
 
 if (app.Environment.IsDevelopment())
 {
