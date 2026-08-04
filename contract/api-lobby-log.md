@@ -1,12 +1,12 @@
-# api-lobby.md — Entrar numa sala e lobby (seções 3–4)
+# api-lobby-log.md — Entrar numa sala e lobby (seções 3–4)
 
 Este documento registra as decisões da implementação das **seções 3 e 4** do `api-rest.exemple.md`
-sobre a base descrita em `api-init.md`. Como o `api-init.md`, ele é complemento e não substituto:
+sobre a base descrita em `api-init-log-log.md`. Como o `api-init-log-log.md`, ele é complemento e não substituto:
 formatos de request/response continuam definidos no contrato.
 
-A leva anterior (`api-init.md`) entregou a infraestrutura e a fatia vertical de sessão/auth.
+A leva anterior (`api-init-log-log.md`) entregou a infraestrutura e a fatia vertical de sessão/auth.
 Esta entrega o segundo grupo de rotas — e, junto com ele, a autorização baseada em recurso que o
-`api-init.md` previa que "nasceria aqui".
+`api-init-log-log.md` previa que "nasceria aqui".
 
 ---
 
@@ -39,7 +39,7 @@ Data/Migrations/          20260801190154_ParticipantUniqueDisplayName
 
 ## 2. Autorização: um serviço, não um filtro de endpoint
 
-O `api-init.md` previa a regra "é o líder desta sala" como **um filtro de endpoint** comparando
+O `api-init-log-log.md` previa a regra "é o líder desta sala" como **um filtro de endpoint** comparando
 `principal.GetUserId()` com `Room.LeaderUserId`. Na hora de escrever, virou um serviço
 (`RoomAccessService`) pelo motivo mais simples possível: o filtro precisaria carregar a sala para
 decidir, e o handler precisa da *mesma* sala logo em seguida — seriam duas consultas pelo mesmo
@@ -76,7 +76,7 @@ evitar. Bônus: a UI já tem diálogo para `ROOM_NOT_FOUND` e não tem para um 4
 
 ## 3. Resolver o código da sala
 
-`Room.Code` não é único no schema (decisão do `api-init.md`, seguindo a seção 13: códigos de 6
+`Room.Code` não é único no schema (decisão do `api-init-log-log.md`, seguindo a seção 13: códigos de 6
 dígitos são reciclados quando a sala expira). A consequência prática aparece agora: `"482913"` pode
 existir várias vezes na tabela, e a busca precisa decidir qual vale.
 
@@ -171,14 +171,14 @@ batendo com o exemplo do contrato.
 
 **Limitação:** a seção 1 diz que a sessão do convidado "expira junto com a sala", e 4 h fixas não
 são isso. `Room.ExpiresAt` existe no schema mas nada preenche esse campo ainda (continua na lista
-do `api-init.md`); quando alguém preencher, o lugar de corrigir é o cálculo de `expiresAt` no
+do `api-init-log-log.md`); quando alguém preencher, o lugar de corrigir é o cálculo de `expiresAt` no
 `ParticipantService.JoinAsync`.
 
 ---
 
 ## 5. O token passou a cobrir os dois sujeitos ao mesmo tempo
 
-O `api-init.md` registrou que `SessionTokenPayload` carrega usuário **ou** participante, "nunca os
+O `api-init-log-log.md` registrou que `SessionTokenPayload` carrega usuário **ou** participante, "nunca os
 dois". A seção 3 obriga a rever isso: quando alguém **com conta** entra numa sala, os dois fatos são
 simultâneos — continuar sendo "a Marina" e ser "o participante p_9 da sala 482913". Emitir só o
 participante deslogaria a pessoa da própria conta no ato de entrar numa sala.
@@ -201,9 +201,9 @@ Duas consequências:
 
 ## 6. Contrato JSON: duas correções
 
-### `matchMode` em kebab-case (fecha a ressalva do `api-init.md`)
+### `matchMode` em kebab-case (fecha a ressalva do `api-init-log-log.md`)
 
-O `api-init.md` seção 5 deixou registrado que `"mode": "self-paced"` não sairia certo pelo
+O `api-init-log-log.md` seção 5 deixou registrado que `"mode": "self-paced"` não sairia certo pelo
 `JsonStringEnumConverter` camelCase global (viraria `"selfPaced"`), e que isso precisaria de
 tratamento quando os endpoints de partida chegassem. **Chegou antes**: `matchMode` faz parte do
 payload de `GET /rooms/{code}`, na seção 4.
@@ -232,7 +232,7 @@ Postgres continua completo.
 
 ## 7. Rate limiting — e por que ele ainda é fraco
 
-`RATE_LIMITED` era item 6 da lista "o que falta" do `api-init.md`, mas o único uso documentado dele
+`RATE_LIMITED` era item 6 da lista "o que falta" do `api-init-log-log.md`, mas o único uso documentado dele
 é "proteção de força bruta **no código da sala**" — ou seja, é parte do contrato da seção 3, então
 entrou agora. Janela fixa, 30 tentativas/minuto (`CodexApi:RoomCodeAttemptsPerMinute`), aplicada ao
 `availability` e ao `POST` de participante, que compartilham a mesma partição.
@@ -276,7 +276,7 @@ desta sala, um participante de outra sala simplesmente não existe.
   qualquer membro pode ver — um default que vazasse a fila de espera seria a falha errada de se ter.
   `?status=rejected` não é aceito: não está no contrato e nenhuma tela mostra recusados.
 - **A lista sai ordenada por `joinedAt`**, aproveitando o índice `(RoomId, Status, JoinedAt)` que já
-  existia desde o `api-init.md`.
+  existia desde o `api-init-log.md`.
 - **`PATCH` aceita diminuir `capacity` abaixo de quem já está na sala.** Só fecha a porta para novos
   (`ROOM_FULL`); expulsar gente para caber no número novo seria destrutivo e não está em lugar nenhum
   do contrato.
@@ -292,7 +292,7 @@ desta sala, um participante de outra sala simplesmente não existe.
 
 - **Nenhum evento de realtime é publicado.** O contrato pede `room.settings` no `PATCH`,
   `participant.updated` no approve/reject e `participant.left` no delete. O canal WebSocket mora num
-  projeto Node separado (decisão registrada no `api-init.md`) e **como esse projeto vai saber que
+  projeto Node separado (decisão registrada no `api-init-log.md`) e **como esse projeto vai saber que
   algo mudou continua não decidido**. Os três pontos estão marcados com `// TODO(realtime)` no
   código, exatamente onde a publicação entra.
 - **`Room.ExpiresAt` continua sem ser preenchido por ninguém.** A busca por código já respeita o
@@ -342,7 +342,7 @@ contrato.
 
 ## 12. O que falta agora
 
-A lista do `api-init.md` seção 8, atualizada:
+A lista do `api-init-log.md` seção 8, atualizada:
 
 1. ~~Seção 3–4 (entrar em sala, lobby)~~ — feito.
 2. ~~Rate limiting~~ — feito para o código da sala, com a ressalva da seção 7 acima.

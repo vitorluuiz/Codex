@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Codex.Api.Common.Auth;
 using Codex.Api.Common.Errors;
+using Codex.Api.Common.Formatting;
 using Codex.Api.Common.Json;
 using Codex.Api.Common.RateLimiting;
 using Codex.Api.Data;
@@ -38,10 +39,13 @@ builder.Services.AddDataProtection()
 
 builder.Services.AddSingleton<ISessionTokenService, SessionTokenService>();
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+builder.Services.AddSingleton<LabelFormatter>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<RoomAccessService>();
+builder.Services.AddScoped<RoomQueueService>();
 builder.Services.AddScoped<RoomService>();
 builder.Services.AddScoped<ParticipantService>();
+builder.Services.AddScoped<UserProfileService>();
 
 builder.Services.AddCodexRateLimiter(builder.Configuration);
 
@@ -76,8 +80,10 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapSessionEndpoints();
 app.MapAuthEndpoints();
+app.MapUserEndpoints();
 app.MapRoomEndpoints();
 app.MapParticipantEndpoints();
+app.MapRoomQueueEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

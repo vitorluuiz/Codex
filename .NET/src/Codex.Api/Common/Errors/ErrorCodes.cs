@@ -9,6 +9,10 @@ public static class ErrorCodes
 {
     public const string InvalidCredentials = "INVALID_CREDENTIALS";
     public const string EmailAlreadyUsed = "EMAIL_ALREADY_USED";
+
+    /// <summary>Mesma situacao do EMAIL_ALREADY_USED, mas no PATCH /users/me — a tabela da secao 1 lista os dois separados porque a UI mostra o erro em dialogos diferentes.</summary>
+    public const string EmailTaken = "EMAIL_TAKEN";
+
     public const string RoomNotFound = "ROOM_NOT_FOUND";
     public const string RoomLocked = "ROOM_LOCKED";
     public const string AccountRequired = "ACCOUNT_REQUIRED";
@@ -31,4 +35,10 @@ public static class ErrorCodes
     // id de participante inexistente), e caem no tratamento generico de falha da UI.
     public const string ValidationError = "VALIDATION_ERROR";
     public const string ParticipantNotFound = "PARTICIPANT_NOT_FOUND";
+
+    /// <summary>GET /users/{userId}/profile com um id que nao existe. O front so monta esse link a partir de um perfil que ja viu, entao e bug de integracao.</summary>
+    public const string UserNotFound = "USER_NOT_FOUND";
+
+    /// <summary>POST /rooms com um setId inexistente, apagado, ou privado de outra pessoa.</summary>
+    public const string PhaseSetNotFound = "PHASE_SET_NOT_FOUND";
 }

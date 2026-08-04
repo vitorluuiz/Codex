@@ -9,8 +9,8 @@
 >
 > **Estado de implementação: nenhum.** Não existe, neste repositório, nenhum
 > projeto do serviço de tempo real descrito aqui — ele é tratado como um
-> "projeto Node.js separado" (ver `contract/api-init.md` § 8 e
-> `contract/api-lobby.md` § 10) que ainda não foi iniciado. O backend .NET já
+> "projeto Node.js separado" (ver `contract/api-init-log.md` § 8 e
+> `contract/api-lobby-log.md` § 10) que ainda não foi iniciado. O backend .NET já
 > marca com `// TODO(realtime)` os três pontos onde deveria publicar eventos
 > (`PATCH /rooms/{code}` → `room.settings`; approve/reject → `participant.updated`;
 > `DELETE` participante → `participant.left`), mas não publica nada ainda — não

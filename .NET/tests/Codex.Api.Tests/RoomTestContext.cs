@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Codex.Api.Common.Auth;
+using Codex.Api.Common.Formatting;
 using Codex.Api.Data;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
@@ -20,7 +21,10 @@ public class RoomTestContext
 {
     public AppDbContext Db { get; }
     public RoomService Rooms { get; }
+    public RoomQueueService Queue { get; }
     public ParticipantService Participants { get; }
+    public UserProfileService Profiles { get; }
+    public LabelFormatter Labels { get; }
     public ISessionTokenService Tokens { get; }
 
     public User Leader { get; }
@@ -37,8 +41,11 @@ public class RoomTestContext
         var configuration = new ConfigurationBuilder().Build();
 
         var access = new RoomAccessService(Db);
-        Rooms = new RoomService(Db, access);
+        Queue = new RoomQueueService(Db, access);
+        Rooms = new RoomService(Db, access, Queue);
         Participants = new ParticipantService(Db, access, Rooms, Tokens, configuration);
+        Labels = new LabelFormatter(configuration);
+        Profiles = new UserProfileService(Db, Labels);
 
         Leader = new User { Name = "Marina Duarte", Email = "marina@escola.br" };
         Room = new Room
@@ -74,6 +81,41 @@ public class RoomTestContext
         Db.Users.Add(user);
         Db.SaveChanges();
         return user;
+    }
+
+    /// <summary>Conjunto com N fases triviais — o conteudo por kind so importa a partir da secao 5.</summary>
+    public PhaseSet AddPhaseSet(
+        User owner,
+        string title,
+        int phaseCount = 2,
+        PhaseSetVisibility visibility = PhaseSetVisibility.Private,
+        DateTimeOffset? updatedAt = null)
+    {
+        var set = new PhaseSet
+        {
+            Title = title,
+            OwnerId = owner.Id,
+            Visibility = visibility,
+            UpdatedAt = updatedAt ?? DateTimeOffset.UtcNow,
+        };
+        Db.PhaseSets.Add(set);
+
+        for (var index = 0; index < phaseCount; index++)
+        {
+            Db.Phases.Add(new Phase
+            {
+                PhaseSetId = set.Id,
+                Kind = PhaseKind.Quiz,
+                Name = $"Fase {index + 1}",
+                BasePoints = 100,
+                TimeSeconds = 45,
+                OrderIndex = index,
+                ContentJson = """{"question":"?","options":[],"correctIndexes":[0]}""",
+            });
+        }
+
+        Db.SaveChanges();
+        return set;
     }
 
     public Participant AddParticipant(string displayName, ParticipantStatus status = ParticipantStatus.Approved, Guid? userId = null)

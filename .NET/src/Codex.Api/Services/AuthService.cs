@@ -60,5 +60,6 @@ public class AuthService(
         return new AuthResponse(token, (int)lifetime.TotalSeconds, ToDto(user));
     }
 
-    public static UserDto ToDto(User user) => new(user.Id, user.Name, user.Email, user.AvatarIndex, user.Plan);
+    public static UserDto ToDto(User user, bool includeEmail = true)
+        => new(user.Id, user.Name, includeEmail ? user.Email : string.Empty, user.AvatarIndex, user.Plan, user.Audience);
 }

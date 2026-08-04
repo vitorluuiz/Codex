@@ -380,6 +380,11 @@ namespace Codex.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Audience")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<int>("AvatarIndex")
                         .HasColumnType("integer");
 
@@ -408,7 +413,8 @@ namespace Codex.Api.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_users_Email");
 
                     b.ToTable("users", (string)null);
                 });

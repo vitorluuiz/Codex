@@ -7,6 +7,16 @@ public enum UserPlan
     Pro,
 }
 
+/// <summary>
+/// api-rest.md secao 2: "so troca o vocabulario da interface ('Participantes' vira
+/// 'Candidatos'). Nao e permissao — nao decida nada com base nele no servidor."
+/// </summary>
+public enum Audience
+{
+    Teacher,
+    Recruiter,
+}
+
 public enum RoomStatus
 {
     Lobby,

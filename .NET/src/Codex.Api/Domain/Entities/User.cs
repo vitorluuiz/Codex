@@ -12,6 +12,14 @@ public class User
 
     public int AvatarIndex { get; set; }
     public UserPlan Plan { get; set; } = UserPlan.Free;
+
+    /// <summary>
+    /// Publico para quem a pessoa cria partidas (secao 2). Nenhuma rota escreve este campo
+    /// ainda: nem o signup nem o PATCH /users/me o aceitam no contrato, entao toda conta nasce
+    /// "teacher" ate existir a tela que pergunta.
+    /// </summary>
+    public Audience Audience { get; set; } = Audience.Teacher;
+
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 
     public ICollection<Room> LedRooms { get; init; } = [];
