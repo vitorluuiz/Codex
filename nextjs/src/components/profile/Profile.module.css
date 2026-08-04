@@ -1,0 +1,87 @@
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+  background: var(--surface-page);
+  font-family: var(--font-body);
+}
+
+/* Perfil de outra pessoa não tem barra lateral — a coluna some junto. */
+.layoutSolo {
+  grid-template-columns: 1fr;
+}
+
+.content {
+  padding: clamp(24px, 4vw, 48px);
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-display-s);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.email {
+  color: var(--text-secondary);
+  font-size: var(--text-body-s);
+  margin: 4px 0 0;
+}
+
+.headerActions {
+  display: flex;
+  gap: 10px;
+}
+
+.placeholder {
+  color: var(--text-secondary);
+  font-size: var(--text-body-s);
+  margin: 0;
+}
+
+.dialogFields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}

@@ -10,5 +10,7 @@ export { Tabs } from './Tabs';
 export type { TabItem } from './Tabs';
 export { Tag } from './Tag';
 export type { TagTone } from './Tag';
+export { Toast, ToastViewport } from './Toast';
+export type { ToastTone } from './Toast';
 export { Checkbox, Switch } from './Toggle';
 export { Tooltip } from './Tooltip';

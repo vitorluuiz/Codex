@@ -85,6 +85,24 @@ export async function signupAction(
   redirect('/sala');
 }
 
+/**
+ * `POST /auth/logout`
+ *
+ * O cookie é apagado mesmo se a API falhar: deixar a pessoa presa numa sessão
+ * que ela mandou encerrar é pior que uma sessão órfã no servidor, que expira
+ * sozinha.
+ */
+export async function logoutAction() {
+  try {
+    await apiRequest('/auth/logout', { method: 'POST' });
+  } catch {
+    /* segue para limpar o cookie de qualquer forma */
+  }
+  const store = await cookies();
+  store.delete(SESSION_COOKIE);
+  redirect('/');
+}
+
 /** `GET /auth/oauth/{provider}/authorize` — devolve a URL de redirecionamento. */
 export async function startOAuthAction(provider: 'google' | 'microsoft' | 'github') {
   let url: string;

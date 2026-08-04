@@ -1,0 +1,324 @@
+.rail {
+  background: var(--surface-card);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-4);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.railHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.railTitle {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-body);
+  color: var(--text-primary);
+}
+
+.railCount {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+}
+
+.tiles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* --- Tile de fase --------------------------------------------------------- */
+
+.tile {
+  position: relative;
+  border-radius: var(--radius-l);
+  border: 2px solid var(--border-subtle);
+  background: var(--surface-card);
+  padding: var(--space-2);
+  cursor: grab;
+  user-select: none;
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.tile:hover {
+  box-shadow: var(--shadow-m);
+}
+
+.tileActive {
+  border-color: var(--accent-primary);
+}
+
+.tileDragging {
+  opacity: 0.55;
+  cursor: grabbing;
+  box-shadow: var(--shadow-m);
+}
+
+.tileDropTarget {
+  border-color: var(--accent-primary);
+}
+
+.thumbButton {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: inherit;
+}
+
+.tileTools {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  gap: var(--space-1);
+}
+
+.tileTool {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-s);
+}
+
+.tileTool:hover {
+  color: var(--text-primary);
+}
+
+.tileFoot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1) 2px;
+}
+
+.tileIndex {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.tileName {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tileDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--kind-color);
+  flex-shrink: 0;
+}
+
+.confirm {
+  position: absolute;
+  top: 38px;
+  right: 6px;
+  z-index: 5;
+  width: 190px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-l);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.confirmText {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  line-height: var(--lh-relaxed);
+}
+
+.confirmActions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+/* --- Miniaturas ----------------------------------------------------------- */
+
+.thumb {
+  position: relative;
+  border-radius: var(--radius-m);
+  background: var(--surface-sunken);
+  padding: 10px;
+  height: 104px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow: hidden;
+}
+
+.thumbLine {
+  height: 10px;
+  width: 80%;
+  border-radius: 3px;
+  background: var(--ink-300);
+}
+
+.thumbLineShort {
+  width: 60%;
+}
+
+.thumbGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  flex: 1;
+}
+
+.thumbCell {
+  border-radius: 4px;
+  background: var(--ink-200);
+}
+
+.thumbCellCorrect {
+  border-radius: 4px;
+  background: var(--blue-300);
+}
+
+.thumbCode {
+  flex: 1;
+  border-radius: 4px;
+  background: var(--ink-900);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.thumbCodeLine {
+  height: 5px;
+  width: 70%;
+  border-radius: 2px;
+  background: var(--ink-500);
+}
+
+.thumbCodeLineAccent {
+  width: 50%;
+  background: var(--blue-400);
+}
+
+.thumbTextArea {
+  flex: 1;
+  border-radius: 4px;
+  border: 1.5px dashed var(--ink-300);
+  background: var(--surface-card);
+}
+
+.thumbSentence {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.thumbWord {
+  height: 8px;
+  width: 28%;
+  border-radius: 3px;
+  background: var(--ink-300);
+}
+
+.thumbBlank {
+  height: 8px;
+  width: 22%;
+  border-radius: 3px;
+  background: var(--green-400);
+}
+
+.thumbChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.thumbChip {
+  height: 14px;
+  width: 44px;
+  border-radius: 7px;
+  background: var(--ink-200);
+}
+
+/* --- Botões do fim do rail ------------------------------------------------ */
+
+.addTile,
+.browseTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 124px;
+  border-radius: var(--radius-l);
+  border: 2px dashed var(--border-strong);
+  background: none;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-caption);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.addTile:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--blue-50);
+}
+
+.browseTile {
+  border-color: var(--border-subtle);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+@media (max-width: 1000px) {
+  .rail {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .tiles {
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .tile,
+  .addTile,
+  .browseTile {
+    flex: 0 0 180px;
+  }
+}

@@ -40,7 +40,7 @@ export default async function LobbyPage({ params }: PageProps) {
       return (
         <StateMessage variant="centered" title="Sala indisponível" hint="API_BASE_URL / GET /rooms/{code}">
           O front está pronto, mas a API que guarda as salas ainda não foi configurada. Veja
-          `docs/api-rest.md` para os contratos esperados.
+          `docs/api-first-contract.md` para os contratos esperados.
         </StateMessage>
       );
     }

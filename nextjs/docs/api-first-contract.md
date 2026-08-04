@@ -68,12 +68,16 @@ Resolve o cookie. É a primeira coisa que todo Server Component chama.
 
 ```json
 {
-  "user": { "id": "u_1", "name": "Marina Duarte", "email": "marina@escola.br", "avatarIndex": 2, "plan": "intermediate" },
+  "user": { "id": "u_1", "name": "Marina Duarte", "email": "marina@escola.br", "avatarIndex": 2, "plan": "intermediate", "audience": "teacher" },
   "participantId": null,
   "roomCode": null
 }
 ```
 Sem cookie válido → `{ "user": null, "participantId": null, "roomCode": null }` (200, não 401).
+
+`audience` é `"teacher"` ou `"recruiter"` e só troca o vocabulário da interface
+("Participantes" vira "Candidatos"). Não é permissão — não decida nada com base
+nele no servidor.
 
 ### `POST /auth/login`
 ```json
@@ -103,6 +107,51 @@ cookie de sessão setado.
 
 ### `POST /auth/logout`
 → `204`. Invalida o token.
+
+### `PATCH /users/me`
+Campos editáveis pelo diálogo "Editar perfil".
+
+```json
+{ "name": "Marina Duarte", "email": "marina.duarte@escola.edu.br", "avatarIndex": 2 }
+```
+→ `User` atualizado. Email já em uso → `409 EMAIL_TAKEN`.
+
+### `GET /users/{userId}/profile`
+Perfil de liderança. `userId` aceita o literal `me`, que a API resolve pela
+sessão — é a mesma rota porque quem decide o que é público é o servidor, não o
+front.
+
+```json
+{
+  "user": { "id": "u_1", "name": "Marina Duarte", "email": "marina@escola.br", "avatarIndex": 2, "plan": "intermediate", "audience": "teacher" },
+  "sets": [
+    { "id": "s1", "title": "Frações & Funções Básicas", "phaseCount": 8, "source": "owned", "updatedLabel": "editado há 2 dias", "authorName": null }
+  ],
+  "matches": [
+    {
+      "id": "m_1",
+      "setTitle": "Frações & Funções Básicas",
+      "mode": "live",
+      "playedAtLabel": "28 jul 2026 · 14:32",
+      "participantCount": 24,
+      "avgScore": 640,
+      "accuracyRate": 78,
+      "durationLabel": "32 min"
+    }
+  ]
+}
+```
+
+Duas decisões que valem a pena registrar:
+
+1. **`playedAtLabel` e `durationLabel` vêm prontos**, como `updatedLabel` em
+   `/phase-sets`. O front não carrega biblioteca de datas.
+2. **A linha do histórico já traz os números do relatório resumido**
+   (`accuracyRate`, `durationLabel`). A lista e o diálogo "Ver relatório" leem do
+   mesmo objeto — abrir o diálogo não custa uma segunda ida ao servidor.
+
+Num perfil de outra pessoa, `email` pode vir vazio: o front só o exibe, não
+decide nada com ele.
 
 ---
 
@@ -142,6 +191,20 @@ fica no lobby vendo "Aguardando … iniciar a partida".
 ---
 
 ## 4. Sala (lobby)
+
+### `POST /rooms`
+Abre uma sala nova com quem chamou como líder. Usado pelos botões "Criar sala" e
+"Iniciar" (no card de um conjunto) do perfil.
+
+```json
+{ "setId": "s1" }
+```
+
+`setId` é opcional. Quando vem, o servidor já enfileira as fases daquele conjunto
+na sala recém-criada — numa chamada só, para o lobby não abrir vazio e a fila
+aparecer meio segundo depois.
+
+→ `201 Room`. O front navega para `/sala/{code}/lobby`.
 
 ### `GET /rooms/{code}`
 ```json
@@ -200,6 +263,91 @@ biblioteca da comunidade não cabe no cliente.
 
 `updatedLabel` vem pronto do servidor (já relativo e localizado) para o front não
 precisar de biblioteca de datas.
+
+### `GET /phase-sets/{setId}/draft` — autor
+
+Conjunto na forma que o **editor** manipula, que é diferente da que a partida
+consome:
+
+| | Partida (`Phase`) | Editor (`DraftPhase`) |
+|---|---|---|
+| Quiz | `options: {id,label}[]` + `correctOptionId` escondido | `options: string[]` + `correctIndexes: number[]` |
+| Completar frase | `segments[]` já quebrados + `correctWords` escondido | `question` com `___` + `blanks: (string\|null)[]` |
+| Código | `statement`, `examples`, `languages[]` | `question`, `starterCode`, `testCases` |
+| Dissertativa | `expectedAnswer` só para o líder | `expectedAnswer` sempre |
+
+São rotas separadas porque só o autor pode ver gabarito, casos de teste e
+resposta esperada — e porque o editor não deveria ter que desmontar e remontar a
+fase a cada tecla digitada.
+
+```json
+{
+  "id": "s1",
+  "title": "Frações & Funções Básicas",
+  "phases": [
+    {
+      "id": "ph_1",
+      "kind": "quiz",
+      "name": "Frações equivalentes",
+      "basePoints": 100,
+      "pointsMultiplier": 1,
+      "timeSeconds": 45,
+      "fromAI": false,
+      "question": "Qual fração abaixo é equivalente a 2/3?",
+      "options": ["4/6", "3/4", "5/9", "6/8"],
+      "correctIndexes": [0]
+    },
+    {
+      "id": "ph_2",
+      "kind": "fill",
+      "name": "Proporção entre partes",
+      "basePoints": 100,
+      "pointsMultiplier": 1,
+      "timeSeconds": 40,
+      "fromAI": false,
+      "question": "Ao ___ os termos, a ___ se mantém.",
+      "words": ["multiplicar", "somar", "proporção", "quantidade"],
+      "blanks": ["multiplicar", "proporção"]
+    }
+  ]
+}
+```
+
+`blanks` é posicional: uma entrada por lacuna de `question`, na ordem, com `null`
+onde o autor ainda não escolheu a palavra. `words` é o banco inteiro oferecido ao
+aluno — inclui as distratoras, que por definição não aparecem em `blanks`.
+
+### `POST /phase-sets` / `PUT /phase-sets/{setId}/draft` — autor
+
+Mesmo corpo (`{ title, phases }`), e ambos devolvem o rascunho salvo. O editor
+grava o conjunto **inteiro** de uma vez, não fase por fase: a ordem das fases é a
+ordem do array, então não existe campo de posição para sair de sincronia com o
+que o autor vê no rail.
+
+Ids de fase começando com `draft_` são locais — o servidor os substitui pelos
+definitivos e devolve o rascunho já reidentificado.
+
+Validações que o servidor precisa repetir (a UI já impede, mas isso não é
+garantia): `correctIndexes` nunca vazio e nunca com todas as alternativas;
+`options` entre 2 e 6; `blanks.length` igual ao número de lacunas de `question`.
+
+### `PATCH /phase-sets/{setId}` — autor
+`{ "title": "…" }` → `PhaseSetSummary`. Só renomeia; o conteúdo vai pelo `PUT`.
+
+### `DELETE /phase-sets/{setId}` — autor
+→ `204`. Não afeta partidas passadas: a fila copia a fase em vez de referenciá-la.
+
+### `POST /phase-sets/phases/generate` — autor
+
+```json
+{ "kind": "quiz", "topic": "frações equivalentes para o 7º ano", "difficulty": "medium", "notes": "" }
+```
+
+→ uma `DraftPhase` com `fromAI: true`. **A fase não é persistida**: ela entra no
+rascunho local e só vai para o banco quando o autor salva o conjunto. Sair da
+tela sem salvar não pode deixar lixo gerado no banco.
+
+`difficulty` é `"easy" | "medium" | "hard"`.
 
 ---
 
@@ -594,6 +742,7 @@ Decisões que valem a pena destacar:
 | `phaseSets` | `ownerId` (asc), `updatedAt` (desc) — aba "Meus conjuntos" |
 | `phaseSets` | `visibility` (asc), `title` (asc) — aba "Comunidade" + busca |
 | `matches/{id}/phases/{id}/submissions` | `score` (desc) — histograma e pódio |
+| `matches` | `leaderId` (asc), `finishedAt` (desc) — histórico do perfil |
 
 ### TTL
 
@@ -613,3 +762,5 @@ Salas e participantes convidados expiram. Configure TTL em `rooms.expiresAt`
 | Lobby (líder) | as acima + `?status=pending`, `GET /rooms/{code}/queue`, `GET /phase-sets`, todas as de `/queue/*`, `PATCH /rooms/{code}`, aprovar/recusar/remover, `POST /rooms/{code}/match` |
 | Desafios (aluno) | `GET /rooms/{code}/match`, `GET /matches/{id}/current-phase`, `GET /matches/{id}/scoreboard/me`, `POST …/submissions`, `POST …/run`, `POST …/ready`, `GET …/comparison`, `GET /matches/{id}/podium` |
 | Desafios (líder) | `GET /matches/{id}/current-phase`, `GET …/stats`, `advance`, `pause`, `restart`, `finish`, `return-to-lobby`, `DELETE …/participants/{id}` |
+| Perfil | `GET /users/{id}/profile`, `PATCH /users/me`, `POST /rooms`, `POST /matches/{id}/report/export`, `POST /auth/logout` |
+| Editor de Conjunto | `GET /phase-sets/{id}/draft`, `POST /phase-sets`, `PUT /phase-sets/{id}/draft`, `POST /phase-sets/phases/generate` |

@@ -178,4 +178,103 @@ export const Icon = {
       <path d="M21 21l-4.3-4.3" />
     </svg>
   ),
+  Person: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  ),
+  Bell: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+    </svg>
+  ),
+  Settings: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+    </svg>
+  ),
+  SignOut: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5" />
+      <path d="M21 12H9" />
+    </svg>
+  ),
+  Eye: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  Download: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M12 15V3" />
+    </svg>
+  ),
+  Pencil: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+    </svg>
+  ),
+  Plus: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  ),
+  Grid: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  ),
+  Globe: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20M12 2c2.5 2.7 4 6.2 4 10s-1.5 7.3-4 10c-2.5-2.7-4-6.2-4-10s1.5-7.3 4-10z" />
+    </svg>
+  ),
+  Alert: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 8v4M12 16h.01" />
+    </svg>
+  ),
+  Info: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 16v-4M12 8h.01" />
+    </svg>
+  ),
+  /* --- Tipos de fase ------------------------------------------------------ */
+  Quiz: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7" />
+      <path d="M12 17h.01" />
+    </svg>
+  ),
+  Code: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <path d="M8 6 3 12l5 6M16 6l5 6-5 6" />
+    </svg>
+  ),
+  Text: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <path d="M4 6h16M4 11h16M4 16h9" />
+    </svg>
+  ),
+  Fill: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <path d="M4 15h6M14 15h6" />
+      <path d="M4 9h16" />
+    </svg>
+  ),
 };

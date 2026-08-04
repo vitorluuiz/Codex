@@ -1,0 +1,247 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-heading);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.link {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-link);
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+}
+
+.link:hover {
+  color: var(--accent-primary-hover);
+  text-decoration: underline;
+}
+
+.empty {
+  color: var(--text-secondary);
+  font-size: var(--text-body-s);
+  margin: 0;
+}
+
+/* --- Carrossel ------------------------------------------------------------ */
+
+.railWrapper {
+  position: relative;
+}
+
+.rail {
+  display: flex;
+  gap: var(--space-4);
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  padding-bottom: var(--space-1);
+}
+
+.card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-s);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  flex: 0 0 260px;
+  scroll-snap-align: start;
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-m);
+}
+
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.cardIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-l);
+  background: color-mix(in srgb, var(--set-color) 12%, transparent);
+  color: var(--set-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cardText {
+  min-width: 0;
+  flex: 1;
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-body-l);
+  color: var(--text-primary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardMeta {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  margin: 2px 0 0;
+}
+
+.cardFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.phaseCount {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px var(--space-4);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--set-color) 12%, transparent);
+  color: var(--set-color);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.cardActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  box-shadow: var(--shadow-m);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.arrow:hover {
+  color: var(--text-primary);
+}
+
+.arrowLeft {
+  left: -14px;
+}
+
+.arrowRight {
+  right: -14px;
+}
+
+/* --- Diálogo "Todos os conjuntos" ----------------------------------------- */
+
+.allList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.allRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 14px;
+  border-radius: var(--radius-l);
+  background: var(--surface-sunken);
+}
+
+.allIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--set-color) 12%, transparent);
+  color: var(--set-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.allText {
+  flex: 1;
+  min-width: 0;
+}
+
+.allTitle {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-body-s);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.allMeta {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.allEdit {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.allEdit:hover {
+  color: var(--text-primary);
+}

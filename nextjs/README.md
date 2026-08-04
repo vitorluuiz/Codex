@@ -60,11 +60,11 @@ número do servidor até o CSS sem gerar uma classe por valor possível.
 
 Não há mock em lugar nenhum. O que existe é:
 
-- **[`docs/api-rest.md`](docs/api-rest.md)** — todas as rotas necessárias,
+- **[`docs/api-first-contract.md`](docs/api-first-contract.md)** — todas as rotas necessárias,
   derivadas do que cada tela precisa desenhar, com formatos de request/response,
   códigos de erro, regras de autorização, fórmula de pontuação e a modelagem
   sugerida no Firestore.
-- **[`docs/websocket.md`](docs/websocket.md)** — arquitetura do servidor de tempo
+- **[`docs/websocket-first-contract.md`](docs/websocket-first-contract.md)** — arquitetura do servidor de tempo
   real: protocolo completo, canais, throttling, sincronização de cronômetro,
   reconexão e escala.
 - **`src/lib/types.ts`** — o mesmo contrato em TypeScript.
@@ -118,15 +118,20 @@ src/
 ├── app/                    rotas (Server Components)
 │   ├── page.tsx                        landing
 │   ├── entrar/                         login e cadastro
+│   ├── perfil/                         perfil de líder (próprio e de terceiros)
+│   ├── conjunto/
+│   │   ├── novo/                       editor de conjunto (criação)
+│   │   └── [setId]/                    editor de conjunto (edição)
 │   └── sala/
 │       ├── page.tsx                    entrar na sala (código → nome/avatar)
 │       └── [code]/
 │           ├── lobby/                  lobby (líder e jogador)
 │           └── partida/                desafios
 ├── components/
-│   ├── ds/                 design system (Button, Card, Input, Dialog, Popover…)
+│   ├── ds/                 design system (Button, Card, Input, Dialog, Popover, Toast…)
 │   ├── challenge/          tela de desafios — ver acima
-│   ├── lobby/  auth/  join/  landing/  avatar/  media/  icons/  feedback/
+│   ├── set-editor/         editor de conjunto (rail de fases, formulários por tipo)
+│   ├── profile/  lobby/  auth/  join/  landing/  avatar/  media/  icons/  feedback/
 ├── content/                conteúdo editorial da landing
 ├── lib/
 │   ├── api/                clientes REST (server-only)
@@ -141,7 +146,7 @@ src/
 Este repositório é só o front. Ele espera dois serviços:
 
 1. **API REST** — consolida os dados e fala com o banco (Firestore ou compatível).
-   Contrato completo em `docs/api-rest.md`.
+   Contrato completo em `docs/api-first-contract.md`.
 2. **Servidor de WebSocket** — transporta as mudanças em tempo real. Ele não é
    dono de estado: toda mutação passa pela API, que grava e publica; o WS só faz
-   fan-out. O porquê dessa separação está em `docs/websocket.md`.
+   fan-out. O porquê dessa separação está em `docs/websocket-first-contract.md`.

@@ -4,7 +4,7 @@ import type { TagTone } from '@/components/ds';
  * Conteúdo editorial da landing page.
  *
  * Não é dado de domínio (nada disso vive no banco), então fica versionado com o
- * código. Se um dia virar CMS, a rota sugerida está em `docs/api-rest.md`
+ * código. Se um dia virar CMS, a rota sugerida está em `docs/api-first-contract.md`
  * (`GET /marketing/landing`) e este módulo passa a ser o fallback.
  */
 
