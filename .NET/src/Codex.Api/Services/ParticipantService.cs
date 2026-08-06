@@ -1,11 +1,14 @@
 using System.Security.Claims;
 using Codex.Api.Common.Auth;
 using Codex.Api.Common.Errors;
+using Codex.Api.Common.Realtime;
+using Codex.Api.Contracts.Realtime;
 using Codex.Api.Contracts.Rooms;
 using Codex.Api.Data;
 using Codex.Api.Data.Configurations;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
+using Codex.Api.Services.Realtime;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -20,6 +23,7 @@ public class ParticipantService(
     RoomAccessService roomAccess,
     RoomService roomService,
     ISessionTokenService tokenService,
+    IRealtimeEventPublisher realtime,
     IConfiguration configuration)
 {
     private const int MaxDisplayNameLength = 80;
@@ -88,7 +92,16 @@ public class ParticipantService(
         var expiresAt = DateTimeOffset.UtcNow.Add(lifetime);
         var token = tokenService.Issue(new SessionTokenPayload(userId, participant.Id, room.Code, expiresAt));
 
-        return new JoinRoomResponse(ToDto(participant), token, (int)lifetime.TotalSeconds);
+        // Reentrada nao e uma chegada: o card ja esta na tela do lider, e mandar "joined" faria
+        // o front decidir entre inserir e atualizar por conta propria.
+        var dto = ToDto(participant);
+        await realtime.PublishAsync(
+            room.Code,
+            RealtimeChannels.Room(room.Code),
+            existing is null ? new ParticipantJoinedEvent(dto) : (object)new ParticipantUpdatedEvent(dto),
+            ct);
+
+        return new JoinRoomResponse(dto, token, (int)lifetime.TotalSeconds);
     }
 
     /// <summary>
@@ -144,7 +157,14 @@ public class ParticipantService(
 
         participant.Status = ParticipantStatus.Approved;
         await db.SaveChangesAsync(ct);
-        // TODO(realtime): "participant.updated".
+
+        // Depois do SaveChanges, nunca antes: publicar primeiro entregaria ao lobby um estado
+        // que ainda pode nao existir se a transacao falhar.
+        await realtime.PublishAsync(
+            room.Code,
+            RealtimeChannels.Room(room.Code),
+            new ParticipantUpdatedEvent(ToDto(participant)),
+            ct);
     }
 
     public async Task RejectAsync(string code, Guid participantId, ClaimsPrincipal principal, CancellationToken ct)
@@ -154,7 +174,12 @@ public class ParticipantService(
 
         participant.Status = ParticipantStatus.Rejected;
         await db.SaveChangesAsync(ct);
-        // TODO(realtime): "participant.updated".
+
+        await realtime.PublishAsync(
+            room.Code,
+            RealtimeChannels.Room(room.Code),
+            new ParticipantUpdatedEvent(ToDto(participant)),
+            ct);
     }
 
     public async Task RemoveAsync(string code, Guid participantId, ClaimsPrincipal principal, CancellationToken ct)
@@ -164,7 +189,24 @@ public class ParticipantService(
 
         db.Participants.Remove(participant);
         await db.SaveChangesAsync(ct);
-        // TODO(realtime): "participant.left".
+
+        // Dois eventos para a mesma acao, em canais diferentes e por motivos diferentes:
+        //
+        // - "participant.left" no canal da sala tira o card da lista de todo mundo;
+        // - "participant.removed" no canal privado e o que faz a pessoa saber que foi ela, e o
+        //   que leva o servico de WS a fechar o socket dela (secao 10: "so mandar o evento
+        //   deixa a conexao viva recebendo eventos da sala").
+        await realtime.PublishAsync(
+            room.Code,
+            RealtimeChannels.Room(room.Code),
+            new ParticipantLeftEvent(participant.Id),
+            ct);
+
+        await realtime.PublishAsync(
+            room.Code,
+            RealtimeChannels.Participant(participant.Id),
+            new ParticipantRemovedEvent("removed_by_leader"),
+            ct);
     }
 
     /// <summary>

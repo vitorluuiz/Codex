@@ -27,6 +27,13 @@ public class RoomTestContext
     public LabelFormatter Labels { get; }
     public ISessionTokenService Tokens { get; }
 
+    /// <summary>
+    /// Substituto do broker. Nos testes ele nao e so um no-op: e o unico jeito de afirmar que a
+    /// mutacao publicou o evento certo, no canal certo — se so verificassemos o banco, uma
+    /// publicacao esquecida passaria despercebida ate alguem abrir dois browsers.
+    /// </summary>
+    public RecordingRealtimePublisher Realtime { get; } = new();
+
     public User Leader { get; }
     public Room Room { get; }
 
@@ -42,8 +49,8 @@ public class RoomTestContext
 
         var access = new RoomAccessService(Db);
         Queue = new RoomQueueService(Db, access);
-        Rooms = new RoomService(Db, access, Queue);
-        Participants = new ParticipantService(Db, access, Rooms, Tokens, configuration);
+        Rooms = new RoomService(Db, access, Queue, Realtime);
+        Participants = new ParticipantService(Db, access, Rooms, Tokens, Realtime, configuration);
         Labels = new LabelFormatter(configuration);
         Profiles = new UserProfileService(Db, Labels);
 

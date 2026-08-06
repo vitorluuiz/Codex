@@ -1,0 +1,27 @@
+{
+  "name": "codex-realtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Servico de tempo real do Codex — transporta estado, nao e dono de nenhum (contract/websocket-contract.md §1).",
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --env-file-if-exists=.env dist/index.js",
+    "dev": "npm run build && npm start",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node test/shutdown.smoke.mjs && node test/protocol.smoke.mjs"
+  },
+  "dependencies": {
+    "ioredis": "^5.4.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.8.0"
+  }
+}

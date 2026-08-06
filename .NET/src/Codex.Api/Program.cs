@@ -1,15 +1,13 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Codex.Api.Common.Auth;
 using Codex.Api.Common.Errors;
 using Codex.Api.Common.Formatting;
 using Codex.Api.Common.Json;
 using Codex.Api.Common.RateLimiting;
 using Codex.Api.Data;
-using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
 using Codex.Api.Endpoints;
 using Codex.Api.Services;
+using Codex.Api.Services.Realtime;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -20,19 +18,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
-builder.Services.ConfigureHttpJsonOptions(options =>
-{
-    // MatchMode e o unico enum do contrato em kebab-case ("self-paced", secao 7) e ja aparece
-    // no payload de GET /rooms/{code}. Converters sao avaliados em ordem, entao o especifico
-    // vem antes do geral — invertido, o camelCase pegaria MatchMode primeiro e emitiria
-    // "selfPaced". Isto resolve a ressalva deixada em api-init.md secao 5.
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter<MatchMode>(JsonNamingPolicy.KebabCaseLower));
-
-    // Enums do contrato saem como string camelCase (ex.: UserPlan.Intermediate -> "intermediate").
-    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
-
-    options.SerializerOptions.Converters.Add(new UtcDateTimeOffsetJsonConverter());
-});
+// As regras de serializacao do contrato vivem em CodexJsonOptions porque agora ha dois
+// serializadores (HTTP e o publicador de realtime) e eles precisam concordar — o front usa o
+// mesmo parser para o corpo do GET e para o payload do WebSocket.
+builder.Services.ConfigureHttpJsonOptions(options => CodexJsonOptions.Apply(options.SerializerOptions));
 
 builder.Services.AddDataProtection()
     .PersistKeysToDbContext<AppDbContext>();
@@ -48,6 +37,7 @@ builder.Services.AddScoped<ParticipantService>();
 builder.Services.AddScoped<UserProfileService>();
 
 builder.Services.AddCodexRateLimiter(builder.Configuration);
+builder.Services.AddCodexRealtime(builder.Configuration);
 
 builder.Services
     .AddAuthentication(CodexSessionAuthenticationHandler.SchemeName)
@@ -84,6 +74,7 @@ app.MapUserEndpoints();
 app.MapRoomEndpoints();
 app.MapParticipantEndpoints();
 app.MapRoomQueueEndpoints();
+app.MapRealtimeEndpoints();
 
 if (app.Environment.IsDevelopment())
 {

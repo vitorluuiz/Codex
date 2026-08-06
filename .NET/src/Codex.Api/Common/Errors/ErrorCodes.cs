@@ -41,4 +41,12 @@ public static class ErrorCodes
 
     /// <summary>POST /rooms com um setId inexistente, apagado, ou privado de outra pessoa.</summary>
     public const string PhaseSetNotFound = "PHASE_SET_NOT_FOUND";
+
+    /// <summary>
+    /// Token de sessao (ou ticket de realtime) ausente, invalido, expirado ou ja consumido. E o
+    /// unico code cujo nome vem do websocket-contract.md (secao 5, RealtimeErrorCode) e nao do
+    /// contrato REST: as rotas de realtime respondem com ele para que o servico de WS possa
+    /// repassa-lo ao cliente sem traduzir.
+    /// </summary>
+    public const string Unauthenticated = "UNAUTHENTICATED";
 }

@@ -35,6 +35,28 @@ const RealtimeContext = createContext<RealtimeContextValue | null>(null);
 const RECONNECT_STEPS_MS = [500, 1_000, 2_000, 4_000, 8_000, 15_000];
 const PING_INTERVAL_MS = 20_000;
 
+/** Jitter de §8: sem ele, 30 alunos reconectam no mesmo milissegundo. */
+function withJitter(delay: number): number {
+  return Math.round(delay * (0.7 + Math.random() * 0.6));
+}
+
+/**
+ * Fallback do §2: quando o cookie não viaja no handshake (iframe, ITP do
+ * Safari), a sessão vai no campo `token` do `hello`. O ticket é de uso único e
+ * vale 30 s, então é buscado imediatamente antes de cada tentativa — nunca
+ * guardado entre reconexões.
+ */
+async function fetchTicket(): Promise<string | null> {
+  try {
+    const response = await fetch('/api/realtime-ticket', { method: 'POST', cache: 'no-store' });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { ticket?: string };
+    return body.ticket ?? null;
+  } catch {
+    return null;
+  }
+}
+
 interface RealtimeProviderProps {
   roomCode: string;
   channels: Channel[];
@@ -83,8 +105,22 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
     let pingTimer: ReturnType<typeof setInterval> | undefined;
 
-    function connect() {
+    /** Chegou a receber `ready` nesta tentativa? Decide se o ticket é preciso. */
+    let ready = false;
+    /** Último `error` desta tentativa — nem toda falha se resolve com ticket. */
+    let lastErrorCode: string | null = null;
+    /** Ligado quando um socket morre antes do `ready` por falta de sessão. */
+    let needsTicket = false;
+
+    async function connect() {
       setState(attemptRef.current === 0 ? 'connecting' : 'reconnecting');
+      ready = false;
+      lastErrorCode = null;
+
+      // Buscado antes de abrir o socket porque o `hello` é o primeiro quadro e
+      // não há como esperar por uma promessa no meio do `onopen`.
+      const ticket = needsTicket ? await fetchTicket() : null;
+      if (closedByUsRef.current) return;
 
       const socket = new WebSocket(url!);
       socketRef.current = socket;
@@ -93,14 +129,14 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
         attemptRef.current = 0;
         setState('open');
 
-        // O token real viaja no cookie httpOnly; o servidor lê o cookie do
-        // handshake. Esse campo cobre o caso de cookie indisponível (Safari ITP
-        // em iframe), quando o valor é injetado via /api/realtime-ticket.
+        // No caminho normal o token real viaja no cookie httpOnly e este campo
+        // vai vazio; o servidor lê o cookie do handshake e nem chega a aceitar a
+        // conexão se ele não valer (§10).
         socket.send(
           JSON.stringify({
             type: 'hello',
             v: PROTOCOL_VERSION,
-            token: '',
+            token: ticket ?? '',
             roomCode,
           } satisfies ClientMessage),
         );
@@ -130,6 +166,9 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
           setClockOffset(message.serverTime + roundTrip / 2 - Date.now());
         }
 
+        if (message.type === 'ready') ready = true;
+        if (message.type === 'error') lastErrorCode = message.code;
+
         listenersRef.current.forEach((listener) => listener(message));
       };
 
@@ -137,17 +176,30 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
         if (pingTimer) clearInterval(pingTimer);
         if (closedByUsRef.current) return;
 
+        // "Se a versão do protocolo não bater, o front trata como 'recarregue a
+        // página'" (§2). Insistir só produziria a mesma recusa em loop.
+        if (lastErrorCode === 'PROTOCOL_VERSION') {
+          setState('closed');
+          return;
+        }
+
+        // Morreu antes do `ready` sem o servidor reclamar de sala ou de canal:
+        // ou o upgrade foi recusado por falta de cookie, ou o `hello` não tinha
+        // credencial. Nos dois casos, a próxima tentativa leva ticket.
+        if (!ready && (lastErrorCode === null || lastErrorCode === 'UNAUTHENTICATED')) {
+          needsTicket = true;
+        }
+
         setState('reconnecting');
-        const delay =
-          RECONNECT_STEPS_MS[Math.min(attemptRef.current, RECONNECT_STEPS_MS.length - 1)];
+        const step = RECONNECT_STEPS_MS[Math.min(attemptRef.current, RECONNECT_STEPS_MS.length - 1)]!;
         attemptRef.current += 1;
-        reconnectTimer = setTimeout(connect, delay);
+        reconnectTimer = setTimeout(() => void connect(), withJitter(step));
       };
 
       socket.onerror = () => socket.close();
     }
 
-    connect();
+    void connect();
 
     return () => {
       closedByUsRef.current = true;

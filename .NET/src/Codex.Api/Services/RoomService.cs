@@ -2,10 +2,13 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using Codex.Api.Common.Auth;
 using Codex.Api.Common.Errors;
+using Codex.Api.Common.Realtime;
+using Codex.Api.Contracts.Realtime;
 using Codex.Api.Contracts.Rooms;
 using Codex.Api.Data;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
+using Codex.Api.Services.Realtime;
 using Microsoft.EntityFrameworkCore;
 
 namespace Codex.Api.Services;
@@ -16,7 +19,11 @@ namespace Codex.Api.Services;
 /// duas vezes: no availability e de novo no POST de participante — o passo 1 e conveniencia de
 /// UX, nao autorizacao, entao o passo 2 nao pode confiar que ele rodou.
 /// </summary>
-public class RoomService(AppDbContext db, RoomAccessService roomAccess, RoomQueueService queue)
+public class RoomService(
+    AppDbContext db,
+    RoomAccessService roomAccess,
+    RoomQueueService queue,
+    IRealtimeEventPublisher realtime)
 {
     /// <summary>Limite superior de capacity aceito no PATCH. Nao vem do doc: e sanidade contra digitacao/abuso.</summary>
     private const int MaxCapacity = 500;
@@ -164,8 +171,15 @@ public class RoomService(AppDbContext db, RoomAccessService roomAccess, RoomQueu
 
         await db.SaveChangesAsync(ct);
 
-        // TODO(realtime): publicar "room.settings" (secao 4). O canal WebSocket mora no projeto
-        // Node separado e o mecanismo de notificacao ainda nao foi decidido — ver api-lobby.md.
+        // Vai para o canal da sala, nao so para o lider: "Aguardando aprovacao" e o botao de
+        // entrar dependem de `locked` e `requireAccount`, e quem esta no lobby precisa ver a
+        // porta fechar sem recarregar.
+        await realtime.PublishAsync(
+            room.Code,
+            RealtimeChannels.Room(room.Code),
+            new RoomSettingsEvent(room.Locked, room.RequireAccount, room.Capacity),
+            ct);
+
         return ToDto(room);
     }
 

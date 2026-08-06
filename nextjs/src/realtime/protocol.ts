@@ -119,7 +119,14 @@ export type RealtimeErrorCode =
   | 'FORBIDDEN_CHANNEL'
   | 'ROOM_NOT_FOUND'
   | 'PROTOCOL_VERSION'
-  | 'RATE_LIMITED';
+  | 'RATE_LIMITED'
+  /**
+   * A instância está encerrando (`SIGTERM`) ou não conseguiu validar a sessão
+   * agora. Não é erro do cliente: reconectar no backoff resolve, e a conexão
+   * cai em outra instância. Estava no §9 do contrato em prosa mas faltava nesta
+   * união — acrescentado junto do servidor.
+   */
+  | 'RECONNECT';
 
 /* -------------------------------------------------------------------------- */
 /* Helpers de canal                                                            */
