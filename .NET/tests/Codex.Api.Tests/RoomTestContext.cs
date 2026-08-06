@@ -24,6 +24,7 @@ public class RoomTestContext
     public RoomQueueService Queue { get; }
     public ParticipantService Participants { get; }
     public UserProfileService Profiles { get; }
+    public PhaseSetService PhaseSets { get; }
     public LabelFormatter Labels { get; }
     public ISessionTokenService Tokens { get; }
 
@@ -53,6 +54,7 @@ public class RoomTestContext
         Participants = new ParticipantService(Db, access, Rooms, Tokens, Realtime, configuration);
         Labels = new LabelFormatter(configuration);
         Profiles = new UserProfileService(Db, Labels);
+        PhaseSets = new PhaseSetService(Db, Labels);
 
         Leader = new User { Name = "Marina Duarte", Email = "marina@escola.br" };
         Room = new Room

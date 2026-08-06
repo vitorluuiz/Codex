@@ -59,8 +59,30 @@ export class RealtimeServer {
   }
 
   async listen(): Promise<void> {
-    await new Promise<void>((resolve) => {
-      this.http.listen(this.deps.config.port, this.deps.config.host, resolve);
+    // Sem o handler de `error` aqui o EADDRINUSE vira um evento 'error' sem
+    // ouvinte, e o Node derruba o processo com stack trace de `node:net` em vez
+    // da mensagem que diz o que fazer. Os dois ouvintes sao `once` e um remove o
+    // outro: depois do bind, quem trata falha de socket e o resto da classe.
+    await new Promise<void>((resolve, reject) => {
+      const onError = (error: NodeJS.ErrnoException) => {
+        this.http.off('listening', onListening);
+        reject(
+          error.code === 'EADDRINUSE'
+            ? new Error(
+                `porta ${this.deps.config.port} ja esta em uso — provavelmente outra instancia do ` +
+                  `servico de tempo real ainda esta rodando. Feche-a ou defina PORT com outro valor.`,
+              )
+            : error,
+        );
+      };
+      const onListening = () => {
+        this.http.off('error', onError);
+        resolve();
+      };
+
+      this.http.once('error', onError);
+      this.http.once('listening', onListening);
+      this.http.listen(this.deps.config.port, this.deps.config.host);
     });
 
     const period = Math.max(1_000, Math.floor(this.deps.config.idleTimeoutMs / 2));

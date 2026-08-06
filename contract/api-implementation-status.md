@@ -2,19 +2,21 @@
 
 Levantado lendo o código em `.NET/src/Codex.Api` (backend .NET 10 Minimal API +
 PostgreSQL/EF Core) e cruzando com `contract/api-rest-contract.md`. Fontes
-adicionais: `contract/api-init-log.md` (base do projeto) e `contract/api-lobby-log.md`
-(seções 3–4), que são os registros de decisão de cada leva de trabalho.
+adicionais: `contract/api-init-log.md` (base do projeto), `contract/api-lobby-log.md`
+(seções 3–4), `contract/api-phases-log.md` (seção 5) e
+`contract/websocket-implementation-log.md` (realtime), que são os registros de
+decisão de cada leva de trabalho.
 
-**Resumo executivo:** das 14 seções do contrato REST, **as seções 2, 3 e 4
-(sessão/auth + perfil, entrar em sala, lobby) estão completas exceto por OAuth**.
-A criação de sala (`POST /rooms`), que era o bloqueador nº 1 da lista de próximos
-passos, existe — inclusive com a cópia `PhaseSet → fila da sala` quando vem
-`setId`. Da seção 6, **a leitura da fila (`GET /rooms/{code}/queue`) existe**; as
-mutações, não. As seções 5 e 7–12 (conjuntos de fases, partida, respostas,
-comparação, painel do líder, relatórios, landing) **existem só como modelo de
-dados** (entidades EF Core), sem endpoint próprio. **Nenhum evento de realtime é
-publicado** — o serviço de WebSocket descrito em
-`contract/websocket-contract.md` não tem nem projeto iniciado.
+**Resumo executivo:** das 14 seções do contrato REST, **as seções 2, 3, 4 e 5
+(sessão/auth + perfil, entrar em sala, lobby, conjuntos de fases) estão completas
+exceto por OAuth e pela geração de fase por IA**. A criação de sala
+(`POST /rooms`), que era o bloqueador nº 1 da lista de próximos passos, existe —
+inclusive com a cópia `PhaseSet → fila da sala` quando vem `setId`. Da seção 6,
+**a leitura da fila (`GET /rooms/{code}/queue`) existe**; as mutações, não. As
+seções 7–12 (partida, respostas, comparação, painel do líder, relatórios, landing)
+**existem só como modelo de dados** (entidades EF Core), sem endpoint próprio. O
+**realtime existe** — serviço de WebSocket em `realtime/` e publicação de eventos
+de lobby pela API —, mas só os eventos de lobby têm quem os produza (ver §6).
 
 ---
 
@@ -38,13 +40,13 @@ publicado** — o serviço de WebSocket descrito em
 | 4 | `POST /rooms/{code}/participants/{id}/approve` | ✅ | `Endpoints/ParticipantEndpoints.cs` |
 | 4 | `POST /rooms/{code}/participants/{id}/reject` | ✅ | `Endpoints/ParticipantEndpoints.cs` |
 | 4 | `DELETE /rooms/{code}/participants/{id}` | ✅ | `Endpoints/ParticipantEndpoints.cs` |
-| 5 | `GET /phase-sets` | ❌ | só entidade `PhaseSet`/`Phase` no schema |
-| 5 | `GET /phase-sets/{setId}/draft` | ❌ | idem |
-| 5 | `POST /phase-sets` | ❌ | idem |
-| 5 | `PUT /phase-sets/{setId}/draft` | ❌ | idem |
-| 5 | `PATCH /phase-sets/{setId}` | ❌ | idem |
-| 5 | `DELETE /phase-sets/{setId}` | ❌ | idem |
-| 5 | `POST /phase-sets/phases/generate` | ❌ | idem (exige integração de IA — nenhuma decisão tomada) |
+| 5 | `GET /phase-sets?scope=&q=` | ✅ | `Endpoints/PhaseSetEndpoints.cs` · `Services/PhaseSetService.cs` |
+| 5 | `GET /phase-sets/{setId}/draft` | ✅ | idem · `Services/PhaseContent.cs` |
+| 5 | `POST /phase-sets` | ✅ | idem |
+| 5 | `PUT /phase-sets/{setId}/draft` | ✅ | idem |
+| 5 | `PATCH /phase-sets/{setId}` | ✅ | idem |
+| 5 | `DELETE /phase-sets/{setId}` | ✅ | idem |
+| 5 | `POST /phase-sets/phases/generate` | ❌ | exige integração de IA — nenhuma decisão tomada; o editor degrada sem o botão "Gerar com IA" |
 | 6 | `GET /rooms/{code}/queue` | ✅ | `Endpoints/RoomQueueEndpoints.cs` · `RoomQueueService.GetQueueAsync` |
 | 6 | mutações de fila (`POST`/`DELETE`/`PATCH` de conjunto, `PATCH`/`DELETE` de fase, `PUT …/order`) | ❌ | zero endpoint, **mas a cópia `PhaseSet → fila` já existe** em `RoomQueueService.AppendSetAsync` (escrita para o `setId` do `POST /rooms`), com paleta de 8 cores e `TOO_MANY_SETS` |
 | 6 | `GET /rooms/{code}/queue/phases/{phaseId}` (modal "Ver desafio") | ❌ | o payload da fila não traz enunciado nem gabarito — é esta rota que traz |
@@ -55,8 +57,10 @@ publicado** — o serviço de WebSocket descrito em
 | 11 | Relatórios (`report`, `report/export`, `GET /jobs/{jobId}`) | ❌ | não iniciada; contrato já registra que não há tela pronta |
 | 12 | `GET /marketing/landing` | ❌ | opcional — hoje o conteúdo é local em `src/content/landing.ts` no front |
 
-**Contagem:** 14 de ~45 rotas do contrato têm endpoint no backend — 13 das seções
-2–4, mais o `GET` da fila (seção 6).
+**Contagem:** 20 de ~45 rotas do contrato têm endpoint no backend — 13 das seções
+2–4, as 6 da seção 5, mais o `GET` da fila (seção 6). Fora da tabela do contrato
+REST, existe também `POST /realtime-ticket` (`Endpoints/RealtimeEndpoints.cs`),
+que vem do `websocket-contract.md` §2.
 
 ---
 
@@ -130,17 +134,42 @@ Decisões que esta rota tomou e que valem para o resto da seção 6:
 de acesso**, para as mutações que faltam: "todas as mutações desta seção
 devolvem a fila inteira recalculada" e elas já terão resolvido a sala.
 
-### Front já construído esperando por seção 5 (editor de conjuntos) sem backend
+### ~~Front construído esperando por seção 5 (editor de conjuntos) sem backend~~ — resolvido
 
-O working tree do Next tem, sem commit ainda: `src/app/conjunto/` (rotas do
-editor), `src/components/set-editor/` (rail de fases, formulários por tipo),
-`src/lib/api/phaseSets.ts` e `src/lib/actions/phaseSets.ts` — todos batendo
-exatamente nas rotas de `contract/api-rest-contract.md` §5
-(`GET /phase-sets/{id}/draft`, `POST /phase-sets`, `PUT .../draft`,
-`POST .../phases/generate`). Nenhuma delas tem endpoint no `.NET`. A tela
-existe e não tem com o que falar. **É agora o maior bloco de UI parado esperando
-API**, e tem um efeito indireto: sem rota de criação de conjunto, o `setId` do
-`POST /rooms` e a lista `sets` do perfil só têm dado se alguém semear via SQL.
+Era o maior bloco de UI parado: `src/app/conjunto/`, `src/components/set-editor/`,
+`src/lib/api/phaseSets.ts` e `src/lib/actions/phaseSets.ts` batiam em seis rotas
+que não existiam. Existem agora, menos `POST /phase-sets/phases/generate`. Com
+elas, `PhaseSet` passa a nascer pela UI — o `setId` do `POST /rooms` e a lista
+`sets` do perfil não dependem mais de semeadura por SQL.
+
+As decisões desta leva estão em `contract/api-phases-log.md`. As três que mais
+afetam quem for escrever as seções 6 e 7:
+
+- **O `ContentJson` guarda a forma de *autoria* (`DraftPhase`), não a de
+  partida (`Phase`).** Só a de autoria é superset — dela dá para derivar segmentos
+  e ids de alternativa; do inverso, não. A conversão para a forma de partida ainda
+  não existe: o primeiro que vai precisar dela é o
+  `GET /rooms/{code}/queue/phases/{phaseId}` (seção 6).
+- **Rota de autor responde `404 PHASE_SET_NOT_FOUND` a quem não é o dono**, e não
+  403 — diferente das rotas de sala. Um id de conjunto não é convite; o código da
+  sala é. Vale inclusive para conjunto `community` de outra pessoa: dá para usá-lo
+  numa sala, não para abrir o editor dele.
+- **Rascunho incompleto salva; rascunho contraditório não.** Enunciado vazio e
+  lacuna sem palavra passam (é um rascunho); quiz com todas as alternativas
+  corretas e `blanks` fora do número de lacunas, não. Quem deveria cobrar fase
+  completa é o início da partida (seção 7), que ainda não existe.
+
+### Nada publica um conjunto na comunidade
+
+`PhaseSet.Visibility` existe, o `GET /phase-sets?scope=community` funciona e o
+perfil alheio já filtra por ele — mas **nenhuma rota escreve o campo**: conjunto
+nasce `Private` e não há como publicar. O contrato não define essa rota (o
+`PATCH /phase-sets/{setId}` "só renomeia").
+
+Efeito prático: a aba "Comunidade" responde `[]` em qualquer instalação. É a mesma
+situação do `matches` no perfil — a rota está pronta, o dado é que não nasce. É
+também a segunda ocorrência do padrão de `users.Audience`: campo do contrato
+servido com valor fixo por falta de rota que o escreva.
 
 ### `GET /users/{userId}/profile` responde, mas `matches` sai sempre vazio
 
@@ -222,17 +251,27 @@ saírem rápido quando alguém as escrever:
   (seção 6) vai chamar — a regra tem que ser uma só, senão a sala criada com
   conjunto e a sala que recebeu o conjunto depois divergem. O mesmo vale para
   `GetQueueAsync(roomId)`: é o corpo de resposta de todas as mutações que faltam.
+- **Conteúdo de fase por `kind`** (`Services/PhaseContent.cs`) — o que entra e sai
+  do `ContentJson`, incluindo a contagem de lacunas de `fill`, que espelha o
+  `BLANK_PATTERN` do editor (`set-editor/phaseKinds.tsx`). É o ponto único por
+  onde as seções 6 e 7 vão ler enunciado e gabarito; a conversão para a forma de
+  partida (`Phase`) ainda não foi escrita, e é o que falta para o modal "Ver
+  desafio".
 - **Rate limiting** — implementado, mas só para o código da sala
   (`availability` + `POST` de participante), com a limitação conhecida de
   particionar por código e não por IP do browser final (ver
   `contract/api-lobby-log.md` §7). Nenhum rate limit configurado ainda para
-  `POST /rooms` (criação em massa de salas), para `POST …/run` (execução de
+  `POST /rooms` (criação em massa de salas), `POST /phase-sets` +
+  `PUT …/draft` (criação/reescrita em massa de conjuntos),
+  `POST /realtime-ticket` (emissão de credencial), `POST …/run` (execução de
   código) ou para o WS.
-- **Testes automatizados**: 111 testes (`dotnet test`, xUnit + EF Core InMemory),
+- **Testes automatizados**: 183 testes (`dotnet test`, xUnit + EF Core InMemory),
   cobrindo `AuthService`, `RoomService`, `ParticipantService`, `RoomQueueService`,
-  `UserProfileService` e `LabelFormatter`, sem precisar de Postgres. Os índices
-  únicos parciais (`USERNAME_TAKEN`, `EMAIL_TAKEN`) foram verificados
-  manualmente contra Postgres real (InMemory não suporta índices).
+  `UserProfileService`, `PhaseSetService`, `LabelFormatter`, a publicação de
+  eventos de realtime e a resolução de sessão do WS, sem precisar de Postgres. Os
+  índices únicos parciais (`USERNAME_TAKEN`, `EMAIL_TAKEN`) e o cascade de
+  `phase_sets → phases` foram verificados manualmente contra Postgres real
+  (InMemory não suporta índices).
 
 ### Um desvio transversal que continua aberto
 
@@ -265,9 +304,11 @@ resolvidos no schema:
 - Índice único parcial de `Submission (RoomQueuePhaseId, ParticipantId)` já
   garante "1 envio por pessoa por fase" no banco, não em código.
 - Campos por `Kind` (quiz/fill/text/code) são `jsonb` (`ContentJson`/
-  `AnswerJson`), não colunas esparsas — a camada de serviço que serializa por
-  tipo ainda não foi escrita. A cópia para a fila move o `ContentJson` **literal**,
-  sem desserializar: nada nesta leva precisou entender o formato por `kind`.
+  `AnswerJson`), não colunas esparsas. A camada que serializa `ContentJson` por
+  tipo **existe agora** (`Services/PhaseContent.cs`, seção 5) e grava a forma de
+  autoria; `AnswerJson` continua sem quem o escreva (seção 8). A cópia para a fila
+  segue movendo o `ContentJson` **literal**, sem desserializar — então a fila de
+  uma sala guarda exatamente o mesmo formato que a biblioteca.
 
 ### `users.Audience` — a coluna que faltava para o contrato de `User`
 
@@ -296,23 +337,31 @@ contrato avisa, **não é permissão**: nada no servidor decide nada com ele.
 - Nenhuma tabela de sessões revogáveis — `POST /auth/logout` não invalida o
   token de fato (token stateless, expira só pelo `expiresIn`).
 
-## 6. Realtime — arquiteturalmente ausente
+## 6. Realtime — existe; faltam os produtores de evento
 
-- Não existe, neste repositório, nenhum projeto do serviço de WebSocket. É
-  tratado desde `contract/api-init-log.md` como "um projeto Node.js separado" cuja
-  forma de saber que algo mudou (ler o Postgres direto, uma fila, um webhook)
-  **ainda não foi decidida**.
-- As três rotas de líder já implementadas (`PATCH /rooms/{code}`, approve,
-  reject, delete de participante) têm `// TODO(realtime)` no código exatamente
-  onde a publicação de evento deveria entrar — mas nada é publicado hoje. Um
-  segundo browser no lobby só vê a mudança se recarregar a página.
-- As rotas desta leva **não acrescentaram pontos de publicação**: `POST /rooms`
-  cria a sala antes de existir alguém para notificar, as duas de perfil não
-  têm evento correspondente em `websocket-contract.md` §5, e
-  `GET /rooms/{code}/queue` só lê. As mutações da seção 6, essas sim, vão
-  precisar publicar `queue.updated` (`websocket-contract.md` §5) — que manda só
-  o número da revisão, "quem quiser detalhe refaz `GET`". O `GET` que ele manda
-  refazer agora existe; falta o evento.
+Esta seção dizia "arquiteturalmente ausente" até a leva registrada em
+`contract/websocket-implementation-log.md`. O que vale hoje:
+
+- **O serviço de WebSocket existe** (`realtime/`, TypeScript + `ws` + `ioredis`) e
+  o broker foi decidido: **Redis Pub/Sub**, publicado pela própria API .NET depois
+  do `SaveChanges` (`Services/Realtime/`). As quatro decisões que
+  `next-steps.md` §4 listava como abertas foram tomadas lá.
+- **Os quatro `TODO(realtime)` não existem mais.** `PATCH /rooms/{code}` publica
+  `room.settings`; approve/reject publicam `participant.updated`; o `DELETE` de
+  participante publica `participant.left` (sala) e `participant.removed`
+  (privado); e `POST /rooms/{code}/participants` publica `participant.joined`.
+  Um segundo browser no lobby vê a mudança sem recarregar.
+- **O que falta é quem produza os eventos de partida.** `phase.started`,
+  `stats.updated`, `submission.graded`, `match.finished` etc. têm transporte,
+  canal, throttle e autorização implementados e testados — não têm rota REST que
+  os dispare, porque as seções 7–10 não existem.
+- **`queue.updated` continua sem publicador**, e continua sendo assunto das
+  mutações da fila (seção 6). Ele manda só o número da revisão ("quem quiser
+  detalhe refaz `GET`"); o `GET` que ele manda refazer existe, e **nada no schema
+  guarda essa revisão hoje**.
+- As rotas da seção 5 **não acrescentam ponto de publicação**, e está certo:
+  `websocket-contract.md` §5 não tem evento de biblioteca de conjuntos — o editor
+  é tela de uma pessoa só.
 
 ---
 
@@ -320,23 +369,24 @@ contrato avisa, **não é permissão**: nada no servidor decide nada com ele.
 
 ```bash
 dotnet ef database update --project src/Codex.Api --startup-project src/Codex.Api
-dotnet test          # 111 testes, sem precisar de Postgres
+dotnet test          # 183 testes, sem precisar de Postgres
 dotnet run --project src/Codex.Api
 ```
 
-Os 111 testes rodam em EF InMemory. **O que eles não cobrem**, e por isso foi
+Os 183 testes rodam em EF InMemory. **O que eles não cobrem**, e por isso foi
 verificado à mão contra um Postgres 18 local: os índices únicos (InMemory não tem
-índices), a migration `UserAudience` aplicada sobre dados existentes, e a cópia
-`PhaseSet → fila` gravando de fato as duas tabelas.
+índices), a migration `UserAudience` aplicada sobre dados existentes, a cópia
+`PhaseSet → fila` gravando de fato as duas tabelas, e o cascade
+`phase_sets → phases` do `DELETE /phase-sets/{setId}`.
 
 Rodado ponta a ponta em sessões anteriores: signup → `GET /session` com
 `audience` → `PATCH /users/me` → `POST /rooms` (com e sem `setId`, e sem corpo
 nenhum) → `GET /users/me/profile` com o conjunto aparecendo como
 `"editado há 2 dias"`; mais os erros `ACCOUNT_REQUIRED` (criar sala e perfil sem
 sessão), `PHASE_SET_NOT_FOUND`, `EMAIL_TAKEN`, `VALIDATION_ERROR` (email
-implausível) e `USER_NOT_FOUND` (id irresolvível). O `PhaseSet` do teste do
-`setId` precisou ser semeado via SQL, porque a seção 5 ainda não tem rota que
-crie um.
+implausível) e `USER_NOT_FOUND` (id irresolvível). Naquela sessão o `PhaseSet` do
+teste do `setId` precisou ser semeado via SQL; **não precisa mais** — o
+`POST /phase-sets` cria.
 
 `GET /rooms/{code}/queue`, contra o mesmo Postgres: fila vazia (`200
 {"sets":[],"phases":[]}` numa sala criada sem `setId`), fila com um conjunto de
@@ -344,3 +394,15 @@ crie um.
 para o conjunto), `403 NOT_ROOM_LEADER` nas três variantes de quem não é o líder
 (outro usuário logado, participante aprovado, sem sessão), `404 ROOM_NOT_FOUND`
 para código inexistente e para código malformado, e `401` sem `x-service-token`.
+
+As seis rotas da seção 5, contra o mesmo Postgres (detalhe em
+`contract/api-phases-log.md` §10): criação com os quatro `kind` e ids `draft_*`
+voltando como `Guid`; rascunho lido de volta com cada fase trazendo só os campos
+do seu tipo; `?scope=owned` com `updatedLabel`, busca case-insensitive, e
+`?scope=community` visto por outra conta com `authorName`; `PUT` preservando o id
+da fase que ficou e apagando as removidas; `PATCH` devolvendo `PhaseSetSummary`;
+`POST /rooms` com o `setId` recém-criado e a fila copiada; `DELETE` respondendo
+`204`, levando as fases junto e **deixando a fila da sala intacta**. Erros:
+`VALIDATION_ERROR` (scope inválido, quiz com todas as alternativas corretas,
+`blanks` fora do número de lacunas), `ACCOUNT_REQUIRED` (sem sessão) e
+`PHASE_SET_NOT_FOUND` (conjunto alheio, id malformado, conjunto apagado).
