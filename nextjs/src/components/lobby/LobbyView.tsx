@@ -25,29 +25,69 @@ import styles from './Lobby.module.css';
 interface LobbyViewProps {
   room: Room;
   isLeader: boolean;
+  /** `null` para o líder, que participa da sala sem ser um participante dela. */
+  viewerParticipantId: string | null;
+  /** Entrou mas o líder ainda não decidiu: vê a tela de espera por aprovação. */
+  awaitingApproval: boolean;
   initialApproved: Participant[];
   initialPending: Participant[];
   initialQueue: RoomQueue;
 }
 
+/**
+ * Insere ou substitui por `id`. Todo handler de tempo real precisa ser
+ * idempotente: um evento pode chegar repetido (reentrega, reconexão) e um
+ * `[...list, participant]` cru transformaria isso em dois cards da mesma pessoa.
+ */
+function upsert(list: Participant[], participant: Participant): Participant[] {
+  const index = list.findIndex((p) => p.id === participant.id);
+  if (index === -1) return [...list, participant];
+
+  const next = [...list];
+  next[index] = participant;
+  return next;
+}
+
 export function LobbyView(props: LobbyViewProps) {
   return (
-    <RealtimeProvider
-      roomCode={props.room.code}
-      channels={
-        props.isLeader
-          ? [channels.room(props.room.code), channels.leader(props.room.code)]
-          : [channels.room(props.room.code)]
-      }
-    >
-      <LobbyContent {...props} />
+    <RealtimeProvider roomCode={props.room.code} channels={channelsFor(props)}>
+      {/*
+        A `key` remonta o conteúdo quando a aprovação sai. Enquanto esperava, o
+        socket não recebia nada da sala (o canal é só de aprovado), então as
+        listas em `useState` envelheceram; remontar as ressemeia com o que o
+        `router.refresh()` acabou de trazer, em vez de reconciliar sobre estado
+        que ficou parado no tempo.
+      */}
+      <LobbyContent key={props.awaitingApproval ? 'awaiting' : 'member'} {...props} />
     </RealtimeProvider>
   );
 }
 
-function LobbyContent({ room, isLeader, initialApproved, initialPending, initialQueue }: LobbyViewProps) {
+/**
+ * §3 do contrato de WS reserva `room:{code}` a participante aprovado — pedir esse
+ * canal enquanto se está pendente só renderia `FORBIDDEN_CHANNEL`. Quem espera
+ * aprovação assina o próprio canal privado, por onde a decisão do líder chega.
+ */
+function channelsFor({ room, isLeader, viewerParticipantId, awaitingApproval }: LobbyViewProps) {
+  if (isLeader) return [channels.room(room.code), channels.leader(room.code)];
+  if (awaitingApproval && viewerParticipantId !== null) {
+    return [channels.participant(viewerParticipantId)];
+  }
+  return [channels.room(room.code)];
+}
+
+function LobbyContent({
+  room,
+  isLeader,
+  viewerParticipantId,
+  awaitingApproval,
+  initialApproved,
+  initialPending,
+  initialQueue,
+}: LobbyViewProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const [rejected, setRejected] = useState(false);
 
   const [approved, setApproved] = useState(initialApproved);
   const [pending, setPending] = useState(initialPending);
@@ -63,18 +103,34 @@ function LobbyContent({ room, isLeader, initialApproved, initialPending, initial
 
   useRealtimeEvent('participant.joined', ({ participant }) => {
     if (participant.status === 'pending') {
-      setPending((list) => [...list, participant]);
+      setPending((list) => upsert(list, participant));
     } else if (participant.status === 'approved') {
-      setApproved((list) => [...list, participant]);
+      setApproved((list) => upsert(list, participant));
     }
   });
 
   useRealtimeEvent('participant.updated', ({ participant }) => {
+    // O mesmo evento chega por dois canais com significados diferentes: no canal
+    // da sala é "o card de fulano mudou"; no canal privado é a decisão do líder
+    // sobre quem está olhando a tela. Este trecho trata o segundo caso.
+    if (participant.id === viewerParticipantId && !isLeader) {
+      if (participant.status === 'approved') {
+        // Recarrega em vez de montar o lobby com o que estava em memória: durante
+        // a espera nenhum evento da sala chegou, então a lista de jogadores aqui
+        // está parada no instante em que a pessoa pediu para entrar.
+        router.refresh();
+      } else if (participant.status === 'rejected') {
+        setRejected(true);
+      }
+      return;
+    }
+
     setPending((list) => list.filter((p) => p.id !== participant.id));
-    setApproved((list) => {
-      const without = list.filter((p) => p.id !== participant.id);
-      return participant.status === 'approved' ? [...without, participant] : without;
-    });
+    setApproved((list) =>
+      participant.status === 'approved'
+        ? upsert(list, participant)
+        : list.filter((p) => p.id !== participant.id),
+    );
   });
 
   useRealtimeEvent('participant.left', ({ participantId }) => {
@@ -112,7 +168,7 @@ function LobbyContent({ room, isLeader, initialApproved, initialPending, initial
 
   function approve(participant: Participant) {
     setPending((list) => list.filter((p) => p.id !== participant.id));
-    setApproved((list) => [...list, { ...participant, status: 'approved' }]);
+    setApproved((list) => upsert(list, { ...participant, status: 'approved' }));
     startTransition(() => void approveParticipantAction(room.code, participant.id));
   }
 
@@ -183,11 +239,9 @@ function LobbyContent({ room, isLeader, initialApproved, initialPending, initial
             {isLeader ? (
               <>
                 <div className={styles.toggleGroup}>
-                  <span>Trancar sala</span>
                   <Switch label="Trancar sala" checked={locked} onChange={toggleLocked} />
                 </div>
                 <div className={styles.toggleGroup}>
-                  <span>Exigir conta</span>
                   <Switch
                     label="Exigir conta"
                     checked={requireAccount}
@@ -286,6 +340,31 @@ function LobbyContent({ room, isLeader, initialApproved, initialPending, initial
 
             <PhaseQueuePanel roomCode={room.code} queue={queue} onQueueChange={setQueue} />
           </div>
+        ) : rejected ? (
+          <section className={styles.waitingCard}>
+            <h1 className={styles.waitingTitle}>Solicitação recusada</h1>
+            <p className={styles.waitingLead}>
+              {room.leader.name} não aprovou sua entrada na sala {room.code}.
+            </p>
+            <Button onClick={() => router.push('/sala')}>Entrar em outra sala</Button>
+          </section>
+        ) : awaitingApproval ? (
+          <section className={styles.waitingCard}>
+            <h1 className={styles.waitingTitle}>Solicitação enviada</h1>
+            <p className={styles.waitingLead}>
+              Seu pedido para entrar na sala {room.code} chegou para {room.leader.name}. Assim que
+              ele aceitar, você entra direto no lobby — pode deixar esta tela aberta.
+            </p>
+
+            <p className={styles.waitingStatus}>
+              Esperando o líder aceitar sua solicitação para entrar
+              <span className={styles.dots}>
+                <span className={styles.dot} />
+                <span className={styles.dot} />
+                <span className={styles.dot} />
+              </span>
+            </p>
+          </section>
         ) : (
           <section className={styles.waitingCard}>
             <h1 className={styles.waitingTitle}>Compartilhe o código com a turma</h1>

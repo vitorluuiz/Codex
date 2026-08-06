@@ -103,7 +103,7 @@ e o socket fecha. O front trata como "recarregue a página".
 | `room:{code}` | qualquer participante aprovado | lobby: entradas, saídas, configurações, fila |
 | `room:{code}:match` | qualquer participante aprovado | partida: fase corrente, cronômetro, contadores agregados |
 | `room:{code}:leader` | **apenas o líder** | métricas por aluno, atividade individual |
-| `participant:{id}` | **apenas aquele participante** | correção da própria resposta, expulsão |
+| `participant:{id}` | **apenas aquele participante** | correção da própria resposta, aprovação/recusa da entrada, expulsão |
 
 A separação não é organizacional, é de segurança. `room:{code}:match` carrega só
 agregados (12 de 28 enviaram) — nada que identifique. Tudo que é individual está
@@ -165,8 +165,15 @@ enxergam seria desperdício puro.
 ### Privado — canal `participant:{id}`
 ```jsonc
 { "type": "submission.graded",  "submission": { …Submission… } }
+{ "type": "participant.updated", "participant": { … } }   // a decisão do líder sobre você
 { "type": "participant.removed", "reason": "removed_by_leader" }
 ```
+
+`participant.updated` sai nos **dois** canais quando o líder aceita ou recusa
+alguém, e a cópia privada não é redundância: quem está pendente não pode assinar
+`room:{code}` (§3), então é por aqui que a tela "esperando o líder aceitar sua
+solicitação para entrar" fica sabendo que pode sair do ar. No canal da sala o
+evento quer dizer "o card de fulano mudou"; no privado, "a decisão é sobre você".
 
 ### Painel do líder — canal `room:{code}:leader`
 ```jsonc

@@ -58,10 +58,21 @@ export default async function LobbyPage({ params }: PageProps) {
     isLeader ? getRoomQueue(code) : Promise.resolve<RoomQueue>({ sets: [], phases: [] }),
   ]);
 
+  // Deduzido da lista de aprovados em vez de pedido à API: quem foi recusado nem
+  // chega aqui (`GET /rooms/{code}` responde 404 para ele) e remover apaga a
+  // linha, então "é participante desta sala e não está entre os aprovados"
+  // significa exatamente "ainda aguarda o líder".
+  const awaitingApproval =
+    !isLeader &&
+    session.participantId !== null &&
+    !approved.some((participant) => participant.id === session.participantId);
+
   return (
     <LobbyView
       room={room}
       isLeader={isLeader}
+      viewerParticipantId={session.participantId}
+      awaitingApproval={awaitingApproval}
       initialApproved={approved}
       initialPending={pending}
       initialQueue={queue}

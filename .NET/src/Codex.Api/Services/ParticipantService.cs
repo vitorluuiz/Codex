@@ -160,11 +160,7 @@ public class ParticipantService(
 
         // Depois do SaveChanges, nunca antes: publicar primeiro entregaria ao lobby um estado
         // que ainda pode nao existir se a transacao falhar.
-        await realtime.PublishAsync(
-            room.Code,
-            RealtimeChannels.Room(room.Code),
-            new ParticipantUpdatedEvent(ToDto(participant)),
-            ct);
+        await PublishDecisionAsync(room.Code, participant, ct);
     }
 
     public async Task RejectAsync(string code, Guid participantId, ClaimsPrincipal principal, CancellationToken ct)
@@ -175,11 +171,22 @@ public class ParticipantService(
         participant.Status = ParticipantStatus.Rejected;
         await db.SaveChangesAsync(ct);
 
-        await realtime.PublishAsync(
-            room.Code,
-            RealtimeChannels.Room(room.Code),
-            new ParticipantUpdatedEvent(ToDto(participant)),
-            ct);
+        await PublishDecisionAsync(room.Code, participant, ct);
+    }
+
+    /// <summary>
+    /// A decisao do lider vai para dois canais, e o segundo nao e redundancia: quem esta
+    /// pendente **nao pode assinar** <c>room:{code}</c> (secao 3 do contrato de WS reserva o
+    /// canal da sala a participante aprovado), entao o unico jeito de a pessoa na tela
+    /// "aguardando aprovacao" saber que foi aceita — ou recusada — e pelo canal privado dela.
+    /// Sem isto ela ficaria presa esperando ate recarregar a pagina na mao.
+    /// </summary>
+    private async Task PublishDecisionAsync(string roomCode, Participant participant, CancellationToken ct)
+    {
+        var dto = ToDto(participant);
+
+        await realtime.PublishAsync(roomCode, RealtimeChannels.Room(roomCode), new ParticipantUpdatedEvent(dto), ct);
+        await realtime.PublishAsync(roomCode, RealtimeChannels.Participant(participant.Id), new ParticipantUpdatedEvent(dto), ct);
     }
 
     public async Task RemoveAsync(string code, Guid participantId, ClaimsPrincipal principal, CancellationToken ct)

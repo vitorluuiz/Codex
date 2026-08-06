@@ -58,12 +58,21 @@ public class RealtimePublishingTests
 
         await ctx.Participants.ApproveAsync("482913", participant.Id, ctx.AsLeader, CancellationToken.None);
 
-        var published = Assert.Single(ctx.Realtime.Published);
-        Assert.Equal(RealtimeChannels.Room("482913"), published.Channel);
+        Assert.Equal(2, ctx.Realtime.Published.Count);
 
-        var payload = published.As<ParticipantUpdatedEvent>();
+        var room = ctx.Realtime.Published[0];
+        Assert.Equal(RealtimeChannels.Room("482913"), room.Channel);
+
+        var payload = room.As<ParticipantUpdatedEvent>();
         Assert.Equal("participant.updated", payload.Type);
         Assert.Equal(ParticipantStatus.Approved, payload.Participant.Status);
+
+        // O canal da sala e so para aprovado (secao 3), entao quem acabou de ser aceito nao
+        // estava nele para receber a propria aprovacao: sem esta copia no canal privado, a tela
+        // "esperando o lider aceitar" nunca sairia sozinha.
+        var privateCopy = ctx.Realtime.Published[1];
+        Assert.Equal(RealtimeChannels.Participant(participant.Id), privateCopy.Channel);
+        Assert.Equal(ParticipantStatus.Approved, privateCopy.As<ParticipantUpdatedEvent>().Participant.Status);
     }
 
     [Fact]
@@ -75,8 +84,14 @@ public class RealtimePublishingTests
 
         await ctx.Participants.RejectAsync("482913", participant.Id, ctx.AsLeader, CancellationToken.None);
 
-        var published = Assert.Single(ctx.Realtime.Published);
-        Assert.Equal(ParticipantStatus.Rejected, published.As<ParticipantUpdatedEvent>().Participant.Status);
+        Assert.Equal(2, ctx.Realtime.Published.Count);
+        Assert.Equal(RealtimeChannels.Room("482913"), ctx.Realtime.Published[0].Channel);
+        Assert.Equal(RealtimeChannels.Participant(participant.Id), ctx.Realtime.Published[1].Channel);
+
+        foreach (var published in ctx.Realtime.Published)
+        {
+            Assert.Equal(ParticipantStatus.Rejected, published.As<ParticipantUpdatedEvent>().Participant.Status);
+        }
     }
 
     [Fact]

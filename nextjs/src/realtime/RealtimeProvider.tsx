@@ -77,7 +77,6 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
   const socketRef = useRef<WebSocket | null>(null);
   const listenersRef = useRef(new Set<Listener>());
   const attemptRef = useRef(0);
-  const closedByUsRef = useRef(false);
   const channelsKey = channels.join('|');
 
   const send = useCallback((message: ClientMessage) => {
@@ -101,7 +100,16 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
       return;
     }
 
-    closedByUsRef.current = false;
+    /**
+     * Encerramento desta execução do efeito. Precisa ser local, não um ref
+     * compartilhado: o cleanup roda enquanto o socket antigo ainda está
+     * fechando, e um ref seria zerado pela execução seguinte antes do `onclose`
+     * do socket velho chegar. Ele então se veria como queda espontânea, entraria
+     * no backoff e reabriria — dois sockets vivos alimentando o mesmo conjunto
+     * de listeners, ou seja, todo evento entregue duas vezes. Em StrictMode isso
+     * acontece em toda montagem.
+     */
+    let disposed = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
     let pingTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -120,12 +128,16 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
       // Buscado antes de abrir o socket porque o `hello` é o primeiro quadro e
       // não há como esperar por uma promessa no meio do `onopen`.
       const ticket = needsTicket ? await fetchTicket() : null;
-      if (closedByUsRef.current) return;
+      if (disposed) return;
 
       const socket = new WebSocket(url!);
       socketRef.current = socket;
 
       socket.onopen = () => {
+        if (disposed) {
+          socket.close();
+          return;
+        }
         attemptRef.current = 0;
         setState('open');
 
@@ -153,6 +165,8 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
       };
 
       socket.onmessage = (event) => {
+        if (disposed) return;
+
         let message: ServerMessage;
         try {
           message = JSON.parse(event.data as string) as ServerMessage;
@@ -174,7 +188,7 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
 
       socket.onclose = () => {
         if (pingTimer) clearInterval(pingTimer);
-        if (closedByUsRef.current) return;
+        if (disposed) return;
 
         // "Se a versão do protocolo não bater, o front trata como 'recarregue a
         // página'" (§2). Insistir só produziria a mesma recusa em loop.
@@ -202,7 +216,7 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
     void connect();
 
     return () => {
-      closedByUsRef.current = true;
+      disposed = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (pingTimer) clearInterval(pingTimer);
       socketRef.current?.close();
