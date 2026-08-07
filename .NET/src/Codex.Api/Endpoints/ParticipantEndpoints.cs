@@ -19,6 +19,17 @@ public static class ParticipantEndpoints
         group.MapGet("", async (string code, string? status, ClaimsPrincipal principal, ParticipantService participants, CancellationToken ct)
             => Results.Ok(await participants.ListAsync(code, status, principal, ct)));
 
+        // Registrado antes das rotas com "{id:guid}" para o literal "me" nunca disputar com elas —
+        // ele nao casaria com a restricao :guid, mas a ordem deixa a intencao explicita.
+        //
+        // A unica rota deste grupo que **nao** e do lider: o participante volta a si mesmo para o
+        // lobby depois de ver o podio.
+        group.MapPost("/me/return", async (string code, ClaimsPrincipal principal, ParticipantService participants, CancellationToken ct) =>
+        {
+            await participants.ReturnToLobbyAsync(code, principal, ct);
+            return Results.NoContent();
+        });
+
         group.MapPost("/{id:guid}/approve", async (string code, Guid id, ClaimsPrincipal principal, ParticipantService participants, CancellationToken ct) =>
         {
             await participants.ApproveAsync(code, id, principal, ct);

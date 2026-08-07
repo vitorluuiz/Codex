@@ -181,6 +181,21 @@
   text-align: center;
 }
 
+/*
+  Quem ainda está na tela de resultados da partida anterior. Esmaecido em vez de
+  removido da lista: a pessoa continua na sala, ela só ainda não voltou — e sumir
+  daria a impressão de que saiu.
+*/
+.playerTileAway {
+  opacity: 0.55;
+}
+
+.playerNote {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
 .groupChips {
   display: flex;
   flex-wrap: wrap;
@@ -318,6 +333,17 @@
   font-size: var(--text-caption);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
+  text-align: center;
+}
+
+/* Espelha .playerTileAway no painel do líder. */
+.compactTileAway {
+  opacity: 0.55;
+}
+
+.compactBadge {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
   text-align: center;
 }
 

@@ -100,7 +100,7 @@ public static class PhaseProjection
 
         // O gabarito gravado e uma lista (o editor aceita mais de uma alternativa certa) e o
         // contrato so tem lugar para uma: `correctOptionId`, singular, em types.ts e na secao 6.
-        // Sai a primeira. E uma perda conhecida — esta registrada em contract/api-queue-log.md §4,
+        // Sai a primeira. E uma perda conhecida — esta registrada em api-queue-log.md §4,
         // porque quem for implementar a correcao da secao 8 precisa ler `correctIndexes`, e nao
         // este campo, para nao reprovar um aluno que marcou a segunda resposta certa.
         var correct = content.CorrectIndexes?

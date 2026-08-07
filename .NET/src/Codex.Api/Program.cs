@@ -36,6 +36,11 @@ builder.Services.AddScoped<RoomService>();
 builder.Services.AddScoped<ParticipantService>();
 builder.Services.AddScoped<UserProfileService>();
 builder.Services.AddScoped<PhaseSetService>();
+builder.Services.AddScoped<MatchAccessService>();
+builder.Services.AddScoped<MatchStatsService>();
+builder.Services.AddScoped<MatchEventPublisher>();
+builder.Services.AddScoped<MatchService>();
+builder.Services.AddScoped<SubmissionService>();
 
 builder.Services.AddCodexRateLimiter(builder.Configuration);
 builder.Services.AddCodexRealtime(builder.Configuration);
@@ -76,6 +81,7 @@ app.MapRoomEndpoints();
 app.MapParticipantEndpoints();
 app.MapRoomQueueEndpoints();
 app.MapPhaseSetEndpoints();
+app.MapMatchEndpoints();
 app.MapRealtimeEndpoints();
 
 if (app.Environment.IsDevelopment())

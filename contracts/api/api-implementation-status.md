@@ -5,20 +5,24 @@ PostgreSQL/EF Core) e cruzando com `contract/api-rest-contract.md`. Fontes
 adicionais: `contract/api-init-log.md` (base do projeto), `contract/api-lobby-log.md`
 (seções 3–4), `contract/api-phases-log.md` (seção 5),
 `contract/api-queue-log.md` (seção 6), `contract/api-resume-log.md`
-(`GET /rooms/active`) e `contract/websocket-implementation-log.md` (realtime), que
+(`GET /rooms/active`), `contract/api-match-log.md` (seções 7 a 10) e
+`contract/websocket-implementation-log.md` (realtime), que
 são os registros de decisão de cada leva de trabalho.
 
-**Resumo executivo:** das 14 seções do contrato REST, **as seções 2, 3, 4, 5 e 6
-(sessão/auth + perfil, entrar em sala, lobby, conjuntos de fases, fila de fases da
-sala) estão completas exceto por OAuth e pela geração de fase por IA**. Com a
-seção 6 fechada, o lobby do líder funciona ponta a ponta pela UI: criar conjunto,
-criar sala, adicionar conjunto à fila, reordenar por arrastar-e-soltar, ajustar
-pontuação e tempo, e abrir o desafio com gabarito. As seções 7–12 (partida,
-respostas, comparação, painel do líder, relatórios, landing) **existem só como
-modelo de dados** (entidades EF Core), sem endpoint próprio. O **realtime existe**
-— serviço de WebSocket em `realtime/` e publicação de eventos pela API —, e todos
-os eventos de lobby do contrato de WS têm produtor, inclusive `queue.updated`
-(ver §6); faltam os de partida.
+**Resumo executivo:** das 14 seções do contrato REST, **as seções 2 a 10
+(sessão/auth + perfil, entrar em sala, lobby, conjuntos de fases, fila da sala,
+partida, respostas, comparação, painel do líder) estão completas**, exceto por
+OAuth, pela geração de fase por IA, pela correção de `text`/`code`, pelo
+`POST …/run` e pelo modo `self-paced` — e as quatro últimas dependem da mesma
+decisão de produto pendente (provedor de IA e sandbox) ou de mudança no serviço de
+WS. Com a seção 7 fechada, **uma aula inteira de quiz/fill roda do lobby ao pódio
+pela UI**: criar conjunto, criar sala, aprovar aluno, iniciar, responder, ver o
+painel, comparar com a turma e encerrar. As seções 11–12 (relatórios, landing)
+**existem só como modelo de dados** (entidades EF Core), sem endpoint próprio. O
+**realtime existe** — serviço de WebSocket em `realtime/` e publicação pela API — e
+**todos os eventos do contrato de WS têm produtor**, menos `submission.graded` (que
+depende do corretor de IA) e `player.activity` (que nasce no cliente e nunca terá um
+na API).
 
 ---
 
@@ -32,7 +36,7 @@ os eventos de lobby do contrato de WS têm produtor, inclusive `queue.updated`
 | 2 | `POST /auth/oauth/{provider}/authorize` | ❌ | não iniciada |
 | 2 | `POST /auth/logout` | ⚠️ parcial | responde `204`, mas não invalida o token no servidor (token é stateless — ver §3) |
 | 2 | `PATCH /users/me` | ✅ | `Endpoints/UserEndpoints.cs` · `Services/UserProfileService.cs` |
-| 2 | `GET /users/{userId}/profile` | ⚠️ parcial | `Endpoints/UserEndpoints.cs`; `matches` sai sempre vazio porque nada cria `Match` ainda (seção 7) — ver §2 |
+| 2 | `GET /users/{userId}/profile` | ✅ | `Endpoints/UserEndpoints.cs`; `matches` acendeu com a seção 7 (partida encerrada entra no histórico) |
 | 3 | `GET /rooms/{code}/availability` | ✅ | `Endpoints/RoomEndpoints.cs` |
 | 3 | `POST /rooms/{code}/participants` | ✅ | `Endpoints/ParticipantEndpoints.cs` |
 | 4 | `POST /rooms` (criar sala) | ✅ | `Endpoints/RoomEndpoints.cs` · `RoomService.CreateAsync` · `RoomQueueService` |
@@ -43,6 +47,7 @@ os eventos de lobby do contrato de WS têm produtor, inclusive `queue.updated`
 | 4 | `POST /rooms/{code}/participants/{id}/approve` | ✅ | `Endpoints/ParticipantEndpoints.cs` |
 | 4 | `POST /rooms/{code}/participants/{id}/reject` | ✅ | `Endpoints/ParticipantEndpoints.cs` |
 | 4 | `DELETE /rooms/{code}/participants/{id}` | ✅ | `Endpoints/ParticipantEndpoints.cs` |
+| — | `POST /rooms/{code}/participants/me/return` | ✅ | fora do contrato: o "Continuar jogando" do pódio. Encerrar a partida deixou de arrastar a turma ao lobby, então cada um volta por si (`api-match-log.md` §11.5) |
 | 5 | `GET /phase-sets?scope=&q=` | ✅ | `Endpoints/PhaseSetEndpoints.cs` · `Services/PhaseSetService.cs` |
 | 5 | `GET /phase-sets/{setId}/draft` | ✅ | idem · `Services/PhaseContent.cs` |
 | 5 | `POST /phase-sets` | ✅ | idem |
@@ -58,17 +63,26 @@ os eventos de lobby do contrato de WS têm produtor, inclusive `queue.updated`
 | 6 | `DELETE /rooms/{code}/queue/phases/{phaseId}` | ✅ | idem · `RemovePhaseAsync` |
 | 6 | `PUT /rooms/{code}/queue/order` | ✅ | idem · `ReorderAsync` (`409 QUEUE_MISMATCH` por comparação de ids) |
 | 6 | `GET /rooms/{code}/queue/phases/{phaseId}` (modal "Ver desafio") | ✅ | idem · `GetPhaseDetailAsync` · `Services/PhaseProjection.cs` |
-| 7 | `POST /rooms/{code}/match`, `GET /rooms/{code}/match`, `GET /matches/{id}/current-phase` | ❌ | entidade `Match` existe, zero endpoint |
-| 8 | `POST …/submissions`, `POST …/run`, `POST …/ready` | ❌ | entidade `Submission` existe, zero endpoint; `run` precisa de sandbox de execução (não decidido) |
-| 9 | `GET …/comparison`, `GET …/scoreboard/me`, `GET …/podium` | ❌ | não iniciada |
-| 10 | `GET …/stats`, `advance`, `pause`, `restart`, `finish`, `return-to-lobby`, `DELETE …/participants/{id}` (partida) | ❌ | não iniciada |
+| 7 | `POST /rooms/{code}/match` | ⚠️ parcial | `Endpoints/MatchEndpoints.cs` · `MatchService.StartAsync`; `mode: "self-paced"` responde `409 MODE_NOT_AVAILABLE` — ver `api-match-log.md` §7.2 |
+| 7 | `GET /rooms/{code}/match` | ✅ | idem · `GetByRoomAsync` (`404 MATCH_NOT_FOUND` sem partida) |
+| 7 | `GET /matches/{id}/current-phase` | ✅ | idem · `GetCurrentPhaseAsync` · `Services/PhaseProjection.cs` |
+| 8 | `POST …/submissions` | ⚠️ parcial | idem · `SubmissionService.SubmitAsync`; `quiz`/`fill` corrigidos, `text`/`code` gravados como `pending` (comportamento do contrato) |
+| 8 | `POST …/ready` | ✅ | idem · `MarkReadyAsync` |
+| 8 | `POST …/run` | ❌ | precisa de sandbox de execução (não decidido) |
+| 9 | `GET …/comparison` | ✅ | idem · `GetComparisonAsync` · `Services/MatchStatsService.cs` |
+| 9 | `GET …/scoreboard/me` | ✅ | idem · `GetScoreboardAsync` |
+| 9 | `GET …/podium` | ✅ | idem · `MatchService.GetPodiumAsync` |
+| 10 | `GET …/stats` | ✅ | idem · `MatchStatsService.GetStatsAsync` (mesmo payload de `stats.updated`) |
+| 10 | `advance`, `pause`, `restart`, `finish`, `return-to-lobby`, `DELETE …/participants/{id}` | ✅ | idem · `MatchService`. A partida também **encerra sozinha** quando a última fase da fila fecha — `finish` é como se encerra antes disso (`api-match-log.md` §11.1) |
 | 11 | Relatórios (`report`, `report/export`, `GET /jobs/{jobId}`) | ❌ | não iniciada; contrato já registra que não há tela pronta |
 | 12 | `GET /marketing/landing` | ❌ | opcional — hoje o conteúdo é local em `src/content/landing.ts` no front |
 
-**Contagem:** 28 de ~46 rotas do contrato têm endpoint no backend — 14 das seções
-2–4 (a mais recente é `GET /rooms/active`, que o contrato não tinha e esta leva
-acrescentou), as 6 da seção 5 e as 8 da seção 6. Fora da tabela do contrato REST, existe
-também `POST /realtime-ticket` (`Endpoints/RealtimeEndpoints.cs`), que vem do
+**Contagem:** 43 de ~46 rotas do contrato têm endpoint no backend — 14 das seções
+2–4 (incluindo `GET /rooms/active`, que o contrato não tinha), as 6 da seção 5, as 8
+da seção 6 e as 15 das seções 7–10. Faltam três, todas por decisão de produto
+pendente: `POST /auth/oauth/{provider}/authorize`,
+`POST /phase-sets/phases/generate` e `POST …/run`. Fora da tabela do contrato REST,
+existe também `POST /realtime-ticket` (`Endpoints/RealtimeEndpoints.cs`), que vem do
 `websocket-contract.md` §2.
 
 ---
@@ -200,14 +214,17 @@ situação do `matches` no perfil — a rota está pronta, o dado é que não na
 também a segunda ocorrência do padrão de `users.Audience`: campo do contrato
 servido com valor fixo por falta de rota que o escreva.
 
-### `GET /users/{userId}/profile` responde, mas `matches` sai sempre vazio
+### ~~`GET /users/{userId}/profile` responde, mas `matches` sai sempre vazio~~ — resolvido
 
-A rota está completa em código — os agregados do histórico (`participantCount`,
-`avgScore`, `accuracyRate`, `durationLabel`) foram escritos de verdade, e não
-como placeholder, porque todo o dado de que precisam já existe no schema. Só que
-**nada cria `Match` ainda** (seção 7 não tem endpoint), então a lista vem vazia
-em qualquer instalação. Ela acende sozinha no dia em que `POST /rooms/{code}/match`
-existir, sem tocar neste código.
+A rota sempre esteve completa em código — os agregados do histórico
+(`participantCount`, `avgScore`, `accuracyRate`, `durationLabel`) foram escritos de
+verdade, e não como placeholder. O que faltava era o dado: nada criava `Match`.
+
+**Acendeu sozinha, sem uma linha tocada neste código**, no dia em que
+`POST /rooms/{code}/match` e `POST /matches/{id}/finish` passaram a existir — o
+histórico filtra `FinishedAt != null`, e `finish` e `return-to-lobby` são quem o
+preenchem. Verificado por HTTP: uma partida encerrada aparece na linha com
+`avgScore: 50`, `accuracyRate: 50` e `durationLabel: "menos de 1 min"`.
 
 **O que já não sai mais vazio nessa tela** é o bloco acima dela: as salas que o
 líder deixou abertas (`GET /rooms/active`) aparecem no topo da seção de histórico
@@ -301,9 +318,10 @@ saírem rápido quando alguém as escrever:
   `PUT …/draft` (criação/reescrita em massa de conjuntos),
   `POST /realtime-ticket` (emissão de credencial), `POST …/run` (execução de
   código) ou para o WS.
-- **Testes automatizados**: 248 testes (`dotnet test`, xUnit + EF Core InMemory),
+- **Testes automatizados**: 341 testes (`dotnet test`, xUnit + EF Core InMemory),
   cobrindo `AuthService`, `RoomService`, `ParticipantService`, `RoomQueueService`,
-  `UserProfileService`, `PhaseSetService`, `LabelFormatter`, a publicação de
+  `UserProfileService`, `PhaseSetService`, `MatchService`, `SubmissionService`,
+  `MatchStatsService`, `PhaseGrading`, `LabelFormatter`, a publicação de
   eventos de realtime e a resolução de sessão do WS, sem precisar de Postgres. Os
   índices únicos parciais (`USERNAME_TAKEN`, `EMAIL_TAKEN`) e o cascade de
   `phase_sets → phases` foram verificados manualmente contra Postgres real
@@ -322,8 +340,9 @@ Conserto: um `IExceptionHandler` para `BadHttpRequestException` antes do atual.
 
 ## 4. Modelo de dados — mais completo do que os endpoints
 
-O schema EF Core (`Data/Migrations`, três migrations aplicadas:
-`Initial`, `ParticipantUniqueDisplayName` e `UserAudience`) já modela **todas** as entidades da
+O schema EF Core (`Data/Migrations`, seis migrations aplicadas: `Initial`,
+`ParticipantUniqueDisplayName`, `UserAudience`, `RoomQueueRevision`, `MatchRuntime` e
+`ParticipantInResults`) já modela **todas** as entidades da
 seção 13 do contrato — `User`, `Room`, `Participant`, `PhaseSet`, `Phase`,
 `RoomQueueSet`, `RoomQueuePhase`, `Match`, `Submission` — traduzidas de
 Firestore para PostgreSQL/relacional (decisão registrada em
@@ -337,8 +356,12 @@ resolvidos no schema:
 
 - `RoomQueueSet.SourcePhaseSetId` / `RoomQueuePhase.SourcePhaseId` são `Guid`
   soltos, sem FK — a fila copia a fase, não referencia (decisão 1 da seção 13).
-- Índice único parcial de `Submission (RoomQueuePhaseId, ParticipantId)` já
-  garante "1 envio por pessoa por fase" no banco, não em código.
+- Índice único de `Submission (MatchId, RoomQueuePhaseId, ParticipantId)` garante
+  "1 envio por pessoa por fase" no banco, não em código. **`MatchId` entrou na chave
+  na migration `MatchRuntime`**, corrigindo uma perda da tradução Firestore →
+  relacional: no contrato o documento mora sob `matches/{matchId}/…`, então "uma vez"
+  sempre foi "uma vez por partida". Sem isso, a segunda partida da mesma sala recusava
+  no banco o primeiro envio de quem já tinha jogado aquela fase (`api-match-log.md` §3).
 - Campos por `Kind` (quiz/fill/text/code) são `jsonb` (`ContentJson`/
   `AnswerJson`), não colunas esparsas. A camada que serializa `ContentJson` por
   tipo **existe agora** (`Services/PhaseContent.cs`, seção 5) e grava a forma de
@@ -363,16 +386,19 @@ contrato avisa, **não é permissão**: nada no servidor decide nada com ele.
 
 - Nenhuma entidade para relatórios (seção 11) ou CMS da landing (seção 12) —
   tratados como especulativos no próprio contrato.
-- `Room.ExpiresAt` existe na tabela, mas nada preenche esse campo — TTL de sala
-  não funciona ainda. Com `POST /rooms` no ar isso passou de teórico a
-  acumulativo: cada sala criada segura um código de 6 dígitos **para sempre**,
-  porque a busca por código livre só ignora sala expirada e nada expira. O
-  `POST /rooms` deliberadamente não preenche `ExpiresAt` na criação — o contrato
-  sugere TTL a partir do *fim* da partida, e cravar 24h da criação mataria uma
-  sala que ainda nem começou. **`GET /rooms/active` encareceu isso de novo:** sem
-  TTL, "sala ativa" é "sala que ninguém encerrou", então as salas abandonadas
-  agora aparecem numa lista que o usuário lê. O teto de 10 linhas dessa rota é
-  contorno, não conserto (`api-resume-log.md` §4).
+- `Room.ExpiresAt` **passou a ser preenchido no fim da partida** (`POST /matches/{id}/finish`
+  grava `FinishedAt + 24 h`, que é o TTL que a seção 13 sugere) — era o campo que
+  existia desde a base inicial sem ninguém que o escrevesse. Isso resolve o **caminho
+  feliz**: sala que terminou a partida expira e o código de 6 dígitos volta a circular.
+  É **só um TTL** — a sala continua de pé, em `Running`, e visível em `GET /rooms/active`
+  até a data passar; começar outra partida e voltar ao lobby apagam a marca. Marcar
+  `Status = Finished` no fim da partida chegou a existir e foi um defeito sério
+  (`api-match-log.md` §11.8): aquele estado é terminal e passou a ser automático.
+  **O que continua aberto é a sala abandonada:** quem cria uma sala e nunca inicia a
+  partida (ou volta ao lobby e fecha a aba) segue segurando o código para sempre,
+  porque não há instante de "fim" para pendurar o TTL. O teto de 10 linhas de
+  `GET /rooms/active` continua sendo contorno para isso (`api-resume-log.md` §4), e
+  o job de limpeza continua sem existir.
 - Nenhuma tabela de sessões revogáveis — `POST /auth/logout` não invalida o
   token de fato (token stateless, expira só pelo `expiresIn`).
 
@@ -396,10 +422,14 @@ Esta seção dizia "arquiteturalmente ausente" até a leva registrada em
   participante aprovado, então não havia socket para fechar. Com a correção, quem
   o líder remove sai da sala na hora e cai na tela de entrar. Nenhuma linha de
   API mudou — o defeito era só de quem escutava.
-- **O que falta é quem produza os eventos de partida.** `phase.started`,
-  `stats.updated`, `submission.graded`, `match.finished` etc. têm transporte,
-  canal, throttle e autorização implementados e testados — não têm rota REST que
-  os dispare, porque as seções 7–10 não existem.
+- **Os eventos de partida ganharam produtor.** `match.started` (canal da sala),
+  `phase.started`, `phase.paused`, `phase.progress`, `phase.ended`, `match.finished`
+  e `match.returned-to-lobby` (canal `:match`), `stats.updated` (canal `:leader`) e
+  `participant.removed` na expulsão durante a partida — todos em
+  `Services/MatchEventPublisher.cs`, publicados depois do `SaveChanges`. Sobram
+  **dois** eventos do `websocket-contract.md` §5 sem produtor: `submission.graded`,
+  que depende do corretor de IA de `text`/`code`, e `player.activity`, que nasce no
+  cliente e nunca terá um na API.
 - **`queue.updated` ganhou publicador.** Toda mutação da seção 6 o publica no
   canal `room:{code}` depois do `SaveChanges`, com `rooms.QueueRevision` — coluna
   nova, que sobe em toda mutação (inclusive nas que não mudam a quantidade de
@@ -417,11 +447,19 @@ Esta seção dizia "arquiteturalmente ausente" até a leva registrada em
 
 ```bash
 dotnet ef database update --project src/Codex.Api --startup-project src/Codex.Api
-dotnet test          # 248 testes, sem precisar de Postgres
+dotnet test          # 341 testes, sem precisar de Postgres
 dotnet run --project src/Codex.Api
 ```
 
-Os 248 testes rodam em EF InMemory. **O que eles não cobrem**, e por isso foi
+✅ **A leva das seções 7–10 foi exercitada por HTTP contra um Postgres real**, sem
+SQL manual em nenhum ponto: a partida inteira (signup → conjunto → sala → dois alunos
+aprovados → iniciar → responder → painel → comparação → placar → `ready` →
+pause/resume → `finish` → pódio), os nove códigos de erro dela, e a **segunda partida
+na mesma sala** — o caso que o índice único antigo transformaria em `500`. Detalhe em
+`api-match-log.md` §10. O que continua sem teste é a corrida de dois cliques
+simultâneos contra o índice único (InMemory não tem índice).
+
+Os 341 testes rodam em EF InMemory. **O que eles não cobrem**, e por isso foi
 verificado à mão contra um Postgres 18 local: os índices únicos (InMemory não tem
 índices), a migration `UserAudience` aplicada sobre dados existentes, a cópia
 `PhaseSet → fila` gravando de fato as duas tabelas, e o cascade

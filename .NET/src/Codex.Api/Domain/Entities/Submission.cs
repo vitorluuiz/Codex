@@ -25,6 +25,19 @@ public class Submission
     /// <summary>Calculado no servidor (SubmittedAt - fase iniciada), nunca recebido do cliente.</summary>
     public int ElapsedSeconds { get; set; }
 
+    /// <summary>
+    /// Quando a pessoa marcou "pronto para a proxima fase" (<c>POST .../ready</c>, secao 8). Alimenta
+    /// o <c>readyCount</c> do painel do lider.
+    ///
+    /// <b>Mora na submissao, e nao numa tabela propria</b>, porque no front o botao so e alcancavel
+    /// na tela de comparacao coletiva — e so se chega la depois de enviar. Ready sem envio nao existe
+    /// hoje, entao uma tabela a parte descreveria o mesmo fato com uma FK a mais. Bonus: o
+    /// <c>restart</c> "zera envios e cronometro da fase" apagando as submissoes, e leva os readies
+    /// junto sem codigo extra. Se um dia der para marcar pronto sem responder, esta decisao precisa
+    /// virar tabela (ver match-implementation-model.md §3.2).
+    /// </summary>
+    public DateTimeOffset? ReadyAt { get; set; }
+
     public GradingStatus Grading { get; set; }
     public bool? Correct { get; set; }
     public int? Score { get; set; }

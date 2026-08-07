@@ -4,7 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import { ChallengeShell } from '@/components/challenge/ChallengeShell';
 import { StateMessage } from '@/components/feedback/StateMessage';
 import { ApiNotConfiguredError } from '@/lib/api/client';
-import { getCurrentPhase, getMatch, getMyScoreboard, getPhaseStats } from '@/lib/api/match';
+import { getCurrentPhase, getMatch, getMyScoreboard, getPhaseStats, getPodium } from '@/lib/api/match';
 import { getRoom } from '@/lib/api/rooms';
 import { getSession } from '@/lib/api/session';
 import type { PhaseStats, PlayerScoreboard } from '@/lib/types';
@@ -58,12 +58,14 @@ export default async function MatchPage({ params }: PageProps) {
   }
 
   const match = await getMatch(code);
-  if (match.status === 'finished') {
-    redirect(`/sala/${code}/lobby`);
-  }
-
   const isLeader = Boolean(session.user && session.user.id === room.leader.id);
   const phaseState = await getCurrentPhase(match.id);
+
+  // Partida encerrada é o pódio, não um redirecionamento para o lobby: quem recarrega
+  // a página no fim da partida quer ver o resultado de novo, e é dali que sai tanto o
+  // "Continuar jogando" do aluno quanto a volta do líder ao lobby. Redirecionar aqui
+  // fazia o pódio desaparecer no primeiro F5, para todo mundo.
+  const podium = match.status === 'finished' ? await getPodium(match.id) : null;
 
   const [stats, scoreboard] = await Promise.all([
     isLeader
@@ -81,6 +83,7 @@ export default async function MatchPage({ params }: PageProps) {
       initialPhaseState={phaseState}
       initialStats={stats}
       initialScoreboard={scoreboard}
+      initialPodium={podium}
     />
   );
 }

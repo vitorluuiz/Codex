@@ -28,8 +28,17 @@ namespace Codex.Api.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("CurrentPhaseEndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("CurrentPhaseEndsAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("CurrentPhaseIndex")
                         .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("CurrentPhaseStartedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset?>("FinishedAt")
                         .HasColumnType("timestamp with time zone");
@@ -38,6 +47,9 @@ namespace Codex.Api.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
+
+                    b.Property<int?>("PausedSecondsLeft")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("RoomId")
                         .HasColumnType("uuid");
@@ -76,6 +88,9 @@ namespace Codex.Api.Data.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("text")
                         .HasComputedColumnSql("lower(\"DisplayName\")", true);
+
+                    b.Property<DateTimeOffset?>("InResultsSince")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("JoinedAt")
                         .HasColumnType("timestamp with time zone");
@@ -351,6 +366,9 @@ namespace Codex.Api.Data.Migrations
                     b.Property<Guid>("ParticipantId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("ReadyAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("RoomQueuePhaseId")
                         .HasColumnType("uuid");
 
@@ -365,14 +383,14 @@ namespace Codex.Api.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("MatchId");
-
                     b.HasIndex("ParticipantId");
 
-                    b.HasIndex("RoomQueuePhaseId", "ParticipantId")
+                    b.HasIndex("RoomQueuePhaseId");
+
+                    b.HasIndex("MatchId", "RoomQueuePhaseId", "ParticipantId")
                         .IsUnique();
 
-                    b.HasIndex("RoomQueuePhaseId", "Score");
+                    b.HasIndex("MatchId", "RoomQueuePhaseId", "Score");
 
                     b.ToTable("submissions", (string)null);
                 });

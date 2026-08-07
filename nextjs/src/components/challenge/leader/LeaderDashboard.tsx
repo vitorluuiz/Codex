@@ -17,8 +17,10 @@ interface LeaderDashboardProps {
   matchMode: MatchMode;
   paused: boolean;
   isFirstPhase: boolean;
+  isLastPhase: boolean;
   onTogglePause: () => void;
   onAdvance: (direction: 'next' | 'previous') => void;
+  onFinish: () => void;
   onRemovePlayer: (participantId: string) => void;
 }
 
@@ -35,8 +37,10 @@ export function LeaderDashboard({
   matchMode,
   paused,
   isFirstPhase,
+  isLastPhase,
   onTogglePause,
   onAdvance,
+  onFinish,
   onRemovePlayer,
 }: LeaderDashboardProps) {
   const [advanced, setAdvanced] = useState(false);
@@ -275,9 +279,21 @@ export function LeaderDashboard({
               Fase anterior
             </Button>
           )}
-          <Button size="lg" onClick={() => onAdvance('next')}>
-            Próxima fase
-          </Button>
+          {/*
+            Na última fase não há para onde avançar: a API responde
+            `409 INVALID_DIRECTION` a um `advance`, e o caminho para terminar é
+            `finish`. É a mesma troca que a tela do aluno já faz ("Ver pódio" no
+            lugar de "Próxima fase") em CollectiveFeedbackScreen.
+          */}
+          {isLastPhase ? (
+            <Button size="lg" onClick={onFinish}>
+              Encerrar partida
+            </Button>
+          ) : (
+            <Button size="lg" onClick={() => onAdvance('next')}>
+              Próxima fase
+            </Button>
+          )}
         </div>
       </div>
 

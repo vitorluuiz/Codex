@@ -25,6 +25,9 @@ public class RoomTestContext
     public ParticipantService Participants { get; }
     public UserProfileService Profiles { get; }
     public PhaseSetService PhaseSets { get; }
+    public MatchService Matches { get; }
+    public SubmissionService Submissions { get; }
+    public MatchStatsService MatchStats { get; }
     public LabelFormatter Labels { get; }
     public ISessionTokenService Tokens { get; }
 
@@ -55,6 +58,12 @@ public class RoomTestContext
         Participants = new ParticipantService(Db, access, Rooms, Tokens, Realtime, configuration);
         Profiles = new UserProfileService(Db, Labels);
         PhaseSets = new PhaseSetService(Db, Labels);
+
+        var matchAccess = new MatchAccessService(Db);
+        MatchStats = new MatchStatsService(Db);
+        var matchEvents = new MatchEventPublisher(MatchStats, Realtime);
+        Matches = new MatchService(Db, access, matchAccess, MatchStats, matchEvents);
+        Submissions = new SubmissionService(Db, matchAccess, Matches, MatchStats, matchEvents);
 
         Leader = new User { Name = "Marina Duarte", Email = "marina@escola.br" };
         Room = new Room
@@ -151,6 +160,52 @@ public class RoomTestContext
         Db.SaveChanges();
         return set;
     }
+
+    /// <summary>
+    /// Conjunto de fases <b>completas</b> — o que a partida aceita comecar.
+    ///
+    /// Existe ao lado de <see cref="AddPhaseSet(User,string,int,PhaseSetVisibility,DateTimeOffset?)"/>
+    /// em vez de substitui-lo porque aquele semeia de proposito uma fase <i>incompleta</i> (quiz sem
+    /// alternativa nenhuma), que e o que as secoes 5 e 6 precisam testar: rascunho incompleto salva.
+    /// A secao 7 e quem cobra fase completa, entao os testes dela precisam do outro caso.
+    /// </summary>
+    public PhaseSet AddPlayableSet(
+        User owner,
+        string title,
+        int phaseCount = 2,
+        int timeSeconds = 45,
+        int basePoints = 100,
+        IReadOnlyList<int>? correctIndexes = null)
+    {
+        var set = new PhaseSet { Title = title, OwnerId = owner.Id, UpdatedAt = DateTimeOffset.UtcNow };
+        Db.PhaseSets.Add(set);
+
+        var content = new PhaseContent(
+            Question: "Qual fracao e equivalente a 2/3?",
+            Options: ["4/6", "3/4", "5/6"],
+            CorrectIndexes: correctIndexes ?? [0]);
+
+        for (var index = 0; index < phaseCount; index++)
+        {
+            Db.Phases.Add(new Phase
+            {
+                PhaseSetId = set.Id,
+                Kind = PhaseKind.Quiz,
+                Name = $"Fase {index + 1}",
+                BasePoints = basePoints,
+                TimeSeconds = timeSeconds,
+                OrderIndex = index,
+                ContentJson = content.ToJson(),
+            });
+        }
+
+        Db.SaveChanges();
+        return set;
+    }
+
+    /// <summary>Enfileira o conjunto na sala, como o lider faria pelo lobby.</summary>
+    public Task EnqueueAsync(PhaseSet set)
+        => Queue.AddSetAsync(Room.Code, new Contracts.Rooms.AddQueueSetRequest(set.Id.ToString()), AsLeader, default);
 
     public Participant AddParticipant(string displayName, ParticipantStatus status = ParticipantStatus.Approved, Guid? userId = null)
     {

@@ -52,9 +52,33 @@ public static class ErrorCodes
     /// <summary>
     /// Mutacao da fila (secao 6) numa sala que ja saiu do lobby. Fora da tabela da secao 1 porque o
     /// contrato nao decide se a fila trava durante a partida — a decisao esta em
-    /// contract/api-queue-log.md §5, e hoje nada tira a sala de "lobby" para produzir este erro.
+    /// api-queue-log.md §5, e hoje nada tira a sala de "lobby" para produzir este erro.
     /// </summary>
     public const string MatchAlreadyStarted = "MATCH_ALREADY_STARTED";
+
+    /// <summary>
+    /// Rotas /matches/{matchId}/* com um id que nao existe, nao parseia, ou cuja sala quem chamou
+    /// nao integra. E 404 tambem para quem nao e membro, e nao 403, pelo mesmo motivo do
+    /// ROOM_NOT_FOUND do GET /rooms/{code}: a partida nao e mais publica que a sala que a contem.
+    /// </summary>
+    public const string MatchNotFound = "MATCH_NOT_FOUND";
+
+    /// <summary>
+    /// POST /rooms/{code}/match com alguma fase da fila sem gabarito utilizavel. Fora da tabela da
+    /// secao 1 porque o contrato nao decide onde a fase incompleta e cobrada — a decisao esta em
+    /// match-implementation-model.md §4 (decisao 3), e vem de api-phases-log.md, que ja
+    /// registrava que "quem deveria cobrar fase completa e o inicio da partida".
+    /// </summary>
+    public const string IncompletePhase = "INCOMPLETE_PHASE";
+
+    /// <summary>
+    /// POST /rooms/{code}/match com <c>mode: "self-paced"</c>. O modo esta no contrato e o lobby
+    /// oferece o botao, mas nao ha caminho de avanco para o aluno em lugar nenhum — nem no contrato
+    /// (a secao 10 lista advance como rota de lider), nem no front, e o servico de WS descartaria um
+    /// phase.started individual (a allowlist de realtime/src/channels.ts nao aceita esse evento no
+    /// canal privado). Recusar e mais honesto que rodar como "live" prometendo outra coisa.
+    /// </summary>
+    public const string ModeNotAvailable = "MODE_NOT_AVAILABLE";
 
     /// <summary>
     /// Token de sessao (ou ticket de realtime) ausente, invalido, expirado ou ja consumido. E o

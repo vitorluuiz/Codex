@@ -359,7 +359,7 @@ public class RoomQueueService(AppDbContext db, RoomAccessService roomAccess, IRe
     /// adicionou, removeu ou trocou de conjunto, os ids nao batem e a reordenacao para. O caso que
     /// escapa e o de duas reordenacoes simultaneas sobre a mesma fila — a ultima vence, e o
     /// resultado e uma ordem que alguem escolheu, nao um embaralhamento. Trocar isso por revisao no
-    /// corpo seria mudanca de contrato na rota (ver contract/api-queue-log.md §3).
+    /// corpo seria mudanca de contrato na rota (ver api-queue-log.md §3).
     /// </summary>
     public async Task<RoomQueueResponse> ReorderAsync(
         string code,

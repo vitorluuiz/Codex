@@ -105,6 +105,65 @@ public sealed class LabelFormatter(IConfiguration configuration)
         };
     }
 
+    /// <summary>
+    /// Quantos baldes tem o histograma de tempo de resposta do painel do lider. "Os baldes de tempo
+    /// sao fatias iguais de timeSeconds (4 baldes)" (secao 10).
+    /// </summary>
+    public const int ResponseTimeBucketCount = 4;
+
+    /// <summary>
+    /// Os rotulos dos baldes de tempo de resposta ("0-15s", "15-30s", …), prontos para a tela — o
+    /// contrato e explicito que "os rotulos vem prontos".
+    ///
+    /// Fica aqui, e nao no servico de estatisticas, pelo mesmo motivo de <see cref="SetTitleLabel"/>:
+    /// e formatacao de rotulo, e o contrato repete que essa responsabilidade e do servidor.
+    /// </summary>
+    public static IReadOnlyList<string> ResponseTimeBucketLabels(int timeSeconds)
+    {
+        var bounds = ResponseTimeBucketBounds(timeSeconds);
+        return [.. Enumerable.Range(0, ResponseTimeBucketCount).Select(i => $"{bounds[i]}-{bounds[i + 1]}s")];
+    }
+
+    /// <summary>
+    /// Em que balde cai uma resposta de <paramref name="elapsedSeconds"/> segundos.
+    ///
+    /// Quem respondeu depois do fim da fase (possivel: <c>elapsedSeconds</c> conta tempo pausado,
+    /// e o teto do balde nao) cai no ultimo balde em vez de sumir da contagem — a soma dos baldes
+    /// tem de bater com <c>submittedCount</c>, senao o painel mostra dois numeros que se contradizem.
+    /// </summary>
+    public static int ResponseTimeBucketIndex(int elapsedSeconds, int timeSeconds)
+    {
+        var bounds = ResponseTimeBucketBounds(timeSeconds);
+
+        for (var i = 0; i < ResponseTimeBucketCount; i++)
+        {
+            if (elapsedSeconds < bounds[i + 1])
+            {
+                return i;
+            }
+        }
+
+        return ResponseTimeBucketCount - 1;
+    }
+
+    /// <summary>
+    /// As cinco fronteiras dos quatro baldes. Estritamente crescentes mesmo com
+    /// <c>timeSeconds</c> no minimo de <c>PhaseLimits</c> (5 s): sem o <c>Math.Max</c>, uma fase
+    /// curta produziria rotulos como "1-1s" e um balde impossivel de cair.
+    /// </summary>
+    private static int[] ResponseTimeBucketBounds(int timeSeconds)
+    {
+        var bounds = new int[ResponseTimeBucketCount + 1];
+
+        for (var i = 1; i <= ResponseTimeBucketCount; i++)
+        {
+            var boundary = (int)Math.Round(i * timeSeconds / (double)ResponseTimeBucketCount, MidpointRounding.AwayFromZero);
+            bounds[i] = Math.Max(boundary, bounds[i - 1] + 1);
+        }
+
+        return bounds;
+    }
+
     private static string Plural(double value, string singular, string plural)
     {
         var rounded = (int)value;

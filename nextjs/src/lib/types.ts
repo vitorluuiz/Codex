@@ -99,6 +99,15 @@ export interface Participant {
   userId: string | null;
   status: ParticipantStatus;
   joinedAt: string;
+  /**
+   * `true` enquanto a pessoa está na tela de resultados da última partida e ainda
+   * não voltou ao lobby. Encerrar a partida não arrasta mais ninguém de volta — cada
+   * um sai do pódio quando quiser —, então o lobby marca quem ainda não voltou.
+   *
+   * Quem está assim **não conta como jogador**: fica fora do `totalPlayers` e da
+   * regra "todos enviaram" da próxima partida.
+   */
+  inResults: boolean;
 }
 
 /** Motivos de recusa na entrada — cada um vira um diálogo próprio na UI. */

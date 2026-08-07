@@ -31,9 +31,16 @@ public class SubmissionConfiguration : IEntityTypeConfiguration<Submission>
             .OnDelete(DeleteBehavior.Cascade);
 
         // Decisao 2 da secao 13: "1 envio por pessoa por fase" garantido pelo banco.
-        builder.HasIndex(s => new { s.RoomQueuePhaseId, s.ParticipantId }).IsUnique();
+        //
+        // MatchId entra na chave, e nao e detalhe: no Firestore do contrato o documento mora em
+        // matches/{matchId}/phases/{phaseId}/submissions/{participantId}, entao "uma vez" sempre foi
+        // "uma vez por partida". A traducao relacional inicial perdeu esse escopo, e sem ele a
+        // segunda partida da mesma sala (o lider volta ao lobby e recomeca) recusaria no banco o
+        // primeiro envio de quem ja tinha jogado aquela fase — um 500, e so em Postgres, porque o
+        // InMemory dos testes nao tem indice.
+        builder.HasIndex(s => new { s.MatchId, s.RoomQueuePhaseId, s.ParticipantId }).IsUnique();
 
-        // Histograma/podio ordenam por score dentro da fase.
-        builder.HasIndex(s => new { s.RoomQueuePhaseId, s.Score });
+        // Histograma/podio ordenam por score dentro da fase de uma partida.
+        builder.HasIndex(s => new { s.MatchId, s.RoomQueuePhaseId, s.Score });
     }
 }

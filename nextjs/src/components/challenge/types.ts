@@ -51,6 +51,8 @@ export interface ChallengeTypeModule<P extends Phase = Phase> {
 /** Telas pelas quais um aluno passa dentro de uma fase. */
 export type ChallengeScreen =
   | 'challenge'
+  /** O tempo acabou sem resposta. Separada de `individual`, que precisa de uma submissão. */
+  | 'timeup'
   | 'waiting'
   | 'individual'
   | 'collective'

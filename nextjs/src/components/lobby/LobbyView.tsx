@@ -313,13 +313,29 @@ function LobbyContent({
                       <button
                         key={participant.id}
                         type="button"
-                        className={styles.compactTile}
+                        className={cx(
+                          styles.compactTile,
+                          participant.inResults && styles.compactTileAway,
+                        )}
+                        title={
+                          participant.inResults
+                            ? `${participant.displayName} ainda está vendo os resultados da partida anterior`
+                            : undefined
+                        }
                         onClick={(event) =>
                           setSelected({ participant, anchor: anchorFrom(event.currentTarget) })
                         }
                       >
                         <Avatar index={participant.avatarIndex} size="md" name={participant.displayName} />
                         <span className={styles.compactName}>{participant.displayName}</span>
+                        {/*
+                          Quem não voltou do pódio não entra na contagem de jogadores da
+                          próxima partida — a marca existe para o líder não iniciar
+                          achando que a turma toda está aqui.
+                        */}
+                        {participant.inResults && (
+                          <span className={styles.compactBadge}>nos resultados</span>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -408,9 +424,15 @@ function LobbyContent({
 
             <div className={styles.playerGrid}>
               {approved.map((participant) => (
-                <div key={participant.id} className={styles.playerTile}>
+                <div
+                  key={participant.id}
+                  className={cx(styles.playerTile, participant.inResults && styles.playerTileAway)}
+                >
                   <Avatar index={participant.avatarIndex} size="lg" name={participant.displayName} />
                   <span className={styles.playerName}>{participant.displayName}</span>
+                  {participant.inResults && (
+                    <span className={styles.playerNote}>nos resultados</span>
+                  )}
                 </div>
               ))}
             </div>

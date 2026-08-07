@@ -271,5 +271,52 @@ public class ParticipantService(
         participant.LoggedIn,
         participant.UserId,
         participant.Status,
-        participant.JoinedAt);
+        participant.JoinedAt,
+        participant.InResultsSince is not null);
+
+    /// <summary>
+    /// <c>POST /rooms/{code}/participants/me/return</c> — o "Continuar jogando" do podio.
+    ///
+    /// Rota do <b>proprio</b> participante, e a primeira do projeto assim: ate aqui, tudo que mexia
+    /// numa linha de participante era do lider. Nao ha id no caminho de proposito — o unico
+    /// participante que ela aceita e o da sessao de quem chamou, entao nao existe o caso "voltar por
+    /// outra pessoa".
+    ///
+    /// Publica <c>participant.updated</c> no canal da sala para o lobby do lider tirar a marca de
+    /// "ainda nos resultados" sem refazer o GET.
+    /// </summary>
+    public async Task ReturnToLobbyAsync(string code, ClaimsPrincipal principal, CancellationToken ct)
+    {
+        var room = await roomAccess.GetActiveRoomAsync(code, ct);
+
+        if (principal.GetParticipantId() is not { } participantId)
+        {
+            throw new ApiException(
+                StatusCodes.Status403Forbidden,
+                ErrorCodes.AccountRequired,
+                "Esta acao e do participante da sala.");
+        }
+
+        var participant = await db.Participants.FirstOrDefaultAsync(p => p.Id == participantId && p.RoomId == room.Id, ct)
+                          ?? throw new ApiException(
+                              StatusCodes.Status404NotFound,
+                              ErrorCodes.ParticipantNotFound,
+                              "Participante nao encontrado nesta sala.");
+
+        // Idempotente: quem ja esta no lobby clicando de novo nao produz evento nenhum. O botao
+        // sobrevive a um duplo clique e a uma volta pelo historico do navegador.
+        if (participant.InResultsSince is null)
+        {
+            return;
+        }
+
+        participant.InResultsSince = null;
+        await db.SaveChangesAsync(ct);
+
+        await realtime.PublishAsync(
+            room.Code,
+            RealtimeChannels.Room(room.Code),
+            new ParticipantUpdatedEvent(ToDto(participant)),
+            ct);
+    }
 }

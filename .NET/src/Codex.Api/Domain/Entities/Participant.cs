@@ -25,5 +25,22 @@ public class Participant
     public ParticipantStatus Status { get; set; } = ParticipantStatus.Pending;
     public DateTimeOffset JoinedAt { get; init; } = DateTimeOffset.UtcNow;
 
+    /// <summary>
+    /// Desde quando esta pessoa esta na <b>tela de resultados</b> de uma partida encerrada, e ainda
+    /// nao voltou ao lobby. <c>null</c> = esta no lobby (ou nunca jogou).
+    ///
+    /// Marcado para todos os aprovados quando a partida encerra, e limpo por
+    /// <c>POST /rooms/{code}/participants/me/return</c> — o "Continuar jogando" do podio. Existe
+    /// porque encerrar a partida deixou de arrastar a turma de volta: cada um decide quando sair do
+    /// podio, e o lobby precisa mostrar ao lider quem ainda nao voltou.
+    ///
+    /// <b>Nao e so um adorno de tela.</b> Quem esta aqui nao conta como jogador
+    /// (<see cref="Codex.Api.Services.MatchStatsService.CountPlayersAsync"/>): sem isso, uma aba
+    /// esquecida no podio entraria no <c>totalPlayers</c> da partida seguinte e a regra "todos
+    /// enviaram" nunca fecharia uma fase — exatamente o defeito que este campo veio consertar, um
+    /// nivel acima.
+    /// </summary>
+    public DateTimeOffset? InResultsSince { get; set; }
+
     public ICollection<Submission> Submissions { get; init; } = [];
 }
