@@ -188,7 +188,7 @@ public class UserProfileService(AppDbContext db, LabelFormatter labels)
 
         return matches.Select(m => new LeaderMatchSummaryDto(
                 m.Id,
-                SetTitleLabel(m.SetTitles),
+                LabelFormatter.SetTitleLabel(m.SetTitles),
                 m.Mode,
                 labels.DateTimeLabel(m.FinishedAt!.Value),
                 m.ParticipantCount,
@@ -201,18 +201,6 @@ public class UserProfileService(AppDbContext db, LabelFormatter labels)
                 LabelFormatter.DurationLabel(m.FinishedAt!.Value - m.StartedAt)))
             .ToList();
     }
-
-    /// <summary>
-    /// A linha do historico tem um titulo so, mas a fila aceita ate 8 conjuntos (secao 6). Com
-    /// mais de um, o primeiro nomeia a partida e o resto vira contagem — "Fracoes +2" cabe na
-    /// linha, tres titulos concatenados nao.
-    /// </summary>
-    private static string SetTitleLabel(IReadOnlyList<string> titles) => titles.Count switch
-    {
-        0 => "Sem conjunto",
-        1 => titles[0],
-        _ => $"{titles[0]} +{titles.Count - 1}",
-    };
 
     private static int Average(int total, int count) => count is 0 ? 0 : (int)Math.Round((double)total / count);
 

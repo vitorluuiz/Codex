@@ -67,6 +67,23 @@ public sealed class LabelFormatter(IConfiguration configuration)
         return $"editado em {local.Day} {MonthAbbreviations[local.Month - 1]} {local.Year}";
     }
 
+    /// <summary>
+    /// Como uma sala se chama numa lista: o titulo do primeiro conjunto da fila, e o resto virando
+    /// contagem.
+    ///
+    /// A fila aceita ate 8 conjuntos (secao 6) mas a linha do historico — e o cartao de "Voltar
+    /// para a sala" — tem espaco para um titulo so: "Fracoes +2" cabe, tres titulos concatenados
+    /// nao. Fica aqui, e nao no UserProfileService onde nasceu, porque o
+    /// <c>GET /rooms/active</c> nomeia a sala pela mesma regra: se as duas divergissem, a mesma
+    /// sala teria um nome enquanto estivesse em andamento e outro depois de encerrada.
+    /// </summary>
+    public static string SetTitleLabel(IReadOnlyList<string> titles) => titles.Count switch
+    {
+        0 => "Sem conjunto",
+        1 => titles[0],
+        _ => $"{titles[0]} +{titles.Count - 1}",
+    };
+
     /// <summary>Ex.: "32 min", "1 h 12 min" (formato de durationLabel na secao 2).</summary>
     public static string DurationLabel(TimeSpan duration)
     {

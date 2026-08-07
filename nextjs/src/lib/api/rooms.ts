@@ -1,11 +1,35 @@
 import 'server-only';
 
-import { apiRequest, apiRequestOrNull } from './client';
-import type { Participant, PhaseSetSummary, Room } from '@/lib/types';
+import { ApiError, apiRequest, apiRequestOrNull } from './client';
+import type { ActiveRoom, Participant, PhaseSetSummary, Room } from '@/lib/types';
 
 /** `GET /rooms/{code}` */
 export function getRoom(code: string) {
   return apiRequestOrNull<Room>(`/rooms/${code}`);
+}
+
+/**
+ * `GET /rooms/active` — salas de pé das quais quem chamou faz parte.
+ *
+ * Resolvida pela sessão, não por um id no caminho: o código de 6 dígitos é a
+ * única credencial da sala, então ele não pode sair num perfil que qualquer um
+ * abre. Sem sessão a API responde `[]` (200), que é o caso normal da tela de
+ * entrar.
+ *
+ * **Falha vira lista vazia, e não exceção**, ao contrário do resto deste
+ * módulo. É a única chamada das duas telas que a usa (`/sala` e `/perfil`) que
+ * não carrega o conteúdo principal delas: um erro aqui deve sumir com o cartão
+ * "Voltar para a sala", não derrubar a tela de entrar — que é exatamente o
+ * acidente registrado em `api-implementation-status.md` §2 (rota ausente
+ * quebrando render em vez de degradar).
+ */
+export async function getActiveRooms(): Promise<ActiveRoom[]> {
+  try {
+    return (await apiRequestOrNull<ActiveRoom[]>('/rooms/active')) ?? [];
+  } catch (error) {
+    if (error instanceof ApiError) return [];
+    throw error;
+  }
 }
 
 /** `GET /rooms/{code}/participants?status=approved` */

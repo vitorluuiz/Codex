@@ -29,6 +29,16 @@ public static class RoomEndpoints
             return Results.Created($"/rooms/{room.Code}", room);
         });
 
+        // Tambem fora do grupo, e pelo mesmo motivo: "active" ocupa a posicao do {code} mas nao e
+        // um. Nao ha ambiguidade de roteamento — segmento literal ganha de parametro no ASP.NET —,
+        // e um codigo de sala e sempre 6 digitos, entao nenhuma sala real pode se chamar assim.
+        //
+        // Sem RequireAuthorization(), como as demais: sessao ausente aqui responde 200 [] (ver
+        // RoomService.ListActiveAsync), porque quem chama e a tela de entrar, onde nao ter sessao
+        // e o estado normal.
+        app.MapGet("/rooms/active", async (ClaimsPrincipal principal, RoomService rooms, CancellationToken ct)
+            => Results.Ok(await rooms.ListActiveAsync(principal, ct)));
+
         var group = app.MapGroup("/rooms/{code}");
 
         group.MapGet("/availability", async (string code, ClaimsPrincipal principal, RoomService rooms, CancellationToken ct)

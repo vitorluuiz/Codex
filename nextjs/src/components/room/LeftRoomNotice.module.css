@@ -1,0 +1,22 @@
+.notice {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent-danger);
+  border-radius: var(--radius-l);
+  background: var(--surface-sunken);
+}
+
+.title {
+  font-weight: var(--fw-bold);
+  font-size: var(--text-body-s);
+  color: var(--text-primary);
+}
+
+.body {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}

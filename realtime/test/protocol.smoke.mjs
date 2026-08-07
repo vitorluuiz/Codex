@@ -26,6 +26,8 @@ const TICKET = 'ticket-unico';
 
 const PARTICIPANT_APPROVED = '11111111-1111-1111-1111-111111111111';
 const PARTICIPANT_PENDING = '22222222-2222-2222-2222-222222222222';
+const PARTICIPANT_REMOVED = '33333333-3333-3333-3333-333333333333';
+const REMOVED_TOKEN = 'tok-removed';
 
 let ticketUsed = false;
 let resolveCalls = 0;
@@ -34,6 +36,11 @@ const identities = {
   [LEADER_TOKEN]: { userId: '99999999-9999-9999-9999-999999999999', participantId: null, isLeader: true, participantStatus: null },
   [APPROVED_TOKEN]: { participantId: PARTICIPANT_APPROVED, isLeader: false, participantStatus: 'approved', displayName: 'Diego', avatarIndex: 3 },
   [PENDING_TOKEN]: { participantId: PARTICIPANT_PENDING, isLeader: false, participantStatus: 'pending', displayName: 'Ana', avatarIndex: 1 },
+  // Expulso pelo líder: a API apaga a linha do participante, então ela devolve
+  // `participantStatus: null` — mas repete o `participantId` do token, porque é
+  // nele que ela cai quando não acha o participante. É essa combinação que o
+  // caso 12b exercita.
+  [REMOVED_TOKEN]: { participantId: PARTICIPANT_REMOVED, isLeader: false, participantStatus: null },
 };
 
 const api = createServer((req, res) => {
@@ -286,6 +293,22 @@ try {
     await publish(`participant:${PARTICIPANT_APPROVED}`, { type: 'participant.removed', reason: 'removed_by_leader' });
     const code = await Promise.race([closed, new Promise((r) => setTimeout(() => r(null), 800))]);
     check('participant.removed fecha o socket da pessoa (§10)', code !== null, `close=${code}`);
+  }
+
+  /* 12b. expulso que reconecta não reassina nada ---------------------------- */
+  {
+    const ws = open({ cookie: REMOVED_TOKEN });
+    await new Promise((r) => ws.on('open', r));
+    const messages = collect(ws, 900);
+    ws.send(JSON.stringify({ type: 'hello', v: 1, token: '', roomCode: ROOM }));
+    ws.send(JSON.stringify({ type: 'subscribe', channels: [`room:${ROOM}`, `participant:${PARTICIPANT_REMOVED}`] }));
+    const got = await messages;
+    const forbidden = got.filter((m) => m.type === 'error' && m.code === 'FORBIDDEN_CHANNEL');
+    // Fechar o socket na expulsão não basta sozinho: o cliente reconecta no
+    // backoff de §8, e sem esta recusa ele voltaria assinando o canal privado de
+    // um participante que não existe mais.
+    check('Expulso que reconecta não assina sala nem o próprio canal (§10)', forbidden.length === 2, `${forbidden.length} erro(s)`);
+    ws.close();
   }
 
   /* 13. versão de protocolo errada ------------------------------------------ */

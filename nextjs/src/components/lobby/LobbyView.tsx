@@ -67,13 +67,19 @@ export function LobbyView(props: LobbyViewProps) {
  * §3 do contrato de WS reserva `room:{code}` a participante aprovado — pedir esse
  * canal enquanto se está pendente só renderia `FORBIDDEN_CHANNEL`. Quem espera
  * aprovação assina o próprio canal privado, por onde a decisão do líder chega.
+ *
+ * **O aprovado também assina o próprio canal**, e não só o da sala. `participant.
+ * removed` é privado por construção (§5) e é o evento que o serviço de WS usa
+ * para fechar o socket de quem foi expulso (§10: "só mandar o evento deixa a
+ * conexão viva recebendo eventos da sala"). Sem esta assinatura não havia
+ * ninguém escutando aquele canal: o expulso continuava recebendo o lobby inteiro
+ * e a tela nunca ficava sabendo. É a mesma lista que a tela de partida já monta.
  */
 function channelsFor({ room, isLeader, viewerParticipantId, awaitingApproval }: LobbyViewProps) {
   if (isLeader) return [channels.room(room.code), channels.leader(room.code)];
-  if (awaitingApproval && viewerParticipantId !== null) {
-    return [channels.participant(viewerParticipantId)];
-  }
-  return [channels.room(room.code)];
+  if (viewerParticipantId === null) return [channels.room(room.code)];
+  if (awaitingApproval) return [channels.participant(viewerParticipantId)];
+  return [channels.room(room.code), channels.participant(viewerParticipantId)];
 }
 
 function LobbyContent({
@@ -145,6 +151,17 @@ function LobbyContent({
 
   useRealtimeEvent('match.started', () => {
     router.push(`/sala/${room.code}/partida`);
+  });
+
+  // Expulso pelo líder. Chega só pelo canal privado, e o serviço de WS fecha o
+  // socket logo em seguida (§10) — daí a saída ser imediata em vez de um card
+  // com botão como o de "recusado": a tela atrás já parou de receber
+  // atualização, e deixá-la no ar mostraria um lobby congelado.
+  //
+  // `replace`, não `push`: o lobby de onde a pessoa acabou de sair responde 404
+  // para ela agora, então voltar por ele não é um caminho que exista mais.
+  useRealtimeEvent('participant.removed', () => {
+    router.replace('/sala?saida=removido');
   });
 
   /* --- ações -------------------------------------------------------------- */

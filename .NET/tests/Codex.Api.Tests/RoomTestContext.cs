@@ -49,10 +49,10 @@ public class RoomTestContext
         var configuration = new ConfigurationBuilder().Build();
 
         var access = new RoomAccessService(Db);
-        Queue = new RoomQueueService(Db, access, Realtime);
-        Rooms = new RoomService(Db, access, Queue, Realtime);
-        Participants = new ParticipantService(Db, access, Rooms, Tokens, Realtime, configuration);
         Labels = new LabelFormatter(configuration);
+        Queue = new RoomQueueService(Db, access, Realtime);
+        Rooms = new RoomService(Db, access, Queue, Labels, Realtime);
+        Participants = new ParticipantService(Db, access, Rooms, Tokens, Realtime, configuration);
         Profiles = new UserProfileService(Db, Labels);
         PhaseSets = new PhaseSetService(Db, Labels);
 

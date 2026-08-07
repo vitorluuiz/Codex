@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { StateMessage } from '@/components/feedback/StateMessage';
 import { ProfileView } from '@/components/profile/ProfileView';
 import { getLeaderProfile } from '@/lib/api/profile';
+import { getActiveRooms } from '@/lib/api/rooms';
 import { getSession } from '@/lib/api/session';
 
 export const metadata: Metadata = { title: 'Meu perfil' };
@@ -15,7 +16,10 @@ export default async function MyProfilePage() {
   const session = await getSession();
   if (!session.user) redirect('/entrar');
 
-  const profile = await getLeaderProfile();
+  // Duas rotas porque são duas perguntas diferentes: o perfil é público (aceita
+  // um userId no caminho), a lista de salas de pé é da sessão. Ver
+  // `lib/api/rooms.ts` — falha nela vira lista vazia, não derruba o perfil.
+  const [profile, activeRooms] = await Promise.all([getLeaderProfile(), getActiveRooms()]);
 
   if (!profile) {
     return (
@@ -30,5 +34,5 @@ export default async function MyProfilePage() {
     );
   }
 
-  return <ProfileView profile={profile} isOwnProfile />;
+  return <ProfileView profile={profile} isOwnProfile activeRooms={activeRooms} />;
 }

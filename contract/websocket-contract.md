@@ -103,7 +103,7 @@ e o socket fecha. O front trata como "recarregue a página".
 | `room:{code}` | qualquer participante aprovado | lobby: entradas, saídas, configurações, fila |
 | `room:{code}:match` | qualquer participante aprovado | partida: fase corrente, cronômetro, contadores agregados |
 | `room:{code}:leader` | **apenas o líder** | métricas por aluno, atividade individual |
-| `participant:{id}` | **apenas aquele participante** | correção da própria resposta, aprovação/recusa da entrada, expulsão |
+| `participant:{id}` | **apenas aquele participante**, e só enquanto a participação existir | correção da própria resposta, aprovação/recusa da entrada, expulsão |
 
 A separação não é organizacional, é de segurança. `room:{code}:match` carrega só
 agregados (12 de 28 enviaram) — nada que identifique. Tudo que é individual está
@@ -318,6 +318,15 @@ serviço. Não foi o caminho escolhido por três motivos:
 - `Origin` na allowlist, para bloquear socket aberto de outro site.
 - Ao expulsar alguém, feche o socket dele além de publicar `participant.removed`.
   Só mandar o evento deixa a conexão viva recebendo eventos da sala.
+  **Duas consequências que não são óbvias:**
+  1. o fechamento acontece pelo canal privado, então **todo participante precisa
+     assinar `participant:{id}`** — inclusive o já aprovado, que sem isso não tem
+     ninguém escutando o canal por onde a expulsão chega;
+  2. fechar não basta sozinho: o cliente reconecta no backoff do §8. Quem foi
+     expulso não tem mais linha de participante, então `participantStatus` volta
+     nulo da API — e a autorização de canal precisa recusar **também o canal
+     privado** nesse caso, senão o socket volta e fica. `pending` e `rejected`
+     continuam podendo assinar: é por ali que a decisão do líder chega a eles.
 
 ---
 

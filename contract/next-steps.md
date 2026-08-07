@@ -3,13 +3,21 @@
 Baseado em: `contract/api-rest-contract.md`, `contract/websocket-contract.md`,
 `contract/api-implementation-status.md`, e as listas "o que falta" de
 `contract/api-init-log.md` §8, `contract/api-lobby-log.md` §12,
-`contract/websocket-implementation-log.md` §4, `contract/api-phases-log.md` §8 e
-`contract/api-queue-log.md` §7.
+`contract/websocket-implementation-log.md` §4, `contract/api-phases-log.md` §8,
+`contract/api-queue-log.md` §7 e `contract/api-resume-log.md` §7.
 
 Ordenado por **o que destrava mais coisa primeiro** — não pela ordem numérica do
 contrato.
 
-> **Atualização desta leva:** a **seção 6 inteira** foi implementada e saiu daqui
+> **Atualização desta leva:** `GET /rooms/active` entrou (`api-resume-log.md`), e
+> com ela **sair da página deixou de ser caminho sem volta**: o líder retoma pelo
+> perfil e qualquer um retoma pela tela de entrar, sem digitar o código. É a
+> primeira rota que este projeto acrescentou ao contrato em vez de implementar —
+> nenhuma seção cobria "voltar para a sala". Não trouxe migration nem bloqueio
+> novo; encareceu o item 1 abaixo (sala abandonada agora vira linha na tela) e
+> tirou a aba "Perfil de participante" da categoria "precisa de rota nova".
+>
+> **Atualização da leva anterior:** a **seção 6 inteira** foi implementada e saiu daqui
 > (era o item 1) — `contract/api-queue-log.md`. Com ela, **as seções 2 a 6 do
 > contrato estão completas**, exceto OAuth e a geração de fase por IA. O lobby do
 > líder funciona ponta a ponta pela UI: criar conjunto, criar sala, adicionar,
@@ -40,7 +48,10 @@ código (calcular e gravar `ExpiresAt` no momento certo) e destrava:
 **O custo está acumulando.** Enquanto não havia `POST /rooms`, isto era teórico:
 as salas eram semeadas à mão. Agora cada sala criada segura um código de 6 dígitos
 **para sempre**, porque a busca por código livre só ignora sala expirada e nada
-expira. O `POST /rooms` deliberadamente **não** preenche `ExpiresAt` na criação —
+expira. E desde `GET /rooms/active` o custo saiu do banco e chegou na tela: "sala
+ativa" é "sala que ninguém encerrou", então cada sala abandonada vira uma linha de
+"Voltar para a sala" que o líder lê no perfil. A rota corta em 10 linhas para o
+cartão continuar útil (`api-resume-log.md` §4) — é contorno, não conserto. O `POST /rooms` deliberadamente **não** preenche `ExpiresAt` na criação —
 o contrato sugere TTL a partir do *fim* da partida, e cravar 24 h da criação
 mataria uma sala que ainda nem começou. A decisão continua sendo "em que momento".
 
@@ -78,8 +89,9 @@ juntos aqui em vez de espalhados.
   decidido no contrato ainda** — precisa alinhamento entre quem mantém o Next e
   quem mantém a API antes de codar.
 - **`POST /rooms`, `POST /phase-sets` + `PUT /phase-sets/{setId}/draft`,
-  `POST /realtime-ticket` e agora as mutações de `/rooms/{code}/queue/*` não têm
-  rate limit nenhum.** As primeiras criam ou reescrevem registro em massa (uma
+  `POST /realtime-ticket` e as mutações de `/rooms/{code}/queue/*` não têm
+  rate limit nenhum.** (`GET /rooms/active` também não, mas é leitura resolvida
+  por sessão com teto de 10 linhas — entra junto, sem urgência própria.) As primeiras criam ou reescrevem registro em massa (uma
   conta em loop enche a tabela de salas e, junto com o item 1, consome o espaço de
   códigos de 6 dígitos permanentemente; um loop no editor grava fases sem teto),
   e `realtime-ticket` emite credencial. As da fila são as mais leves da lista —
@@ -164,3 +176,17 @@ Registrado aqui para não ser esquecido, mas não é a próxima coisa a fazer:
   desserializador — o que é contorno de caso a caso, não o conserto.
 - **Rota para o participante sair sozinho** — lacuna 2 do `api-lobby-log.md` §10,
   ainda de pé: só o líder remove, então quem fecha a aba ocupa vaga para sempre.
+  É a última peça que falta deste conjunto: fechar a aba já tem volta
+  (`GET /rooms/active`) e ser expulso já tem saída (`api-resume-log.md` §9); sair
+  por vontade própria é o único dos três sem rota. O caminho de saída inteiro já
+  existe — `DELETE /rooms/{code}/participants/{id}` apaga a linha, publica os dois
+  eventos, o WS fecha o socket e o front redireciona. O que falta é **quem pode
+  chamar**: hoje é rota de líder, e o participante precisaria poder removê-lo a
+  si mesmo (ou uma rota irmã que só aceite o próprio id).
+- **A aba "Perfil de participante"** continua sendo um placeholder. Deixou de
+  precisar de rota nova: `GET /rooms/active` já devolve as salas com
+  `role: "participant"`, já reconhece quem entrou logado pelo `UserId` do
+  `Participant` (com teste), e o `ProfileView` já filtra por `role` em vez de
+  assumir que tudo é do líder. O que falta é decidir o **resto** da aba
+  (desafios praticados, pontuação, conquistas — nada disso existe no contrato),
+  não a lista de salas. Detalhe em `api-resume-log.md` §7.

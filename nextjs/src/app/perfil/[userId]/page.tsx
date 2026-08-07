@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { StateMessage } from '@/components/feedback/StateMessage';
 import { ProfileView } from '@/components/profile/ProfileView';
 import { getLeaderProfile } from '@/lib/api/profile';
+import { getActiveRooms } from '@/lib/api/rooms';
 import { getSession } from '@/lib/api/session';
 
 export const metadata: Metadata = { title: 'Perfil' };
@@ -37,5 +38,13 @@ export default async function UserProfilePage({ params }: PageProps) {
 
   if (!profile.user) notFound();
 
-  return <ProfileView profile={profile} isOwnProfile={session.user?.id === profile.user.id} />;
+  const isOwnProfile = session.user?.id === profile.user.id;
+
+  // Só no próprio perfil, e aqui o motivo é diferente do de `/perfil`: esta rota
+  // também é alcançada com o próprio id, e `GET /rooms/active` responde pela
+  // sessão. Sem esta guarda, abrir o perfil de outra pessoa mostraria as
+  // *minhas* salas debaixo do nome dela.
+  const activeRooms = isOwnProfile ? await getActiveRooms() : [];
+
+  return <ProfileView profile={profile} isOwnProfile={isOwnProfile} activeRooms={activeRooms} />;
 }

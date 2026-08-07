@@ -8,7 +8,7 @@ import { Button, Dialog, Input, Tabs, Tag, Toast, ToastViewport } from '@/compon
 import { logoutAction } from '@/lib/actions/auth';
 import { createRoomAction, exportMatchReportAction, updateProfileAction } from '@/lib/actions/profile';
 import { cx } from '@/lib/cx';
-import type { Audience, LeaderMatchSummary, LeaderProfile } from '@/lib/types';
+import type { ActiveRoom, Audience, LeaderMatchSummary, LeaderProfile } from '@/lib/types';
 import { MatchHistorySection } from './MatchHistorySection';
 import { ProfileSidebar } from './ProfileSidebar';
 import { SetsSection } from './SetsSection';
@@ -31,9 +31,16 @@ interface ProfileViewProps {
   profile: LeaderProfile;
   /** `false` quando se está olhando o perfil de outra pessoa. */
   isOwnProfile: boolean;
+  /**
+   * Salas ainda de pé de quem está **olhando** (`GET /rooms/active` é resolvida
+   * pela sessão, não pelo `userId` da URL). Num perfil alheio a página não a
+   * busca: mostrar aqui as minhas salas seria confundir de quem é o perfil, e
+   * mostrar as do dono entregaria o código de sala dele a qualquer visitante.
+   */
+  activeRooms?: ActiveRoom[];
 }
 
-export function ProfileView({ profile, isOwnProfile }: ProfileViewProps) {
+export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: ProfileViewProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -44,6 +51,11 @@ export function ProfileView({ profile, isOwnProfile }: ProfileViewProps) {
 
   const audienceLabel = AUDIENCE_LABEL[user.audience];
   const participantsLabel = PARTICIPANTS_LABEL[user.audience];
+
+  // A mesma lista alimenta as duas abas; o `role` decide qual. Hoje só a de
+  // líder consome — a de participante ainda não tem tela —, mas o corte é aqui
+  // para o dia em que tiver não precisar de outra rota.
+  const ledRooms = activeRooms.filter((room) => room.role === 'leader');
 
   function openRoom(setId?: string) {
     startTransition(async () => {
@@ -117,6 +129,7 @@ export function ProfileView({ profile, isOwnProfile }: ProfileViewProps) {
             />
             <MatchHistorySection
               matches={profile.matches}
+              activeRooms={ledRooms}
               participantsLabel={participantsLabel}
               onDownload={downloadReport}
             />

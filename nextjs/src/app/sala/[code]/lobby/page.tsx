@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 import { StateMessage } from '@/components/feedback/StateMessage';
 import { LobbyView } from '@/components/lobby/LobbyView';
@@ -47,7 +47,22 @@ export default async function LobbyPage({ params }: PageProps) {
     throw error;
   }
 
-  if (!room) notFound();
+  if (!room) {
+    // `GET /rooms/{code}` responde 404 tanto para "esta sala não existe" quanto
+    // para "você não é membro dela" — de propósito: o código de 6 dígitos é a
+    // credencial da sala e a API não confirma a estranhos que ele existe.
+    //
+    // Quem tem na sessão um participante **desta** sala já teve o código, então
+    // aqui os dois casos são distinguíveis, e o que sobra é "você não está mais
+    // nela": ou o líder removeu (a linha do participante some) ou a sala
+    // expirou. A tela de entrar é o destino certo dos dois; o 404 genérico
+    // deixaria a pessoa achando que digitou errado um código que ela nem
+    // digitou.
+    if (session.participantId !== null && session.roomCode === code) {
+      redirect('/sala?saida=removido');
+    }
+    notFound();
+  }
 
   const isLeader = Boolean(session.user && session.user.id === room.leader.id);
 

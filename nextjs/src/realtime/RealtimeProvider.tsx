@@ -119,6 +119,13 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
     let lastErrorCode: string | null = null;
     /** Ligado quando um socket morre antes do `ready` por falta de sessão. */
     let needsTicket = false;
+    /**
+     * O servidor mandou `participant.removed`: esta sala acabou para esta
+     * pessoa. Sobrevive às tentativas porque o efeito não é remontado — quem
+     * navega para fora é a tela, e até isso acontecer o backoff já teria
+     * reaberto o socket pelo menos uma vez.
+     */
+    let removed = false;
 
     async function connect() {
       setState(attemptRef.current === 0 ? 'connecting' : 'reconnecting');
@@ -182,6 +189,7 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
 
         if (message.type === 'ready') ready = true;
         if (message.type === 'error') lastErrorCode = message.code;
+        if (message.type === 'participant.removed') removed = true;
 
         listenersRef.current.forEach((listener) => listener(message));
       };
@@ -193,6 +201,16 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
         // "Se a versão do protocolo não bater, o front trata como 'recarregue a
         // página'" (§2). Insistir só produziria a mesma recusa em loop.
         if (lastErrorCode === 'PROTOCOL_VERSION') {
+          setState('closed');
+          return;
+        }
+
+        // Expulsão: o servidor fechou de propósito (§10). Reconectar seria
+        // remontar um socket que a autorização de canal já não aceita — o
+        // servidor devolveria `FORBIDDEN_CHANNEL` para sempre, no ritmo do
+        // backoff. Quem tira a tela do ar é o handler de `participant.removed`;
+        // isto só garante que o socket não a persiga até lá.
+        if (removed) {
           setState('closed');
           return;
         }

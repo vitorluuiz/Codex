@@ -43,6 +43,45 @@
   box-shadow: var(--shadow-m);
 }
 
+/*
+  A sala aberta é a única linha acionável da seção: a borda de acento existe para
+  ela não se perder entre as partidas já encerradas logo abaixo.
+*/
+.rowActive {
+  border-color: var(--accent-primary);
+}
+
+.liveChip {
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+.resumeLink {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-primary);
+  color: #fff;
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/*
+  `color` e `text-decoration` repetidos de propósito: `globals.css` tem um
+  `a:hover` global, e um seletor com pseudo-classe (0,1,1) ganha de uma classe
+  só (0,1,0). Sem isto o texto assume `--accent-primary-hover` — que é
+  exatamente a cor que este fundo acabou de virar, e o rótulo some no hover.
+*/
+.resumeLink:hover {
+  background: var(--accent-primary-hover);
+  color: #fff;
+  text-decoration: none;
+}
+
 .identity {
   display: flex;
   flex-direction: column;

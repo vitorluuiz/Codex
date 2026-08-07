@@ -1,10 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 
 import { Button, Dialog } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
-import type { LeaderMatchSummary } from '@/lib/types';
+import { ROOM_STATUS_LABEL, describeActiveRoom } from '@/components/room/activeRoomLabels';
+import { roomPath } from '@/lib/roomPath';
+import type { ActiveRoom, LeaderMatchSummary } from '@/lib/types';
 import styles from './MatchHistorySection.module.css';
 
 const MODE_LABEL: Record<LeaderMatchSummary['mode'], string> = {
@@ -14,6 +17,12 @@ const MODE_LABEL: Record<LeaderMatchSummary['mode'], string> = {
 
 interface MatchHistorySectionProps {
   matches: LeaderMatchSummary[];
+  /**
+   * Salas ainda de pé conduzidas por esta pessoa. Vazio num perfil alheio — o
+   * código de 6 dígitos é a credencial da sala e não sai para quem só abriu um
+   * link de perfil.
+   */
+  activeRooms: ActiveRoom[];
   /** "Participantes" ou "Candidatos", conforme o público da conta. */
   participantsLabel: string;
   onDownload: (match: LeaderMatchSummary) => void;
@@ -21,6 +30,7 @@ interface MatchHistorySectionProps {
 
 export function MatchHistorySection({
   matches,
+  activeRooms,
   participantsLabel,
   onDownload,
 }: MatchHistorySectionProps) {
@@ -30,8 +40,52 @@ export function MatchHistorySection({
     <section className={styles.section}>
       <h2 className={styles.title}>Histórico de partidas como líder</h2>
 
+      {/*
+        Sala aberta vem antes do histórico porque é a única linha em que ainda dá
+        para agir: fechar a aba não encerra a sala, e sem este bloco o líder não
+        tinha caminho de volta — o código foi gerado pelo servidor, ninguém o
+        decorou. A sala pode estar em andamento; o destino do link acompanha o
+        `status`.
+      */}
+      {activeRooms.length > 0 && (
+        <ul className={styles.list}>
+          {activeRooms.map((room) => (
+            <li key={room.code} className={`${styles.row} ${styles.rowActive}`}>
+              <div className={styles.identity}>
+                <span className={styles.setTitle}>{describeActiveRoom(room)}</span>
+                <div className={styles.subline}>
+                  <span className={`${styles.modeChip} ${styles.liveChip}`}>
+                    {ROOM_STATUS_LABEL[room.status]}
+                  </span>
+                  <span className={styles.date}>
+                    Sala {room.code} · {room.createdAtLabel}
+                  </span>
+                </div>
+              </div>
+
+              <div className={styles.stat}>
+                <span className={styles.statValue}>{room.participantCount}</span>
+                <span className={styles.statLabel}>{participantsLabel}</span>
+              </div>
+
+              <div className={styles.rowActions}>
+                <Link href={roomPath(room)} className={styles.resumeLink}>
+                  Voltar para a sala
+                </Link>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {matches.length === 0 ? (
-        <p className={styles.empty}>Nenhuma partida realizada ainda.</p>
+        <p className={styles.empty}>
+          {activeRooms.length === 0
+            ? 'Nenhuma partida realizada ainda.'
+            : activeRooms.length === 1
+              ? 'Nenhuma partida encerrada ainda — a sala acima ainda está de pé.'
+              : 'Nenhuma partida encerrada ainda — as salas acima ainda estão de pé.'}
+        </p>
       ) : (
         <ul className={styles.list}>
           {matches.map((match) => (

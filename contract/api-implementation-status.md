@@ -3,9 +3,10 @@
 Levantado lendo o código em `.NET/src/Codex.Api` (backend .NET 10 Minimal API +
 PostgreSQL/EF Core) e cruzando com `contract/api-rest-contract.md`. Fontes
 adicionais: `contract/api-init-log.md` (base do projeto), `contract/api-lobby-log.md`
-(seções 3–4), `contract/api-phases-log.md` (seção 5) e
-`contract/websocket-implementation-log.md` (realtime), que são os registros de
-decisão de cada leva de trabalho.
+(seções 3–4), `contract/api-phases-log.md` (seção 5),
+`contract/api-queue-log.md` (seção 6), `contract/api-resume-log.md`
+(`GET /rooms/active`) e `contract/websocket-implementation-log.md` (realtime), que
+são os registros de decisão de cada leva de trabalho.
 
 **Resumo executivo:** das 14 seções do contrato REST, **as seções 2, 3, 4, 5 e 6
 (sessão/auth + perfil, entrar em sala, lobby, conjuntos de fases, fila de fases da
@@ -35,6 +36,7 @@ os eventos de lobby do contrato de WS têm produtor, inclusive `queue.updated`
 | 3 | `GET /rooms/{code}/availability` | ✅ | `Endpoints/RoomEndpoints.cs` |
 | 3 | `POST /rooms/{code}/participants` | ✅ | `Endpoints/ParticipantEndpoints.cs` |
 | 4 | `POST /rooms` (criar sala) | ✅ | `Endpoints/RoomEndpoints.cs` · `RoomService.CreateAsync` · `RoomQueueService` |
+| 4 | `GET /rooms/active` (voltar para a sala) | ✅ | `Endpoints/RoomEndpoints.cs` · `RoomService.ListActiveAsync` |
 | 4 | `GET /rooms/{code}` | ✅ | `Endpoints/RoomEndpoints.cs` |
 | 4 | `GET /rooms/{code}/participants?status=` | ✅ | `Endpoints/ParticipantEndpoints.cs` |
 | 4 | `PATCH /rooms/{code}` | ✅ | `Endpoints/RoomEndpoints.cs` |
@@ -63,8 +65,9 @@ os eventos de lobby do contrato de WS têm produtor, inclusive `queue.updated`
 | 11 | Relatórios (`report`, `report/export`, `GET /jobs/{jobId}`) | ❌ | não iniciada; contrato já registra que não há tela pronta |
 | 12 | `GET /marketing/landing` | ❌ | opcional — hoje o conteúdo é local em `src/content/landing.ts` no front |
 
-**Contagem:** 27 de ~45 rotas do contrato têm endpoint no backend — 13 das seções
-2–4, as 6 da seção 5 e as 8 da seção 6. Fora da tabela do contrato REST, existe
+**Contagem:** 28 de ~46 rotas do contrato têm endpoint no backend — 14 das seções
+2–4 (a mais recente é `GET /rooms/active`, que o contrato não tinha e esta leva
+acrescentou), as 6 da seção 5 e as 8 da seção 6. Fora da tabela do contrato REST, existe
 também `POST /realtime-ticket` (`Endpoints/RealtimeEndpoints.cs`), que vem do
 `websocket-contract.md` §2.
 
@@ -206,6 +209,11 @@ como placeholder, porque todo o dado de que precisam já existe no schema. Só q
 em qualquer instalação. Ela acende sozinha no dia em que `POST /rooms/{code}/match`
 existir, sem tocar neste código.
 
+**O que já não sai mais vazio nessa tela** é o bloco acima dela: as salas que o
+líder deixou abertas (`GET /rooms/active`) aparecem no topo da seção de histórico
+com "Voltar para a sala", e essas nascem de `POST /rooms`, que existe. Ver
+`contract/api-resume-log.md`.
+
 Decisões que o contrato não define e que estas duas rotas precisaram tomar —
 registradas aqui porque a seção 5 (`GET /phase-sets`) vai esbarrar nas mesmas:
 
@@ -260,8 +268,10 @@ saírem rápido quando alguém as escrever:
 - **Rótulos formatados no servidor** (`Common/Formatting/LabelFormatter.cs`) — o
   contrato repete em duas seções que `updatedLabel`, `playedAtLabel` e
   `durationLabel` vêm prontos "para o front não carregar biblioteca de datas".
-  Está num serviço só, então as rotas da seção 5 (`GET /phase-sets`) e da seção
-  11 (relatórios) reusam sem reescrever nada. Duas consequências de o projeto
+  Está num serviço só, então as rotas da seção 5 (`GET /phase-sets`), a de
+  `GET /rooms/active` e a da seção 11 (relatórios) reusam sem reescrever nada —
+  inclusive `SetTitleLabel` ("Frações +2"), que mudou de casa quando a segunda
+  rota passou a nomear sala pela mesma regra. Duas consequências de o projeto
   rodar com `InvariantGlobalization`: os nomes de mês são uma tabela literal (não
   `CultureInfo("pt-BR")`, que lançaria) e o fuso é um **deslocamento fixo**
   (`CodexApi:DisplayUtcOffsetHours`, padrão `-3`), não um `TimeZoneInfo` por id
@@ -291,7 +301,7 @@ saírem rápido quando alguém as escrever:
   `PUT …/draft` (criação/reescrita em massa de conjuntos),
   `POST /realtime-ticket` (emissão de credencial), `POST …/run` (execução de
   código) ou para o WS.
-- **Testes automatizados**: 183 testes (`dotnet test`, xUnit + EF Core InMemory),
+- **Testes automatizados**: 248 testes (`dotnet test`, xUnit + EF Core InMemory),
   cobrindo `AuthService`, `RoomService`, `ParticipantService`, `RoomQueueService`,
   `UserProfileService`, `PhaseSetService`, `LabelFormatter`, a publicação de
   eventos de realtime e a resolução de sessão do WS, sem precisar de Postgres. Os
@@ -359,7 +369,10 @@ contrato avisa, **não é permissão**: nada no servidor decide nada com ele.
   porque a busca por código livre só ignora sala expirada e nada expira. O
   `POST /rooms` deliberadamente não preenche `ExpiresAt` na criação — o contrato
   sugere TTL a partir do *fim* da partida, e cravar 24h da criação mataria uma
-  sala que ainda nem começou.
+  sala que ainda nem começou. **`GET /rooms/active` encareceu isso de novo:** sem
+  TTL, "sala ativa" é "sala que ninguém encerrou", então as salas abandonadas
+  agora aparecem numa lista que o usuário lê. O teto de 10 linhas dessa rota é
+  contorno, não conserto (`api-resume-log.md` §4).
 - Nenhuma tabela de sessões revogáveis — `POST /auth/logout` não invalida o
   token de fato (token stateless, expira só pelo `expiresIn`).
 
@@ -377,6 +390,12 @@ Esta seção dizia "arquiteturalmente ausente" até a leva registrada em
   participante publica `participant.left` (sala) e `participant.removed`
   (privado); e `POST /rooms/{code}/participants` publica `participant.joined`.
   Um segundo browser no lobby vê a mudança sem recarregar.
+- **A expulsão passou a funcionar de fato no lobby** (`api-resume-log.md` §9). A
+  API já publicava certo e o serviço de WS já fechava o socket ao ver
+  `participant.removed`; o que faltava era o lobby **assinar o canal privado** do
+  participante aprovado, então não havia socket para fechar. Com a correção, quem
+  o líder remove sai da sala na hora e cai na tela de entrar. Nenhuma linha de
+  API mudou — o defeito era só de quem escutava.
 - **O que falta é quem produza os eventos de partida.** `phase.started`,
   `stats.updated`, `submission.graded`, `match.finished` etc. têm transporte,
   canal, throttle e autorização implementados e testados — não têm rota REST que
@@ -398,15 +417,21 @@ Esta seção dizia "arquiteturalmente ausente" até a leva registrada em
 
 ```bash
 dotnet ef database update --project src/Codex.Api --startup-project src/Codex.Api
-dotnet test          # 233 testes, sem precisar de Postgres
+dotnet test          # 248 testes, sem precisar de Postgres
 dotnet run --project src/Codex.Api
 ```
 
-Os 233 testes rodam em EF InMemory. **O que eles não cobrem**, e por isso foi
+Os 248 testes rodam em EF InMemory. **O que eles não cobrem**, e por isso foi
 verificado à mão contra um Postgres 18 local: os índices únicos (InMemory não tem
 índices), a migration `UserAudience` aplicada sobre dados existentes, a cópia
 `PhaseSet → fila` gravando de fato as duas tabelas, e o cascade
 `phase_sets → phases` do `DELETE /phase-sets/{setId}`.
+
+⚠️ **Verificação parcial de duas levas.** A de `GET /rooms/active`
+(`api-resume-log.md`) não tem migration — nenhuma coluna nova —, mas os 15 testes
+dela rodam em InMemory e a consulta em si nunca foi exercida contra Postgres. É a
+primeira do projeto a combinar condição de nulo com `Any` sobre navegação; ver
+`api-resume-log.md` §8 para o que conferir.
 
 ⚠️ **Verificação parcial da leva da seção 6.** A migration `RoomQueueRevision` foi
 aplicada a um Postgres local (`ALTER TABLE rooms ADD "QueueRevision" integer NOT

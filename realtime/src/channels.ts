@@ -73,10 +73,24 @@ export function canSubscribe(channel: ParsedChannel, identity: Identity): boolea
     case 'leader':
       return channel.roomCode === identity.roomCode && identity.isLeader;
 
-    // Canal privado: so o proprio. O lider nao le o canal de ninguem — o que ele
-    // precisa ver esta agregado em `:leader`.
+    // Canal privado: so o proprio, e so enquanto ainda existir participacao.
+    // O lider nao le o canal de ninguem — o que ele precisa ver esta agregado
+    // em `:leader`.
+    //
+    // O `participantStatus` nao e detalhe: quem o lider expulsa tem a linha
+    // apagada do banco, e a API entao devolve `participantStatus: null` mas
+    // repete o `participantId` do token (ela cai de volta nele quando nao acha
+    // o participante). Sem esta checagem, o expulso reconectaria e reassinaria
+    // o proprio canal de um participante que nao existe mais — um socket vivo
+    // por tempo indeterminado, que e exatamente o que o §10 manda fechar.
+    // `pending` e `rejected` continuam passando: e por este canal que a decisao
+    // do lider sobre eles chega.
     case 'participant':
-      return identity.participantId !== null && channel.participantId === identity.participantId;
+      return (
+        identity.participantId !== null &&
+        identity.participantStatus !== null &&
+        channel.participantId === identity.participantId
+      );
   }
 }
 

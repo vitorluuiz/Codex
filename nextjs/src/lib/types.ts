@@ -59,6 +59,34 @@ export interface Room {
   createdAt: string;
 }
 
+/** Em que papel a pessoa está numa sala. Derivado de `leader.id`, não é uma coluna. */
+export type RoomMembershipRole = 'leader' | 'participant';
+
+/**
+ * Uma sala que ainda está de pé e da qual a pessoa faz parte — o que "Voltar para
+ * a sala" precisa saber (`GET /rooms/active`).
+ *
+ * Fechar a aba não tira ninguém da sala, então esta lista é o caminho de volta:
+ * o líder a vê no histórico do perfil, e qualquer um a vê na tela de entrar sem
+ * ter que digitar o código de novo.
+ *
+ * `setTitle` e `phaseCount` só vêm para `role: 'leader'`: a fila é o roteiro da
+ * aula e `GET /rooms/{code}/queue` é rota de líder — o resumo aqui não pode
+ * contornar isso.
+ */
+export interface ActiveRoom {
+  code: string;
+  status: RoomStatus;
+  matchMode: MatchMode | null;
+  role: RoomMembershipRole;
+  leaderName: string;
+  setTitle: string | null;
+  phaseCount: number | null;
+  participantCount: number;
+  /** Já formatado pelo servidor. Ex.: "28 jul 2026 · 14:32". */
+  createdAtLabel: string;
+}
+
 export type ParticipantStatus = 'pending' | 'approved' | 'rejected' | 'removed';
 
 export interface Participant {

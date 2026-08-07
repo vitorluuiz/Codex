@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using Codex.Api.Common.Auth;
 using Codex.Api.Common.Errors;
+using Codex.Api.Common.Formatting;
 using Codex.Api.Common.Realtime;
 using Codex.Api.Contracts.Realtime;
 using Codex.Api.Contracts.Rooms;
@@ -23,6 +24,7 @@ public class RoomService(
     AppDbContext db,
     RoomAccessService roomAccess,
     RoomQueueService queue,
+    LabelFormatter labels,
     IRealtimeEventPublisher realtime)
 {
     /// <summary>Limite superior de capacity aceito no PATCH. Nao vem do doc: e sanidade contra digitacao/abuso.</summary>
@@ -40,6 +42,17 @@ public class RoomService(
     /// desprezivel; o limite existe para o loop nao virar infinito no dia em que o espaco encher.
     /// </summary>
     private const int CodeGenerationAttempts = 8;
+
+    /// <summary>
+    /// Quantas salas de pe o GET /rooms/active devolve, das mais recentes para as mais antigas.
+    ///
+    /// O numero e baixo de proposito: enquanto <c>Room.ExpiresAt</c> nao for preenchido
+    /// (next-steps.md §1), "sala ativa" e literalmente "sala que ninguem encerrou", e um professor
+    /// que abre uma sala por aula acumula uma lista sem fim. Cortar aqui mantem o cartao de
+    /// "Voltar para a sala" util — quem quer retomar quer a de agora, nao a de marco — e a
+    /// resposta pequena. Quando o TTL existir, a lista encolhe sozinha e este teto vira folga.
+    /// </summary>
+    private const int MaxActiveRooms = 10;
 
     /// <summary>
     /// POST /rooms (secao 4): abre uma sala nova com quem chamou como lider.
@@ -127,6 +140,85 @@ public class RoomService(
 
     private static ApiException AccountRequired()
         => new(StatusCodes.Status403Forbidden, ErrorCodes.AccountRequired, "E preciso ter uma conta para criar uma sala.");
+
+    /// <summary>
+    /// GET /rooms/active (secao 4): as salas de pe das quais quem chamou faz parte, das mais
+    /// recentes para as mais antigas. E o que sustenta "Voltar para a sala" no perfil e na tela
+    /// de entrar.
+    ///
+    /// Tres decisoes que valem registro:
+    ///
+    /// - <b>E rota de sessao, nao de perfil.</b> Ela nao aceita um userId no caminho, ao contrario
+    ///   de GET /users/{userId}/profile — e por isso nao existe como um campo daquele payload. O
+    ///   codigo de 6 digitos e a unica credencial da sala (RoomAccessService), entao devolve-lo
+    ///   junto de um perfil que qualquer um pode abrir daria a estranhos a chave de todas as salas
+    ///   abertas da pessoa.
+    /// - <b>Sem sessao e 200 com lista vazia</b>, nao 401/403. Quem chama isto e a tela de entrar,
+    ///   que existe justamente para quem ainda nao e ninguem; e o convidado que ela precisa
+    ///   atender nem tem conta para receber ACCOUNT_REQUIRED. Mesmo criterio do GET /session, que
+    ///   responde 200 com tudo nulo.
+    /// - <b>Sala encerrada nao aparece.</b> Retomar uma sala <c>finished</c> nao leva a lugar
+    ///   nenhum — EnsureJoinableAsync ja recusa entrada nela —, e o historico de partidas do
+    ///   perfil e onde ela deve ser lida.
+    /// </summary>
+    public async Task<IReadOnlyList<ActiveRoomDto>> ListActiveAsync(ClaimsPrincipal principal, CancellationToken ct)
+    {
+        var userId = principal.GetUserId();
+        var participantId = principal.GetParticipantId();
+
+        if (userId is null && participantId is null)
+        {
+            return [];
+        }
+
+        var now = DateTimeOffset.UtcNow;
+
+        var rooms = await db.Rooms
+            .AsNoTracking()
+            .Where(r => r.Status != RoomStatus.Finished && (r.ExpiresAt == null || r.ExpiresAt > now))
+            // Lider ou membro, na mesma consulta. Os dois lados da participacao sao testados
+            // porque uma pessoa com conta pode chegar pelas duas: pelo userId gravado no
+            // Participant (quem entrou ja logado) e pelo participantId do token de convidado.
+            // O "!= null" de cada lado nao e decorativo — sem ele, um p.UserId == null comparado a
+            // um userId nulo casaria pelas regras de nulo do SQL e devolveria sala de estranho.
+            .Where(r => (userId != null && r.LeaderUserId == userId)
+                        || r.Participants.Any(p => p.Status != ParticipantStatus.Rejected
+                                                   && ((userId != null && p.UserId == userId)
+                                                       || (participantId != null && p.Id == participantId))))
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(MaxActiveRooms)
+            .Select(r => new
+            {
+                r.Code,
+                r.Status,
+                r.MatchMode,
+                r.LeaderUserId,
+                LeaderName = r.Leader.Name,
+                r.CreatedAt,
+                SetTitles = r.QueueSets.OrderBy(s => s.OrderIndex).Select(s => s.Title).ToList(),
+                PhaseCount = r.QueuePhases.Count,
+                // Aprovado e quem a tela chama de participante, o mesmo criterio do historico do
+                // perfil; pendente ainda esta na fila de aprovacao do lider.
+                ParticipantCount = r.Participants.Count(p => p.Status == ParticipantStatus.Approved),
+            })
+            .ToListAsync(ct);
+
+        return rooms.Select(r =>
+        {
+            var isLeader = userId is not null && r.LeaderUserId == userId;
+
+            return new ActiveRoomDto(
+                r.Code,
+                r.Status,
+                r.MatchMode,
+                isLeader ? RoomMembershipRole.Leader : RoomMembershipRole.Participant,
+                r.LeaderName,
+                isLeader ? LabelFormatter.SetTitleLabel(r.SetTitles) : null,
+                isLeader ? r.PhaseCount : null,
+                r.ParticipantCount,
+                labels.DateTimeLabel(r.CreatedAt));
+        }).ToList();
+    }
 
     public async Task<RoomAvailabilityResponse> GetAvailabilityAsync(string code, ClaimsPrincipal principal, CancellationToken ct)
     {

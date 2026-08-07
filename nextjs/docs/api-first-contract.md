@@ -206,6 +206,54 @@ aparecer meio segundo depois.
 
 → `201 Room`. O front navega para `/sala/{code}/lobby`.
 
+### `GET /rooms/active`
+As salas ainda de pé das quais **quem chamou** faz parte, das mais recentes para
+as mais antigas. É o que sustenta "Voltar para a sala": fechar a aba não tira
+ninguém da sala, mas o único caminho de volta era digitar o código — que o líder
+nunca decorou (a sala nasce com um código gerado pelo servidor) e o convidado já
+esqueceu.
+
+```json
+[
+  {
+    "code": "482913",
+    "status": "lobby",
+    "matchMode": null,
+    "role": "leader",
+    "leaderName": "Marina Duarte",
+    "setTitle": "Frações & Funções Básicas",
+    "phaseCount": 8,
+    "participantCount": 3,
+    "createdAtLabel": "28 jul 2026 · 14:32"
+  }
+]
+```
+
+Decisões que esta rota carrega:
+
+- **É rota de sessão, não de perfil.** Não aceita `userId` no caminho, e por isso
+  não é um campo de `GET /users/{userId}/profile`: o código de 6 dígitos é a
+  única credencial da sala, e devolvê-lo dentro de um perfil que qualquer um abre
+  entregaria a chave de todas as salas abertas da pessoa.
+- **Sem sessão é `200 []`**, não 401/403. Quem chama é a tela de entrar, que
+  existe justamente para quem ainda não é ninguém — e o convidado que ela precisa
+  atender nem tem conta para receber `ACCOUNT_REQUIRED`. Mesmo critério do
+  `GET /session`.
+- **`role`** é `"leader"` ou `"participant"`, derivado de `leader.id` — decide em
+  qual aba do perfil a linha aparece e quais campos o front pode desenhar.
+- **`setTitle` e `phaseCount` só saem para o líder** (`null` para participante). A
+  fila é o roteiro da aula e `GET /rooms/{code}/queue` responde
+  `403 NOT_ROOM_LEADER` a qualquer outro; um resumo dela aqui contornaria a mesma
+  regra por outra rota. Para o participante o cartão se identifica pelo
+  `leaderName`, que ele já lê no lobby.
+- **Sala `finished` não aparece.** Retomá-la não leva a lugar nenhum (a entrada em
+  sala encerrada já é recusada), e é o `matches` do perfil que a registra.
+- `status` pode ser `running`: **entrar numa sala em andamento é legítimo** — o
+  front manda para `/sala/{code}/partida` em vez do lobby.
+- No máximo **10 salas**. Enquanto `rooms.expiresAt` não for preenchido, "sala
+  ativa" é "sala que ninguém encerrou", e quem abre uma sala por aula acumularia
+  a lista inteira.
+
 ### `GET /rooms/{code}`
 ```json
 {
@@ -757,10 +805,10 @@ Salas e participantes convidados expiram. Configure TTL em `rooms.expiresAt`
 |---|---|
 | Landing | nenhuma (conteúdo local) |
 | Auth | `POST /auth/login`, `POST /auth/signup`, `POST /auth/oauth/{provider}/authorize` |
-| Entrar em Sala | `GET /session`, `GET /rooms/{code}/availability`, `POST /rooms/{code}/participants` |
+| Entrar em Sala | `GET /session`, `GET /rooms/active`, `GET /rooms/{code}/availability`, `POST /rooms/{code}/participants` |
 | Lobby (jogador) | `GET /session`, `GET /rooms/{code}`, `GET /rooms/{code}/participants?status=approved` |
 | Lobby (líder) | as acima + `?status=pending`, `GET /rooms/{code}/queue`, `GET /phase-sets`, todas as de `/queue/*`, `PATCH /rooms/{code}`, aprovar/recusar/remover, `POST /rooms/{code}/match` |
 | Desafios (aluno) | `GET /rooms/{code}/match`, `GET /matches/{id}/current-phase`, `GET /matches/{id}/scoreboard/me`, `POST …/submissions`, `POST …/run`, `POST …/ready`, `GET …/comparison`, `GET /matches/{id}/podium` |
 | Desafios (líder) | `GET /matches/{id}/current-phase`, `GET …/stats`, `advance`, `pause`, `restart`, `finish`, `return-to-lobby`, `DELETE …/participants/{id}` |
-| Perfil | `GET /users/{id}/profile`, `PATCH /users/me`, `POST /rooms`, `POST /matches/{id}/report/export`, `POST /auth/logout` |
+| Perfil | `GET /users/{id}/profile`, `GET /rooms/active` (só o próprio), `PATCH /users/me`, `POST /rooms`, `POST /matches/{id}/report/export`, `POST /auth/logout` |
 | Editor de Conjunto | `GET /phase-sets/{id}/draft`, `POST /phase-sets`, `PUT /phase-sets/{id}/draft`, `POST /phase-sets/phases/generate` |

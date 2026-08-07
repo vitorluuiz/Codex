@@ -48,7 +48,14 @@ export default async function MatchPage({ params }: PageProps) {
     throw error;
   }
 
-  if (!room) notFound();
+  // Mesma leitura do lobby: 404 com um participante desta sala na sessão é
+  // "você não está mais nela", não "esta sala não existe".
+  if (!room) {
+    if (session.participantId !== null && session.roomCode === code) {
+      redirect('/sala?saida=removido');
+    }
+    notFound();
+  }
 
   const match = await getMatch(code);
   if (match.status === 'finished') {
