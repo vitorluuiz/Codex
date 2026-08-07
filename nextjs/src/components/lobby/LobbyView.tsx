@@ -17,6 +17,7 @@ import {
 } from '@/lib/actions/room';
 import type { RoomQueue } from '@/lib/api/rooms';
 import { cssVars } from '@/lib/cssVars';
+import { cx } from '@/lib/cx';
 import type { Participant, Room } from '@/lib/types';
 import { PhaseQueuePanel } from './PhaseQueuePanel';
 import { PhaseSetsPanel } from './PhaseSetsPanel';
@@ -256,17 +257,23 @@ function LobbyContent({
             {isLeader ? (
               <>
                 <div className={styles.toggleGroup}>
-                  <Switch label="Trancar sala" checked={locked} onChange={toggleLocked} />
+                  <Switch
+                    label="Trancar sala"
+                    labelPosition="start"
+                    checked={locked}
+                    onChange={toggleLocked}
+                  />
                 </div>
                 <div className={styles.toggleGroup}>
                   <Switch
                     label="Exigir conta"
+                    labelPosition="start"
                     checked={requireAccount}
                     onChange={toggleRequireAccount}
                   />
                 </div>
                 <div className={styles.startActions}>
-                  <Tooltip label="Cada aluno avança pelas fases no próprio ritmo, quando quiser.">
+                  <Tooltip label="Cada participante avança pelas fases no próprio ritmo, quando quiser.">
                     <Button
                       variant="secondary"
                       disabled={startDisabled}
@@ -335,16 +342,25 @@ function LobbyContent({
                           )}
                         </div>
                         <div className={styles.pendingActions}>
-                          <Button
-                            size="sm"
+                          <button
+                            type="button"
+                            className={cx(styles.decisionButton, styles.approveButton)}
                             disabled={requireAccount && !participant.loggedIn}
+                            title="Aceitar"
+                            aria-label={`Aceitar ${participant.displayName}`}
                             onClick={() => approve(participant)}
                           >
-                            Aceitar
-                          </Button>
-                          <Button size="sm" variant="danger" onClick={() => reject(participant)}>
-                            Recusar
-                          </Button>
+                            <Icon.Check size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className={cx(styles.decisionButton, styles.rejectButton)}
+                            title="Recusar"
+                            aria-label={`Recusar ${participant.displayName}`}
+                            onClick={() => reject(participant)}
+                          >
+                            <Icon.Close size={16} />
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -353,9 +369,10 @@ function LobbyContent({
               </section>
             </div>
 
-            <PhaseSetsPanel roomCode={room.code} sets={setsWithCounts} onQueueChange={setQueue} />
-
-            <PhaseQueuePanel roomCode={room.code} queue={queue} onQueueChange={setQueue} />
+            <div className={styles.leaderColumn}>
+              <PhaseSetsPanel roomCode={room.code} sets={setsWithCounts} onQueueChange={setQueue} />
+              <PhaseQueuePanel roomCode={room.code} queue={queue} onQueueChange={setQueue} />
+            </div>
           </div>
         ) : rejected ? (
           <section className={styles.waitingCard}>

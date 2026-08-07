@@ -69,8 +69,13 @@ export function PhaseSetsPanel({ roomCode, sets, onQueueChange }: PhaseSetsPanel
                 if (event.key === 'Enter') setEditingSet({ setId: set.setId, title: set.title });
               }}
             >
-              <span className={styles.setTitle}>{set.title}</span>
-              <span className={styles.setCount}>{set.phaseCount} fases</span>
+              <span className={styles.setIcon} aria-hidden>
+                <Icon.Grid size={18} />
+              </span>
+              <span className={styles.setInfo}>
+                <span className={styles.setTitle}>{set.title}</span>
+                <span className={styles.setCount}>{set.phaseCount} fases</span>
+              </span>
               <button
                 type="button"
                 className={styles.removeButton}

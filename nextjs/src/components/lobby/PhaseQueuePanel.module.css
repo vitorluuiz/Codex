@@ -13,15 +13,17 @@
 .row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border-radius: var(--radius-m);
+  gap: 12px;
+  padding: 10px;
+  border-radius: var(--radius-l);
   background: var(--surface-sunken);
-  border-left: 5px solid var(--set-color);
+  border-left: 4px solid var(--set-color);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
 }
 
 .dragging {
-  opacity: 0.5;
+  opacity: 0.55;
+  box-shadow: var(--shadow-m);
 }
 
 .dropTarget {
@@ -43,14 +45,6 @@
   cursor: grabbing;
 }
 
-.index {
-  font-family: var(--font-display);
-  font-weight: var(--fw-bold);
-  font-size: var(--text-caption);
-  color: var(--text-secondary);
-  width: 20px;
-}
-
 .info {
   flex: 1;
   min-width: 0;
@@ -61,17 +55,141 @@
   cursor: pointer;
 }
 
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.index {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
 .name {
   display: block;
   font-size: var(--text-body-s);
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .meta {
   display: block;
   font-size: var(--text-caption);
   color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* --- Miniatura do tipo de fase -------------------------------------------- */
+
+/*
+ * Esqueleto abstrato, sem texto: numa fila de dezenas de fases o líder distingue
+ * quiz de código de dissertativa pela forma, antes de ler o nome.
+ */
+.thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-m);
+  background: var(--surface-card);
+  padding: 7px;
+  box-sizing: border-box;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.thumbBar {
+  height: 6px;
+  border-radius: 2px;
+  background: var(--ink-300);
+  flex-shrink: 0;
+}
+
+.quizBar {
+  width: 75%;
+}
+
+.codeBar {
+  width: 55%;
+}
+
+.textBar {
+  width: 70%;
+}
+
+.fillBar {
+  width: 80%;
+  height: 5px;
+}
+
+.quizGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  flex: 1;
+}
+
+.quizCell {
+  border-radius: 2px;
+  background: var(--ink-200);
+}
+
+.quizCellCorrect {
+  background: var(--blue-300);
+}
+
+.codeBlock {
+  flex: 1;
+  border-radius: 2px;
+  background: var(--ink-900);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.codeLine {
+  height: 3px;
+  width: 70%;
+  border-radius: 1px;
+  background: var(--ink-500);
+}
+
+.codeLineAccent {
+  width: 50%;
+  background: var(--blue-400);
+}
+
+.textArea {
+  flex: 1;
+  border-radius: 2px;
+  border: 1.5px dashed var(--ink-300);
+  background: var(--surface-card);
+}
+
+.fillChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.fillChip {
+  height: 9px;
+  width: 20px;
+  border-radius: 5px;
+  background: var(--ink-200);
+}
+
+.fillChipShort {
+  width: 16px;
 }
 
 .removeButton {

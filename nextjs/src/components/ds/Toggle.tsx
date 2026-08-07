@@ -33,21 +33,37 @@ export function Checkbox({ label, checked, onChange, disabled }: ToggleProps) {
   );
 }
 
-export function Switch({ label, checked, onChange, disabled }: ToggleProps) {
+interface SwitchProps extends ToggleProps {
+  /** `start` põe o texto antes do trilho, como no cabeçalho do lobby. */
+  labelPosition?: 'start' | 'end';
+}
+
+export function Switch({
+  label,
+  checked,
+  onChange,
+  disabled,
+  labelPosition = 'end',
+}: SwitchProps) {
+  const track = (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cx(styles.track, checked && styles.trackChecked)}
+    >
+      <span className={styles.thumb} />
+    </button>
+  );
+
   return (
     <label className={styles.wrapper}>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={cx(styles.track, checked && styles.trackChecked)}
-      >
-        <span className={styles.thumb} />
-      </button>
-      {label}
+      {labelPosition === 'start' && label}
+      {track}
+      {labelPosition === 'end' && label}
     </label>
   );
 }

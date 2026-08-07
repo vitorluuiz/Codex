@@ -84,9 +84,17 @@ export function PhaseQueuePanel({ roomCode, queue, onQueueChange }: PhaseQueuePa
               <span className={styles.grip} aria-hidden>
                 <Icon.Grip size={16} />
               </span>
-              <span className={styles.index}>{index + 1}</span>
-              <button type="button" className={styles.info} onClick={() => setEditing(phase)}>
-                <span className={styles.name}>{phase.name}</span>
+              <PhaseThumb kind={phase.kind} />
+              <button
+                type="button"
+                className={styles.info}
+                title="Clique para editar"
+                onClick={() => setEditing(phase)}
+              >
+                <span className={styles.nameRow}>
+                  <span className={styles.index}>{index + 1}</span>
+                  <span className={styles.name}>{phase.name}</span>
+                </span>
                 <span className={styles.meta}>{phaseMetaLabel(phase)}</span>
               </button>
               <button
@@ -112,6 +120,58 @@ export function PhaseQueuePanel({ roomCode, queue, onQueueChange }: PhaseQueuePa
         />
       )}
     </section>
+  );
+}
+
+/**
+ * Miniatura abstrata do tipo de fase, sem texto: numa fila longa o líder
+ * reconhece quiz, código, dissertativa e “completar frase” pela forma, sem
+ * precisar ler o enunciado.
+ */
+function PhaseThumb({ kind }: { kind: string }) {
+  if (kind === 'code') {
+    return (
+      <div className={styles.thumb} aria-hidden>
+        <span className={cx(styles.thumbBar, styles.codeBar)} />
+        <div className={styles.codeBlock}>
+          <span className={styles.codeLine} />
+          <span className={cx(styles.codeLine, styles.codeLineAccent)} />
+        </div>
+      </div>
+    );
+  }
+
+  if (kind === 'text') {
+    return (
+      <div className={styles.thumb} aria-hidden>
+        <span className={cx(styles.thumbBar, styles.textBar)} />
+        <span className={styles.textArea} />
+      </div>
+    );
+  }
+
+  if (kind === 'fill') {
+    return (
+      <div className={styles.thumb} aria-hidden>
+        <span className={cx(styles.thumbBar, styles.fillBar)} />
+        <div className={styles.fillChips}>
+          <span className={styles.fillChip} />
+          <span className={cx(styles.fillChip, styles.fillChipShort)} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.thumb} aria-hidden>
+      <span className={cx(styles.thumbBar, styles.quizBar)} />
+      <div className={styles.quizGrid}>
+        <span className={cx(styles.quizCell, styles.quizCellCorrect)} />
+        <span className={styles.quizCell} />
+        <span className={styles.quizCell} />
+        <span className={styles.quizCell} />
+      </div>
+    </div>
   );
 }
 

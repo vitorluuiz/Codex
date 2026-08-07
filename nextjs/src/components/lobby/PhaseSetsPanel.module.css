@@ -13,19 +13,40 @@
 .setRow {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 14px;
+  padding: 14px;
   border: none;
   border-radius: var(--radius-l);
   background: var(--surface-sunken);
-  border-left: 5px solid var(--set-color);
   cursor: pointer;
   text-align: left;
   width: 100%;
 }
 
-.setTitle {
+/*
+ * A cor do conjunto vive no ladrilho do ícone, não numa faixa na borda: é a
+ * mesma cor que marca as fases dele na fila ao lado, e aqui ela precisa de área
+ * suficiente para ser reconhecida.
+ */
+.setIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, var(--set-color) 15%, var(--surface-card));
+  color: var(--set-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.setInfo {
   flex: 1;
+  min-width: 0;
+}
+
+.setTitle {
+  display: block;
   font-family: var(--font-display);
   font-weight: var(--fw-semibold);
   font-size: var(--text-body-s);
@@ -36,8 +57,10 @@
 }
 
 .setCount {
+  display: block;
   font-size: var(--text-caption);
   color: var(--text-secondary);
+  margin-top: 2px;
 }
 
 .removeButton {
@@ -46,12 +69,16 @@
   border-radius: 50%;
   border: none;
   background: var(--surface-card);
-  color: var(--accent-danger);
+  color: var(--text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.removeButton:hover {
+  color: var(--accent-danger);
 }
 
 /* --- Seletor de conjuntos (popover) --------------------------------------- */

@@ -359,6 +359,43 @@
   gap: 8px;
 }
 
+/*
+ * Aceitar/recusar são dois botões redondos de ícone: a linha é estreita e o par
+ * ✓/✕ se lê de relance, sem duas palavras competindo com o nome de quem pediu
+ * para entrar.
+ */
+.decisionButton {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.decisionButton:not(:disabled):hover {
+  filter: brightness(0.92);
+}
+
+.decisionButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.approveButton {
+  background: var(--accent-success);
+}
+
+.rejectButton {
+  background: var(--accent-danger);
+}
+
 /* --- Popover do jogador --------------------------------------------------- */
 
 .popoverBackdrop {
