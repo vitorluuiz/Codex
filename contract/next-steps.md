@@ -3,71 +3,31 @@
 Baseado em: `contract/api-rest-contract.md`, `contract/websocket-contract.md`,
 `contract/api-implementation-status.md`, e as listas "o que falta" de
 `contract/api-init-log.md` §8, `contract/api-lobby-log.md` §12,
-`contract/websocket-implementation-log.md` §4 e `contract/api-phases-log.md` §8.
+`contract/websocket-implementation-log.md` §4, `contract/api-phases-log.md` §8 e
+`contract/api-queue-log.md` §7.
 
 Ordenado por **o que destrava mais coisa primeiro** — não pela ordem numérica do
 contrato.
 
-> **Atualização desta leva:** a **seção 5 inteira** (biblioteca de conjuntos +
-> editor) foi implementada e saiu daqui, menos a geração por IA — que ficou de
-> fora de propósito e virou o item 5. Com isso some a última dependência de dado
-> semeado por SQL: dá para criar conjunto, criar sala com ele e ver a fila, tudo
-> pela UI. O que era o item 1 desta lista há duas levas ("o maior bloco de UI
-> parado esperando API") não existe mais.
+> **Atualização desta leva:** a **seção 6 inteira** foi implementada e saiu daqui
+> (era o item 1) — `contract/api-queue-log.md`. Com ela, **as seções 2 a 6 do
+> contrato estão completas**, exceto OAuth e a geração de fase por IA. O lobby do
+> líder funciona ponta a ponta pela UI: criar conjunto, criar sala, adicionar,
+> reordenar, ajustar pontos e ver o desafio.
 >
-> **Também saiu:** o antigo item 4 (decisão de arquitetura do realtime). As três
-> decisões que ele listava foram tomadas e o serviço existe —
-> `contract/websocket-implementation-log.md`. O que sobrou dele está no item 1
-> (a revisão da fila) e na lista do fim (eventos de partida sem produtor).
+> Duas coisas que ela produziu e que mudam a lista:
+> - a conversão `DraftPhase → Phase` existe (`Services/PhaseProjection.cs`), então
+>   a seção 7 não precisa mais escrevê-la;
+> - `queue.updated` ganhou produtor e `rooms.QueueRevision` guarda a revisão, o que
+>   fecha a lacuna que `websocket-implementation-log.md` §4 registrava.
+>
+> **O próximo grande bloco são as seções 7–9** (partida, respostas, comparação),
+> que continuam fora do curto prazo pelo mesmo motivo de sempre: dependem de
+> decisões de produto sobre IA e sandbox (itens 4 e a lista do fim).
 
 ---
 
-## 1. Seção 6 — mutações da fila de fases (líder)
-
-**Por quê primeiro:** é a única seção pela metade, é a tela que o líder usa antes
-de toda partida, e **não tem mais nenhuma dependência pendente** — a leitura já
-existe, a cópia conjunto → fila já existe, e os conjuntos que ela copia agora
-nascem pela UI.
-
-**O que já está pronto e é para reusar, não reescrever:**
-- `GET /rooms/{code}/queue` (`Endpoints/RoomQueueEndpoints.cs`) e as decisões de
-  formato que ela fixou: `setId` é o id da linha da fila e não o do `PhaseSet` de
-  origem, duas listas paralelas, ordem pelo `OrderIndex` da fase. Ver
-  `api-implementation-status.md` §2.
-- `RoomQueueService.AppendSetAsync` — resolve a paleta de 8 cores sem repetir na
-  sala, o limite de 8 conjuntos (`TOO_MANY_SETS`), a ordenação contínua entre
-  conjuntos e a cópia literal do `ContentJson`. `POST /rooms/{code}/queue/sets`
-  **deve chamar esse mesmo método**: se reimplementar, a sala criada com conjunto
-  e a sala que recebeu o conjunto depois passam a divergir.
-- `RoomQueueService.GetQueueAsync(roomId, ct)` — a sobrecarga sem checagem de
-  acesso, escrita justamente para ser o corpo de resposta das mutações ("todas as
-  mutações desta seção devolvem a fila inteira recalculada" — não é REST "puro"
-  por design, é para não haver refetch por clique).
-- `Services/PhaseContent.cs` — o formato do `ContentJson`, agora que a seção 5 o
-  escreve de verdade.
-
-**O que falta:** `POST`/`DELETE`/`PATCH` de conjunto, `PATCH`/`DELETE` de fase,
-`PUT /queue/order` e o `GET /queue/phases/{phaseId}` do modal "Ver desafio".
-
-**As duas coisas que esta seção vai ter que decidir:**
-
-1. **A conversão `DraftPhase` → `Phase`.** O `GET /queue/phases/{phaseId}` é a
-   única rota da seção que devolve gabarito, e o `ContentJson` guarda a forma de
-   *autoria* (decisão da seção 5, `api-phases-log.md` §2). Alguém precisa escrever
-   a conversão: quebrar o enunciado do `fill` em `segments`, dar id a cada
-   alternativa do quiz, resolver `languages` do `code`. É a mesma conversão que a
-   seção 7 vai precisar — escreva num lugar só.
-2. **`PUT /queue/order` responde `409 QUEUE_MISMATCH`** quando a lista de ids não
-   bate com a fila atual. É o primeiro controle de concorrência otimista do
-   projeto, e o contrato não diz se a comparação é pelo conjunto de ids enviado ou
-   por um número de revisão. O `websocket-contract.md` §5 já manda `revision` no
-   `queue.updated`, mas **nada no schema guarda essa revisão hoje** — e é esta
-   seção que precisa publicar esse evento (é o único do §5 sem produtor que não
-   depende das seções 7–10).
-
----
-
-## 2. `Room.ExpiresAt` — preencher o campo que já existe
+## 1. `Room.ExpiresAt` — preencher o campo que já existe
 
 A coluna existe no schema desde a base inicial e a busca por código já respeita
 ela (`GetActiveRoomAsync` ignora sala expirada), mas nada a preenche. É pouco
@@ -86,7 +46,7 @@ mataria uma sala que ainda nem começou. A decisão continua sendo "em que momen
 
 ---
 
-## 3. Dois campos do contrato que nenhuma rota escreve
+## 2. Dois campos do contrato que nenhuma rota escreve
 
 Mesma forma de problema, duas ocorrências: o schema tem a coluna, o `GET` serve o
 valor, a UI decide coisas com ele — e **nada nunca o muda**.
@@ -108,7 +68,7 @@ juntos aqui em vez de espalhados.
 
 ---
 
-## 4. Rate limiting: IP real, e três rotas de escrita sem limite nenhum
+## 3. Rate limiting: IP real, e as rotas de escrita sem limite nenhum
 
 - `contract/api-lobby-log.md` §7 documenta que o rate limit de força bruta no
   código da sala particiona por código, não por cliente — porque toda chamada vem
@@ -117,17 +77,19 @@ juntos aqui em vez de espalhados.
   API confiar nesse header quando vier junto do `x-service-token`. **Não está
   decidido no contrato ainda** — precisa alinhamento entre quem mantém o Next e
   quem mantém a API antes de codar.
-- **`POST /rooms`, `POST /phase-sets` + `PUT /phase-sets/{setId}/draft`, e
-  `POST /realtime-ticket` não têm rate limit nenhum.** As três primeiras criam ou
-  reescrevem registro em massa (uma conta em loop enche a tabela de salas e, junto
-  com o item 2, consome o espaço de códigos de 6 dígitos permanentemente; um loop
-  no editor grava fases sem teto), e a última emite credencial. A partição natural
-  das quatro é o `userId`/sessão, que todas exigem — **não depende** da decisão de
-  IP acima.
+- **`POST /rooms`, `POST /phase-sets` + `PUT /phase-sets/{setId}/draft`,
+  `POST /realtime-ticket` e agora as mutações de `/rooms/{code}/queue/*` não têm
+  rate limit nenhum.** As primeiras criam ou reescrevem registro em massa (uma
+  conta em loop enche a tabela de salas e, junto com o item 1, consome o espaço de
+  códigos de 6 dígitos permanentemente; um loop no editor grava fases sem teto),
+  e `realtime-ticket` emite credencial. As da fila são as mais leves da lista —
+  exigem líder, então o estrago possível é na própria sala de quem chamou —, mas a
+  partição natural de todas é a mesma (`userId`/sessão, que todas exigem) e sai
+  numa leva só. **Não depende** da decisão de IP acima.
 
 ---
 
-## 5. `POST /phase-sets/phases/generate` — a última rota da seção 5
+## 4. `POST /phase-sets/phases/generate` — a última rota da seção 5
 
 Ficou de fora da leva da seção 5 de propósito: depende de escolher provedor e
 modelo de IA, decisão que ninguém tomou. O editor degrada sem ela — some o botão
@@ -149,10 +111,16 @@ Escolher provedor aqui provavelmente escolhe para as outras.
 
 Registrado aqui para não ser esquecido, mas não é a próxima coisa a fazer:
 
-- **Seções 7–9 (partida, respostas, comparação)** — maior fatia restante, mas
-  depende de decisões de produto que as seções anteriores não têm (IA para
-  corrigir `text`, sandbox de execução para `code`). Só faz sentido atacar depois
-  que as mutações da fila (item 1) existirem.
+- **Seções 7–9 (partida, respostas, comparação)** — maior fatia restante, e agora
+  a única grande. A dependência de código sumiu (a fila existe, e a conversão
+  `DraftPhase → Phase` que a seção 7 precisaria escrever já está em
+  `Services/PhaseProjection.cs`, com `includeAnswers` para a "regra de ouro"); o
+  que segura são decisões de produto que as seções anteriores não têm — IA para
+  corrigir `text`, sandbox de execução para `code`.
+  **Duas coisas a ler antes de começar:** `api-queue-log.md` §4 (o que a conversão
+  deriva com padrão e por quê, e a divergência `correctIndexes` → `correctOptionId`
+  que a correção da seção 8 **não** pode ignorar) e §5 (a guarda de `lobby` nas
+  mutações da fila, que é a seção 7 que vai fazer disparar de verdade).
   **Efeito colateral conhecido:** enquanto não existir, `matches` do
   `GET /users/{id}/profile` responde `[]` sempre — a rota está pronta, o dado é
   que não nasce.
@@ -161,6 +129,16 @@ Registrado aqui para não ser esquecido, mas não é a próxima coisa a fazer:
   transporte, canal, throttle e autorização implementados e testados no serviço de
   WS; o que falta é a rota REST que os dispare, o que é exatamente o item acima.
   Não há decisão pendente aqui, só código que depende de outro código.
+  (`queue.updated` saiu desta lista: as mutações da seção 6 o publicam, e
+  `rooms.QueueRevision` guarda o número.)
+- **O `SetPicker` do lobby manda o id errado para remover conjunto da fila.** É
+  bug de front, não de API, e por isso não foi corrigido junto:
+  `PhaseSetsPanel.tsx` chama `removeSetFromQueueAction` com o id do `PhaseSet` de
+  origem onde a rota espera o id da linha da fila (o painel ao lado usa o certo).
+  Hoje isso vira um `404 PHASE_SET_NOT_FOUND` — nada é apagado por engano —, e o
+  check "já adicionado" nunca aparece no seletor. Consertar exige decidir se o
+  seletor é *toggle* (e o payload da fila precisa expor o id de origem) ou só
+  adiciona. Detalhe em `api-queue-log.md` §7.
 - **Seção 10 (painel do líder)** — depende inteiramente da seção 7 existir
   primeiro (não há fase corrente para ter estatística de).
 - **Seção 11 (relatórios)** — o próprio contrato registra que não há tela pronta
@@ -174,12 +152,15 @@ Registrado aqui para não ser esquecido, mas não é a próxima coisa a fazer:
   hipotético: a rota que ele cachearia existe agora. Continua fora porque nenhuma
   rota do projeto tem cabeçalho de cache, e fazer só esta criaria um padrão de um
   item só.
-- **Job de limpeza de TTL** — depende do item 2 acima estar resolvido primeiro.
+- **Job de limpeza de TTL** — depende do item 1 acima estar resolvido primeiro.
 - **`400 VALIDATION_ERROR` para corpo JSON malformado** — hoje todas as rotas
   respondem `500 INTERNAL_ERROR` nesse caso (ver `api-implementation-status.md`
   §3). Não é urgente porque o front é tipado e nunca produz esse corpo, mas o
   conserto é um `IExceptionHandler` para `BadHttpRequestException`. Ganhou uma
   ocorrência nova com a seção 5: `kind` fora dos quatro valores conhecidos estoura
-  no conversor de enum, antes de qualquer validação do app.
+  no conversor de enum, antes de qualquer validação do app. A seção 6 **não**
+  acrescentou ocorrências: os ids dela trafegam como `string` no corpo justamente
+  para o erro cair na regra do app (`404`/`409` do contrato) em vez de no
+  desserializador — o que é contorno de caso a caso, não o conserto.
 - **Rota para o participante sair sozinho** — lacuna 2 do `api-lobby-log.md` §10,
   ainda de pé: só o líder remove, então quem fecha a aba ocupa vaga para sempre.

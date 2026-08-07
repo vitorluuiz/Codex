@@ -250,14 +250,17 @@ conexão viva recebendo eventos da sala").
 
 ### Os eventos de partida não têm quem os produza
 
+> **Atualizado:** `queue.updated` saiu desta lista — as mutações da seção 6 o
+> publicam (`contract/api-queue-log.md` §3). O parágrafo abaixo continua valendo
+> para os eventos de partida.
+
 `phase.started`, `phase.paused`, `phase.progress`, `phase.ended`,
 `match.finished`, `match.returned-to-lobby`, `stats.updated`,
-`submission.graded`, `match.started` e `queue.updated` estão todos no §5 do
+`submission.graded` e `match.started` estão todos no §5 do
 contrato. O serviço de WS **os transporta hoje** — canal, throttle e autorização
 estão implementados e testados para todos. O que não existe é a rota REST que os
 publica: as seções 7–10 do contrato REST não têm endpoint nenhum
-(`api-implementation-status.md` §1), e `queue.updated` depende das mutações da
-seção 6.
+(`api-implementation-status.md` §1).
 
 Quando essas rotas existirem, publicar é uma linha:
 
@@ -265,13 +268,18 @@ Quando essas rotas existirem, publicar é uma linha:
 await realtime.PublishAsync(room.Code, RealtimeChannels.Match(room.Code), new PhaseStartedEvent(...), ct);
 ```
 
-### `queue.updated` manda uma revisão que o schema não guarda
+### ~~`queue.updated` manda uma revisão que o schema não guarda~~ — resolvido
 
-O §5 manda `{ "type": "queue.updated", "revision": 7 }`. O record existe
-(`QueueUpdatedEvent`), mas **nada no schema guarda essa revisão** — é a mesma
-lacuna que `next-steps.md` §3 já registrava sobre o `409 QUEUE_MISMATCH`. As duas
-querem o mesmo número, e quem implementar a seção 6 deveria resolver as duas
-juntas, não inventar dois contadores.
+O §5 manda `{ "type": "queue.updated", "revision": 7 }`, e nada no schema guardava
+esse número. A seção 6 fechou isso com **um contador só**, como este documento
+pedia: `rooms.QueueRevision` (migration `RoomQueueRevision`), incrementado por toda
+mutação da fila e publicado no canal `room:{code}`.
+
+O que **não** foi unificado, e deliberadamente: o `409 QUEUE_MISMATCH` do
+`PUT /queue/order` continua comparando os ids enviados com os da fila, e não a
+revisão. É o que o contrato REST descreve literalmente, e é o teste que de fato
+protege o dado. A revisão é do transporte; o mismatch é da rota. Ver
+`contract/api-queue-log.md` §3.
 
 ### Reconexão não devolve `phase.started` com o estado da fase
 

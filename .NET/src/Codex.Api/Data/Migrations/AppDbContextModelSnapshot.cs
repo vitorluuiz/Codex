@@ -215,6 +215,9 @@ namespace Codex.Api.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<int>("QueueRevision")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("RequireAccount")
                         .HasColumnType("boolean");
 

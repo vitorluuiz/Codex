@@ -7,16 +7,17 @@ adicionais: `contract/api-init-log.md` (base do projeto), `contract/api-lobby-lo
 `contract/websocket-implementation-log.md` (realtime), que são os registros de
 decisão de cada leva de trabalho.
 
-**Resumo executivo:** das 14 seções do contrato REST, **as seções 2, 3, 4 e 5
-(sessão/auth + perfil, entrar em sala, lobby, conjuntos de fases) estão completas
-exceto por OAuth e pela geração de fase por IA**. A criação de sala
-(`POST /rooms`), que era o bloqueador nº 1 da lista de próximos passos, existe —
-inclusive com a cópia `PhaseSet → fila da sala` quando vem `setId`. Da seção 6,
-**a leitura da fila (`GET /rooms/{code}/queue`) existe**; as mutações, não. As
-seções 7–12 (partida, respostas, comparação, painel do líder, relatórios, landing)
-**existem só como modelo de dados** (entidades EF Core), sem endpoint próprio. O
-**realtime existe** — serviço de WebSocket em `realtime/` e publicação de eventos
-de lobby pela API —, mas só os eventos de lobby têm quem os produza (ver §6).
+**Resumo executivo:** das 14 seções do contrato REST, **as seções 2, 3, 4, 5 e 6
+(sessão/auth + perfil, entrar em sala, lobby, conjuntos de fases, fila de fases da
+sala) estão completas exceto por OAuth e pela geração de fase por IA**. Com a
+seção 6 fechada, o lobby do líder funciona ponta a ponta pela UI: criar conjunto,
+criar sala, adicionar conjunto à fila, reordenar por arrastar-e-soltar, ajustar
+pontuação e tempo, e abrir o desafio com gabarito. As seções 7–12 (partida,
+respostas, comparação, painel do líder, relatórios, landing) **existem só como
+modelo de dados** (entidades EF Core), sem endpoint próprio. O **realtime existe**
+— serviço de WebSocket em `realtime/` e publicação de eventos pela API —, e todos
+os eventos de lobby do contrato de WS têm produtor, inclusive `queue.updated`
+(ver §6); faltam os de partida.
 
 ---
 
@@ -48,8 +49,13 @@ de lobby pela API —, mas só os eventos de lobby têm quem os produza (ver §6
 | 5 | `DELETE /phase-sets/{setId}` | ✅ | idem |
 | 5 | `POST /phase-sets/phases/generate` | ❌ | exige integração de IA — nenhuma decisão tomada; o editor degrada sem o botão "Gerar com IA" |
 | 6 | `GET /rooms/{code}/queue` | ✅ | `Endpoints/RoomQueueEndpoints.cs` · `RoomQueueService.GetQueueAsync` |
-| 6 | mutações de fila (`POST`/`DELETE`/`PATCH` de conjunto, `PATCH`/`DELETE` de fase, `PUT …/order`) | ❌ | zero endpoint, **mas a cópia `PhaseSet → fila` já existe** em `RoomQueueService.AppendSetAsync` (escrita para o `setId` do `POST /rooms`), com paleta de 8 cores e `TOO_MANY_SETS` |
-| 6 | `GET /rooms/{code}/queue/phases/{phaseId}` (modal "Ver desafio") | ❌ | o payload da fila não traz enunciado nem gabarito — é esta rota que traz |
+| 6 | `POST /rooms/{code}/queue/sets` | ✅ | idem · `AddSetAsync` (chama o mesmo `AppendSetAsync` do `POST /rooms`) |
+| 6 | `DELETE /rooms/{code}/queue/sets/{setId}` | ✅ | idem · `RemoveSetAsync` |
+| 6 | `PATCH /rooms/{code}/queue/sets/{setId}` | ✅ | idem · `UpdateSetAsync` |
+| 6 | `PATCH /rooms/{code}/queue/phases/{phaseId}` | ✅ | idem · `UpdatePhaseAsync` |
+| 6 | `DELETE /rooms/{code}/queue/phases/{phaseId}` | ✅ | idem · `RemovePhaseAsync` |
+| 6 | `PUT /rooms/{code}/queue/order` | ✅ | idem · `ReorderAsync` (`409 QUEUE_MISMATCH` por comparação de ids) |
+| 6 | `GET /rooms/{code}/queue/phases/{phaseId}` (modal "Ver desafio") | ✅ | idem · `GetPhaseDetailAsync` · `Services/PhaseProjection.cs` |
 | 7 | `POST /rooms/{code}/match`, `GET /rooms/{code}/match`, `GET /matches/{id}/current-phase` | ❌ | entidade `Match` existe, zero endpoint |
 | 8 | `POST …/submissions`, `POST …/run`, `POST …/ready` | ❌ | entidade `Submission` existe, zero endpoint; `run` precisa de sandbox de execução (não decidido) |
 | 9 | `GET …/comparison`, `GET …/scoreboard/me`, `GET …/podium` | ❌ | não iniciada |
@@ -57,10 +63,10 @@ de lobby pela API —, mas só os eventos de lobby têm quem os produza (ver §6
 | 11 | Relatórios (`report`, `report/export`, `GET /jobs/{jobId}`) | ❌ | não iniciada; contrato já registra que não há tela pronta |
 | 12 | `GET /marketing/landing` | ❌ | opcional — hoje o conteúdo é local em `src/content/landing.ts` no front |
 
-**Contagem:** 20 de ~45 rotas do contrato têm endpoint no backend — 13 das seções
-2–4, as 6 da seção 5, mais o `GET` da fila (seção 6). Fora da tabela do contrato
-REST, existe também `POST /realtime-ticket` (`Endpoints/RealtimeEndpoints.cs`),
-que vem do `websocket-contract.md` §2.
+**Contagem:** 27 de ~45 rotas do contrato têm endpoint no backend — 13 das seções
+2–4, as 6 da seção 5 e as 8 da seção 6. Fora da tabela do contrato REST, existe
+também `POST /realtime-ticket` (`Endpoints/RealtimeEndpoints.cs`), que vem do
+`websocket-contract.md` §2.
 
 ---
 
@@ -131,8 +137,28 @@ Decisões que esta rota tomou e que valem para o resto da seção 6:
   quem comparar payload com o exemplo do contrato vai ver a diferença.
 
 `RoomQueueService.GetQueueAsync` tem uma sobrecarga por `roomId` **sem checagem
-de acesso**, para as mutações que faltam: "todas as mutações desta seção
-devolvem a fila inteira recalculada" e elas já terão resolvido a sala.
+de acesso**, que é o corpo de resposta de todas as mutações: "todas as mutações
+desta seção devolvem a fila inteira recalculada", e elas já resolveram a sala.
+
+### ~~As mutações da fila não existem~~ — resolvido
+
+A seção 6 está completa (`contract/api-queue-log.md`). O que mais afeta quem for
+escrever as seções 7–8:
+
+- **A conversão `DraftPhase → Phase` existe**, em `Services/PhaseProjection.cs`, e
+  é a mesma que a seção 7 vai usar — `includeAnswers` decide se o gabarito sai, e é
+  parâmetro obrigatório, para ninguém derivar uma fase sem responder a pergunta da
+  "regra de ouro".
+- **Ela deriva com padrão o que o editor não pergunta** (`difficulty`, `tags`,
+  `examples`, `fileName`, `languages` de uma fase `code`) — a tabela está em
+  `api-queue-log.md` §4, e cada padrão está travado por teste.
+- **`correctIndexes` (plural) vira `correctOptionId` (singular)** e perde as
+  respostas certas além da primeira. A correção da seção 8 tem de ler
+  `correctIndexes` do `ContentJson`, não o campo do payload.
+- **Toda mutação exige `room.Status == lobby`** (`409 MATCH_ALREADY_STARTED`).
+  Hoje nada tira a sala do lobby; é a seção 7 que vai fazer essa guarda disparar.
+- **`rooms.QueueRevision`** (migration `RoomQueueRevision`) é o número do
+  `queue.updated`; não é trava de concorrência (ver §6 e `api-queue-log.md` §3).
 
 ### ~~Front construído esperando por seção 5 (editor de conjuntos) sem backend~~ — resolvido
 
@@ -355,10 +381,13 @@ Esta seção dizia "arquiteturalmente ausente" até a leva registrada em
   `stats.updated`, `submission.graded`, `match.finished` etc. têm transporte,
   canal, throttle e autorização implementados e testados — não têm rota REST que
   os dispare, porque as seções 7–10 não existem.
-- **`queue.updated` continua sem publicador**, e continua sendo assunto das
-  mutações da fila (seção 6). Ele manda só o número da revisão ("quem quiser
-  detalhe refaz `GET`"); o `GET` que ele manda refazer existe, e **nada no schema
-  guarda essa revisão hoje**.
+- **`queue.updated` ganhou publicador.** Toda mutação da seção 6 o publica no
+  canal `room:{code}` depois do `SaveChanges`, com `rooms.QueueRevision` — coluna
+  nova, que sobe em toda mutação (inclusive nas que não mudam a quantidade de
+  fases, senão o cliente descartaria mudança real achando que já a tinha visto).
+  Ele manda só o número ("quem quiser detalhe refaz `GET`"), e quem ganha com isso
+  é a segunda aba do líder. Com isso, **todos os eventos de lobby do
+  `websocket-contract.md` §5 têm produtor**; faltam só os de partida.
 - As rotas da seção 5 **não acrescentam ponto de publicação**, e está certo:
   `websocket-contract.md` §5 não tem evento de biblioteca de conjuntos — o editor
   é tela de uma pessoa só.
@@ -369,15 +398,30 @@ Esta seção dizia "arquiteturalmente ausente" até a leva registrada em
 
 ```bash
 dotnet ef database update --project src/Codex.Api --startup-project src/Codex.Api
-dotnet test          # 183 testes, sem precisar de Postgres
+dotnet test          # 233 testes, sem precisar de Postgres
 dotnet run --project src/Codex.Api
 ```
 
-Os 183 testes rodam em EF InMemory. **O que eles não cobrem**, e por isso foi
+Os 233 testes rodam em EF InMemory. **O que eles não cobrem**, e por isso foi
 verificado à mão contra um Postgres 18 local: os índices únicos (InMemory não tem
 índices), a migration `UserAudience` aplicada sobre dados existentes, a cópia
 `PhaseSet → fila` gravando de fato as duas tabelas, e o cascade
 `phase_sets → phases` do `DELETE /phase-sets/{setId}`.
+
+⚠️ **Verificação parcial da leva da seção 6.** A migration `RoomQueueRevision` foi
+aplicada a um Postgres local (`ALTER TABLE rooms ADD "QueueRevision" integer NOT
+NULL DEFAULT 0`) e `dotnet ef migrations list` não acusa mais pendência. O que
+**ainda não foi exercido por HTTP** são as rotas novas; os 50 testes delas rodam em
+InMemory. Dois pontos que só o Postgres decide de fato continuam sem confirmação:
+o cascade `room_queue_sets → room_queue_phases` no `DELETE` de conjunto (os testes
+removem as fases explicitamente, justamente porque InMemory não cascateia) e a
+renumeração de `OrderIndex` sob o índice `(RoomId, OrderIndex)`.
+
+> **Lição de operação, custou um `500`:** gerar a migration não a aplica. A leva da
+> seção 6 acrescentou a primeira coluna nova desde `UserAudience`, e o
+> `POST /rooms` — que nem é da seção 6 — quebrou com `42703: coluna "QueueRevision"
+> não existe` assim que a API subiu com o código novo sobre o banco antigo. Toda
+> leva com migration precisa do `dotnet ef database update` antes de rodar.
 
 Rodado ponta a ponta em sessões anteriores: signup → `GET /session` com
 `audience` → `PATCH /users/me` → `POST /rooms` (com e sem `setId`, e sem corpo

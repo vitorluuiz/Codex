@@ -31,7 +31,7 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
     public const int MaxResults = 50;
 
     /// <summary>Igual ao HasMaxLength(160) de phase_sets.Title e phases.Name — cortar aqui devolve VALIDATION_ERROR em vez de estourar no INSERT.</summary>
-    private const int MaxTitleLength = 160;
+    private const int MaxTitleLength = PhaseLimits.MaxNameLength;
 
     /// <summary>
     /// Nao vem do contrato: e sanidade. Um conjunto e o roteiro de uma aula, e a fila da sala
@@ -43,15 +43,6 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
     /// <summary>"options entre 2 e 6" (secao 5), repetido aqui porque a UI impedir nao e garantia.</summary>
     private const int MinOptions = 2;
     private const int MaxOptions = 6;
-
-    private const int MaxBasePoints = 10_000;
-    private const int MinTimeSeconds = 5;
-    private const int MaxTimeSeconds = 3_600;
-    private const decimal MinPointsMultiplier = 0.1m;
-    private const decimal MaxPointsMultiplier = 10m;
-
-    /// <summary>Cabe no HasPrecision(5,2) da coluna; alem disso o front mostra "x1,5", nao "x1,4999".</summary>
-    private const int PointsMultiplierDecimals = 2;
 
     /// <summary>
     /// GET /phase-sets?scope=owned|community&amp;q= — o seletor "Escolher conjunto de fases" e a
@@ -340,7 +331,7 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
         phase.Kind = incoming.Kind;
         phase.Name = incoming.Name!.Trim();
         phase.BasePoints = incoming.BasePoints;
-        phase.PointsMultiplier = decimal.Round(incoming.PointsMultiplier, PointsMultiplierDecimals);
+        phase.PointsMultiplier = PhaseLimits.RoundMultiplier(incoming.PointsMultiplier);
         phase.TimeSeconds = incoming.TimeSeconds;
         // "A ordem das fases e a ordem do array": a posicao no corpo e a unica fonte, e por isso
         // nao existe campo de ordem no DraftPhase para sair de sincronia com o rail.
@@ -397,19 +388,19 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
             throw Validation($"phases[{index}].name deve ter entre 1 e {MaxTitleLength} caracteres.");
         }
 
-        if (phase.BasePoints is < 0 or > MaxBasePoints)
+        if (phase.BasePoints is < 0 or > PhaseLimits.MaxBasePoints)
         {
-            throw Validation($"phases[{index}].basePoints deve estar entre 0 e {MaxBasePoints}.");
+            throw Validation($"phases[{index}].basePoints deve estar entre 0 e {PhaseLimits.MaxBasePoints}.");
         }
 
-        if (phase.TimeSeconds is < MinTimeSeconds or > MaxTimeSeconds)
+        if (phase.TimeSeconds is < PhaseLimits.MinTimeSeconds or > PhaseLimits.MaxTimeSeconds)
         {
-            throw Validation($"phases[{index}].timeSeconds deve estar entre {MinTimeSeconds} e {MaxTimeSeconds}.");
+            throw Validation($"phases[{index}].timeSeconds deve estar entre {PhaseLimits.MinTimeSeconds} e {PhaseLimits.MaxTimeSeconds}.");
         }
 
-        if (phase.PointsMultiplier < MinPointsMultiplier || phase.PointsMultiplier > MaxPointsMultiplier)
+        if (phase.PointsMultiplier < PhaseLimits.MinPointsMultiplier || phase.PointsMultiplier > PhaseLimits.MaxPointsMultiplier)
         {
-            throw Validation($"phases[{index}].pointsMultiplier deve estar entre {MinPointsMultiplier} e {MaxPointsMultiplier}.");
+            throw Validation($"phases[{index}].pointsMultiplier deve estar entre {PhaseLimits.MinPointsMultiplier} e {PhaseLimits.MaxPointsMultiplier}.");
         }
 
         switch (phase.Kind)

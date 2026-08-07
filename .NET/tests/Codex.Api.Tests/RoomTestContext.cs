@@ -49,7 +49,7 @@ public class RoomTestContext
         var configuration = new ConfigurationBuilder().Build();
 
         var access = new RoomAccessService(Db);
-        Queue = new RoomQueueService(Db, access);
+        Queue = new RoomQueueService(Db, access, Realtime);
         Rooms = new RoomService(Db, access, Queue, Realtime);
         Participants = new ParticipantService(Db, access, Rooms, Tokens, Realtime, configuration);
         Labels = new LabelFormatter(configuration);
@@ -122,6 +122,31 @@ public class RoomTestContext
                 ContentJson = """{"question":"?","options":[],"correctIndexes":[0]}""",
             });
         }
+
+        Db.SaveChanges();
+        return set;
+    }
+
+    /// <summary>
+    /// Conjunto de uma fase so, com <c>kind</c> e conteudo escolhidos — para as rotas que de fato
+    /// leem o <c>ContentJson</c> (o detalhe da fase da secao 6 e, depois, a partida da secao 7). A
+    /// sobrecarga acima continua servindo quem so precisa de "N fases quaisquer".
+    /// </summary>
+    public PhaseSet AddPhaseSet(User owner, string title, PhaseKind kind, PhaseContent content, string phaseName = "Fase 1")
+    {
+        var set = new PhaseSet { Title = title, OwnerId = owner.Id, UpdatedAt = DateTimeOffset.UtcNow };
+        Db.PhaseSets.Add(set);
+
+        Db.Phases.Add(new Phase
+        {
+            PhaseSetId = set.Id,
+            Kind = kind,
+            Name = phaseName,
+            BasePoints = 100,
+            TimeSeconds = 45,
+            OrderIndex = 0,
+            ContentJson = content.ToJson(),
+        });
 
         Db.SaveChanges();
         return set;

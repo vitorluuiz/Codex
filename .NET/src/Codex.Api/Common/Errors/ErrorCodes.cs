@@ -39,8 +39,22 @@ public static class ErrorCodes
     /// <summary>GET /users/{userId}/profile com um id que nao existe. O front so monta esse link a partir de um perfil que ja viu, entao e bug de integracao.</summary>
     public const string UserNotFound = "USER_NOT_FOUND";
 
-    /// <summary>POST /rooms com um setId inexistente, apagado, ou privado de outra pessoa.</summary>
+    /// <summary>
+    /// POST /rooms com um setId inexistente, apagado, ou privado de outra pessoa. Serve tambem as
+    /// rotas /queue/sets/{setId} da secao 6, onde o id e o da linha da fila: para quem chamou, um
+    /// id que nao resolve e um conjunto que nao esta nesta fila.
+    /// </summary>
     public const string PhaseSetNotFound = "PHASE_SET_NOT_FOUND";
+
+    /// <summary>Rotas /queue/phases/{phaseId} da secao 6 com um id que nao esta na fila desta sala. Como o PARTICIPANT_NOT_FOUND, e bug de integracao: o front so monta esse link a partir da fila que acabou de ler.</summary>
+    public const string PhaseNotFound = "PHASE_NOT_FOUND";
+
+    /// <summary>
+    /// Mutacao da fila (secao 6) numa sala que ja saiu do lobby. Fora da tabela da secao 1 porque o
+    /// contrato nao decide se a fila trava durante a partida — a decisao esta em
+    /// contract/api-queue-log.md §5, e hoje nada tira a sala de "lobby" para produzir este erro.
+    /// </summary>
+    public const string MatchAlreadyStarted = "MATCH_ALREADY_STARTED";
 
     /// <summary>
     /// Token de sessao (ou ticket de realtime) ausente, invalido, expirado ou ja consumido. E o
