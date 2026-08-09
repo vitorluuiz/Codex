@@ -60,11 +60,11 @@ número do servidor até o CSS sem gerar uma classe por valor possível.
 
 Não há mock em lugar nenhum. O que existe é:
 
-- **[`docs/api-first-contract.md`](docs/api-first-contract.md)** — todas as rotas necessárias,
+- **[`contracts/api/api-rest-contract.md`](../contracts/api/api-rest-contract.md)** — todas as rotas necessárias,
   derivadas do que cada tela precisa desenhar, com formatos de request/response,
   códigos de erro, regras de autorização, fórmula de pontuação e a modelagem
-  sugerida no Firestore.
-- **[`docs/websocket-first-contract.md`](docs/websocket-first-contract.md)** — arquitetura do servidor de tempo
+  sugerida no banco.
+- **[`contracts/realtime/websocket-contract.md`](../contracts/realtime/websocket-contract.md)** — arquitetura do servidor de tempo
   real: protocolo completo, canais, throttling, sincronização de cronômetro,
   reconexão e escala.
 - **`src/lib/types.ts`** — o mesmo contrato em TypeScript.
@@ -143,10 +143,12 @@ src/
 
 ## Backend esperado
 
-Este repositório é só o front. Ele espera dois serviços:
+Esta pasta é só o front. Ela espera dois serviços, que vivem no mesmo repositório
+(`.NET/` e `realtime/` — como subir tudo está no [README da raiz](../README.md)):
 
-1. **API REST** — consolida os dados e fala com o banco (Firestore ou compatível).
-   Contrato completo em `docs/api-first-contract.md`.
+1. **API REST** — consolida os dados e fala com o banco (PostgreSQL).
+   Contrato completo em [`contracts/api/api-rest-contract.md`](../contracts/api/api-rest-contract.md).
 2. **Servidor de WebSocket** — transporta as mudanças em tempo real. Ele não é
    dono de estado: toda mutação passa pela API, que grava e publica; o WS só faz
-   fan-out. O porquê dessa separação está em `docs/websocket-first-contract.md`.
+   fan-out. O porquê dessa separação está em
+   [`contracts/realtime/websocket-contract.md`](../contracts/realtime/websocket-contract.md).

@@ -41,7 +41,7 @@ export default async function MatchPage({ params }: PageProps) {
           hint="API_BASE_URL / GET /rooms/{code}/match"
         >
           A interface está pronta, mas a API da partida ainda não foi configurada. Os contratos
-          esperados estão em `docs/api-first-contract.md`.
+          esperados estão em `contracts/api/api-rest-contract.md`.
         </StateMessage>
       );
     }

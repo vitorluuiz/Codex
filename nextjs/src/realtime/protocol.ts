@@ -1,9 +1,9 @@
 /**
  * Contrato do WebSocket, compartilhado entre browser e servidor de tempo real.
- * `docs/websocket-first-contract.md` descreve o mesmo protocolo em prosa.
+ * `contracts/realtime/websocket-contract.md` descreve o mesmo protocolo em prosa.
  *
  * Regra que vale para tudo aqui: o servidor de WebSocket **transporta** estado,
- * não é dono dele. Toda mutação passa pela API REST (que grava no Firestore); a
+ * não é dono dele. Toda mutação passa pela API REST (que grava no PostgreSQL); a
  * API publica o evento e o servidor de WS faz o fan-out. Assim o cliente nunca
  * precisa confiar em outro cliente.
  */

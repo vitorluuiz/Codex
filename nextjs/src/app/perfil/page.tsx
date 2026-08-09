@@ -29,7 +29,7 @@ export default async function MyProfilePage() {
         hint="API_BASE_URL / GET /users/me/profile"
       >
         A tela está pronta, mas a API que guarda conjuntos e histórico de partidas ainda não
-        respondeu. Veja `docs/api-first-contract.md` para o contrato esperado.
+        respondeu. Veja `contracts/api/api-rest-contract.md` para o contrato esperado.
       </StateMessage>
     );
   }

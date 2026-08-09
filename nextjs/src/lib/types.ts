@@ -1,8 +1,8 @@
 /**
  * Modelo de domínio do Codex.
  *
- * Este arquivo é o contrato: `docs/api-first-contract.md` e
- * `docs/websocket-first-contract.md` descrevem exatamente estes formatos. Nada
+ * Este arquivo é o contrato: `contracts/api/api-rest-contract.md` e
+ * `contracts/realtime/websocket-contract.md` descrevem exatamente estes formatos. Nada
  * aqui é dado de exemplo — são só os tipos que a API precisa devolver para a
  * interface conseguir se montar.
  */

@@ -30,7 +30,7 @@ export default async function EditPhaseSetPage({ params }: PageProps) {
         hint={`API_BASE_URL / GET /phase-sets/${setId}/draft`}
       >
         O editor está pronto, mas a API que guarda os conjuntos ainda não respondeu. Veja
-        `docs/api-first-contract.md` para o contrato esperado.
+        `contracts/api/api-rest-contract.md` para o contrato esperado.
       </StateMessage>
     );
   }
