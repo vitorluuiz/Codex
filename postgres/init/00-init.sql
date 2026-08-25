@@ -1,0 +1,4 @@
+-- Roda apenas na primeira inicializacao (volume de dados vazio).
+-- POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD (definidos via env) ja criam
+-- o banco e o role principais; este arquivo existe como ponto de extensao
+-- caso seja preciso criar schemas/extensions adicionais antes das migrations do EF Core.

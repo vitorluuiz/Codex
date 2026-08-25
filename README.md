@@ -4,10 +4,11 @@ Plataforma de desafios gamificados para estudo, ensino e seleção. Este reposit
 contém o **MVP completo**: os três serviços que, juntos, levam uma turma do lobby
 ao pódio.
 
-Este README é o guia para colocar o MVP de pé do zero. Cada serviço tem o seu
-próprio README com as decisões de arquitetura ([`nextjs/README.md`](nextjs/README.md),
-[`realtime/README.md`](realtime/README.md)); os contratos de API e de WebSocket
-estão em [`contracts/`](contracts/).
+Este README é o guia para colocar o MVP de pé do zero, rodando cada serviço
+nativamente. Para subir tudo via Docker Compose, veja [`DOCKER.md`](DOCKER.md).
+Cada serviço tem o seu próprio README com as decisões de arquitetura
+([`nextjs/README.md`](nextjs/README.md), [`realtime/README.md`](realtime/README.md));
+os contratos de API e de WebSocket estão em [`contracts/`](contracts/).
 
 ---
 

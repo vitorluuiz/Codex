@@ -1,0 +1,12 @@
+node_modules
+.next
+dist
+out
+build
+.env
+.env.local
+.env*.local
+*.tsbuildinfo
+.git
+.claude
+README.md
