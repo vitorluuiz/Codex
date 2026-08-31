@@ -101,26 +101,29 @@ function PricingTableRow({ row, zebra }: { row: PricingRow; zebra: boolean }) {
 export default function LandingPage() {
   return (
     <main className={styles.page}>
-      <header className={cx(styles.shell, styles.nav)}>
-        <div className={styles.brand}>Codex</div>
-        <nav className={styles.navLinks} aria-label="Seções da página">
-          <a className={styles.navLink} href="#casos">
-            Casos de uso
-          </a>
-          <a className={styles.navLink} href="#recursos">
-            Recursos
-          </a>
-          <a className={styles.navLink} href="#precos">
-            Preços
-          </a>
-        </nav>
-        <div className={styles.navActions}>
-          <Link href="/entrar">
-            <Button variant="ghost">Entrar</Button>
-          </Link>
-          <Link href="/entrar?modo=criar">
-            <Button>Começar gratuitamente</Button>
-          </Link>
+      <header className={cx(styles.nav)}>
+        <div className={cx(styles.shell, styles.navInner)}>
+
+          <div className={styles.brand}>Codex</div>
+          <nav className={styles.navLinks} aria-label="Seções da página">
+            <a className={styles.navLink} href="#casos">
+              Casos de uso
+            </a>
+            <a className={styles.navLink} href="#recursos">
+              Recursos
+            </a>
+            <a className={styles.navLink} href="#precos">
+              Preços
+            </a>
+          </nav>
+          <div className={styles.navActions}>
+            <Link href="/entrar">
+              <Button variant="ghost">Entrar</Button>
+            </Link>
+            <Link href="/entrar?modo=criar">
+              <Button>Começar gratuitamente</Button>
+            </Link>
+          </div>
         </div>
       </header>
 

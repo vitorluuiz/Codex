@@ -15,13 +15,16 @@
   position: sticky;
   top: 0;
   z-index: 30;
+  background: var(--surface-page);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.navInner {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
   padding-block: 18px;
-  background: var(--surface-page);
-  border-bottom: 1px solid var(--border-subtle);
 }
 
 .brand {
