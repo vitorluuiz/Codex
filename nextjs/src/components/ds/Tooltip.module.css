@@ -5,7 +5,7 @@
 
 .bubble {
   position: absolute;
-  bottom: 120%;
+  top: 120%;
   left: 50%;
   transform: translateX(-50%);
   background: var(--ink-900);
@@ -14,6 +14,7 @@
   padding: 6px 10px;
   border-radius: var(--radius-s);
   max-width: 260px;
+  width: 120%;
   text-align: center;
   font-family: var(--font-body);
   box-shadow: var(--shadow-m);
