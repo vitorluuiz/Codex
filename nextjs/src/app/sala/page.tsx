@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 import { JoinRoomFlow } from '@/components/join/JoinRoomFlow';
 import { LeftRoomNotice } from '@/components/room/LeftRoomNotice';
@@ -36,7 +37,9 @@ export default async function JoinRoomPage({ searchParams }: PageProps) {
   return (
     <main className={styles.page}>
       <div className={styles.card}>
-        <div className={styles.brand}>Codex</div>
+        <Link href="/" className={styles.brand}>
+          Codex
+        </Link>
         <LeftRoomNotice reason={saida} />
         <ResumeRoomPanel rooms={activeRooms} />
         <JoinRoomFlow

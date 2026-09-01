@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { Avatar } from '@/components/avatar/Avatar';
 import { Icon } from '@/components/icons/Icons';
 import { cx } from '@/lib/cx';
@@ -26,7 +28,9 @@ interface ProfileSidebarProps {
 export function ProfileSidebar({ user, audienceLabel, onSignOut }: ProfileSidebarProps) {
   return (
     <nav className={styles.sidebar} aria-label="Navegação da conta">
-      <span className={styles.brand}>Codex</span>
+      <Link href="/" className={styles.brand}>
+        Codex
+      </Link>
 
       <ul className={styles.nav}>
         <li>

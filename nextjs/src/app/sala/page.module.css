@@ -19,11 +19,15 @@
   box-shadow: var(--shadow-m);
 }
 
-.brand {
+.brand,
+.brand:hover {
+  display: block;
   font-family: var(--font-display);
   font-weight: var(--fw-bold);
   font-size: 18px;
   color: var(--text-primary);
   text-align: center;
+  text-decoration: none;
+  cursor: pointer;
   margin-bottom: 24px;
 }

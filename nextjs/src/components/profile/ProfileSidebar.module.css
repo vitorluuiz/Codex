@@ -10,12 +10,16 @@
   height: 100vh;
 }
 
-.brand {
+.brand,
+.brand:hover {
+  display: inline-block;
   font-family: var(--font-display);
   font-weight: var(--fw-bold);
   font-size: 22px;
   color: var(--text-primary);
   padding: 0 var(--space-2);
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .nav {
