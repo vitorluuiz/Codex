@@ -1,0 +1,11 @@
+playcodex.com.br {
+    reverse_proxy web:3000
+}
+
+api.playcodex.com.br {
+    reverse_proxy api:8080
+}
+
+realtime.playcodex.com.br {
+    reverse_proxy realtime:4001
+}
