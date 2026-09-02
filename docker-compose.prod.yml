@@ -1,0 +1,103 @@
+services:
+  postgres:
+    build: ./postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - codex
+
+  redis:
+    build: ./redis
+    restart: unless-stopped
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--requirepass", "${REDIS_PASSWORD}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - codex
+
+  api:
+    image: ghcr.io/vitorluuiz/codex-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__Default: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      CodexApi__ServiceToken: ${API_SERVICE_TOKEN}
+      CodexApi__Realtime__RedisConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
+    networks:
+      - codex
+
+  realtime:
+    image: ghcr.io/vitorluuiz/codex-realtime:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - api
+      - redis
+    environment:
+      PORT: 4001
+      REALTIME_HOST: 0.0.0.0
+      REALTIME_PATH: /realtime
+      API_BASE_URL: http://api:8080
+      API_SERVICE_TOKEN: ${API_SERVICE_TOKEN}
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-codex_session}
+      REALTIME_ALLOWED_ORIGINS: ${REALTIME_ALLOWED_ORIGINS}
+    networks:
+      - codex
+
+  web:
+    image: ghcr.io/vitorluuiz/codex-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - api
+      - realtime
+    environment:
+      API_BASE_URL: http://api:8080
+      API_SERVICE_TOKEN: ${API_SERVICE_TOKEN}
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-codex_session}
+    networks:
+      - codex
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+      - api
+      - realtime
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - codex
+
+networks:
+  codex:
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
