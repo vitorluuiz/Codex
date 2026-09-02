@@ -35,11 +35,15 @@
   gap: 14px;
 }
 
-.brand {
+.brand,
+.brand:hover {
+  display: inline-block;
   font-family: var(--font-display);
   font-weight: var(--fw-bold);
   font-size: 20px;
   color: var(--text-primary);
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .leaderNote {

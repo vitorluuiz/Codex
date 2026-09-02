@@ -60,7 +60,7 @@ export async function loginAction(
   } catch (error) {
     return { error: describe(error) };
   }
-  redirect('/sala');
+  redirect('/perfil');
 }
 
 /** `POST /auth/signup` */
@@ -82,7 +82,7 @@ export async function signupAction(
   } catch (error) {
     return { error: describe(error) };
   }
-  redirect('/sala');
+  redirect('/perfil');
 }
 
 /**

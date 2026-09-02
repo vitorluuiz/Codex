@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
 
 import { AuthPanel } from '@/components/auth/AuthPanel';
 import { ImageSlot } from '@/components/media/ImageSlot';
+import { getSession } from '@/lib/api/session';
 import styles from './page.module.css';
 
 export const metadata: Metadata = {
@@ -17,13 +20,17 @@ interface PageProps {
  * Toda a interação (troca de aba, validação, submit) vive em `<AuthPanel>`.
  */
 export default async function AuthPage({ searchParams }: PageProps) {
-  const { modo } = await searchParams;
+  const [{ modo }, session] = await Promise.all([searchParams, getSession()]);
+  if (session.user) redirect('/perfil');
+
   const initialMode = modo === 'criar' ? 'signup' : 'login';
 
   return (
     <main className={styles.page}>
       <aside className={styles.aside}>
-        <div className={styles.brand}>Codex</div>
+        <Link href="/" className={styles.brand}>
+          Codex
+        </Link>
         <div>
           <ImageSlot
             placeholder="Ilustração: foguete, estrelas, confete"

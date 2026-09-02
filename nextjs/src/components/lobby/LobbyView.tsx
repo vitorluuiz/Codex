@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useCallback, useMemo, useState, useTransition } from 'react';
 
 import { Avatar } from '@/components/avatar/Avatar';
@@ -225,7 +226,9 @@ function LobbyContent({
       <div className={styles.shell}>
         <header className={styles.header}>
           <div className={styles.headerLeft}>
-            <span className={styles.brand}>Codex</span>
+            <Link href="/" className={styles.brand}>
+              Codex
+            </Link>
             {!isLeader && (
               <span className={styles.leaderNote}>
                 <Icon.Crown size={16} />

@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 
-import { Button, Toast, ToastViewport } from '@/components/ds';
+import { Button, Toast, ToastViewport, Tooltip } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
 import { savePhaseSetAction } from '@/lib/actions/phaseSets';
 import { cssVars } from '@/lib/cssVars';
@@ -30,6 +30,7 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [nameHighlight, setNameHighlight] = useState(false);
 
   const isNew = initialDraft.id === null;
   const active = phases.find((phase) => phase.id === activeId) ?? null;
@@ -96,7 +97,8 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
     });
   }
 
-  const saveDisabled = !title.trim() || phases.length === 0;
+  const nameMissing = !title.trim();
+  const saveDisabled = nameMissing || phases.length === 0;
 
   return (
     <div className={styles.layout}>
@@ -125,7 +127,7 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
             <div className={styles.titleField}>
               <span className={styles.mode}>{isNew ? 'Novo conjunto' : 'Editando conjunto'}</span>
               <input
-                className={styles.titleInput}
+                className={cx(styles.titleInput, nameHighlight && styles.titleInputShake)}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="Nome do conjunto"
@@ -138,9 +140,18 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
             <Button variant="secondary" onClick={() => router.push('/perfil')}>
               Cancelar
             </Button>
-            <Button onClick={save} disabled={saveDisabled}>
+            {saveDisabled ? <span
+              onMouseEnter={() => nameMissing && setNameHighlight(true)}
+              onMouseLeave={() => setNameHighlight(false)}
+            >
+              <Tooltip label={nameMissing ? 'O conjunto precisa ter um nome para ser salvo.' : 'Adicione ao menos um desafio para salvar o conjunto.'}>
+                <Button onClick={save} disabled={saveDisabled}>
+                  Salvar conjunto
+                </Button>
+              </Tooltip>
+            </span> : <Button onClick={save}>
               Salvar conjunto
-            </Button>
+            </Button>}
           </div>
         </header>
 
