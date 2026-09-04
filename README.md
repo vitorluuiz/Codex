@@ -14,10 +14,10 @@ os contratos de API e de WebSocket estão em [`contracts/`](contracts/).
 
 ## O que o MVP entrega
 
-Uma aula inteira de **quiz** e **completar-frase** roda ponta a ponta pela
-interface: criar conjunto de fases → criar sala → aluno entra pelo código → líder
-aprova → iniciar partida → responder → feedback → comparação com a turma → pódio →
-voltar ao lobby para a próxima partida. Cadastro, login, perfil de líder,
+Uma aula inteira de **Desafios de conhecimento** no formato de fases, roda ponta a ponta pela
+interface: criar conjunto de fases → iniciar sala → participante entra pelo código → líder aceita
+ entrada de participantes → inicia partida → participantes interagem com o desafio da fase → feedback da interação → comparação com a turma → pódio →
+voltar ao lobby para uma outra próxima partida. Cadastro, login, perfil de líder,
 histórico de partidas, fila de conjuntos da sala e retomada de sala ativa também
 estão dentro do MVP.
 
@@ -39,21 +39,7 @@ O estado detalhado, rota por rota, está em
 
 ## Arquitetura
 
-```
-                      ┌──────────────┐
-   HTTP (mutação)     │              │  grava
-Next.js ────────────▶ │   API .NET   │ ────────▶ PostgreSQL
-(servidor)            │    :5282     │
-                      └──────┬───────┘
-                             │ publica em codex:rt:room:{code}
-                             ▼  (Redis Pub/Sub)
-                      ┌──────────────┐
-   WebSocket          │   realtime   │ ── resolve identidade/papel ──▶ API .NET
-Browser ◀──────────── │    :4001     │    (POST /internal/realtime/resolve)
-      (só leitura)    └──────────────┘
-
-Browser ──── HTTP ───▶ Next.js :3000
-```
+![Diagrama de infraestrutura utilizada no projeto](./docs/Infraestrutura_Codex.jpg)
 
 Três regras que explicam a maior parte da configuração abaixo:
 
@@ -244,27 +230,7 @@ A referência OpenAPI da API fica em `http://localhost:5282/openapi/v1.json` (s�
 
 ---
 
-## Estrutura do repositório
 
-```
-.NET/                        API REST (fonte da verdade: grava e publica)
-├── src/Codex.Api/
-│   ├── Endpoints/           rotas (Minimal API)
-│   ├── Services/            regras de domínio; Services/Realtime/ publica no Redis
-│   ├── Data/                AppDbContext, configurations e migrations do EF Core
-│   ├── Domain/              entidades
-│   └── Common/              auth de sessão, service token, erros, rate limiting, JSON
-└── tests/Codex.Api.Tests/   xUnit
-
-realtime/                    servidor de WebSocket (só fan-out, sem banco)
-nextjs/                      front-end (App Router, RSC)
-contracts/
-├── api/                     contrato REST + logs de decisão de cada leva + status
-└── realtime/                contrato do WebSocket + log de implementação
-startup.project.bat          sobe os três serviços
-```
-
----
 
 ## Quando não funcionar
 
