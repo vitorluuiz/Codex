@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,6 +62,8 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 
+app.UseHttpMetrics();
+
 // x-service-token roda antes de tudo: nenhuma rota (exceto /health) atende chamada que nao
 // venha do servidor do Next (api-rest.md secao 1).
 app.UseMiddleware<ServiceTokenMiddleware>();
@@ -83,6 +86,7 @@ app.MapRoomQueueEndpoints();
 app.MapPhaseSetEndpoints();
 app.MapMatchEndpoints();
 app.MapRealtimeEndpoints();
+app.MapMetrics();
 
 if (app.Environment.IsDevelopment())
 {

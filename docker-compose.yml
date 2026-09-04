@@ -97,8 +97,39 @@ services:
     networks:
       - codex
 
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    restart: unless-stopped
+    depends_on:
+      - api
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - codex
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - codex
+
 networks:
   codex:
 
 volumes:
   postgres_data:
+  prometheus_data:
+  grafana_data:

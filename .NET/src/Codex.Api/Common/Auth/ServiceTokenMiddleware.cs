@@ -7,14 +7,15 @@ namespace Codex.Api.Common.Auth;
 /// <summary>
 /// api-rest.md secao 1: "x-service-token prova que a chamada veio do servidor do Next, nao de
 /// um cliente". Roda antes da autenticacao de sessao e recusa qualquer chamada sem o segredo
-/// compartilhado, exceto /health (usado por infra/orquestrador, sem contexto de sessao).
+/// compartilhado, exceto /health e /metrics (usados por infra/orquestrador e Prometheus,
+/// sem contexto de sessao).
 /// Falha fechado se o segredo nao estiver configurado — preferimos quebrar em dev sem
 /// user-secrets configurado a rodar em prod aceitando qualquer chamada.
 /// </summary>
 public class ServiceTokenMiddleware(RequestDelegate next, IConfiguration configuration, ILogger<ServiceTokenMiddleware> logger)
 {
     private const string HeaderName = "x-service-token";
-    private static readonly string[] ExemptPaths = ["/health"];
+    private static readonly string[] ExemptPaths = ["/health", "/metrics"];
 
     public async Task InvokeAsync(HttpContext context)
     {
