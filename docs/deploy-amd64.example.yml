@@ -1,0 +1,76 @@
+# Referência: variante amd64 do .github/workflows/deploy.yml
+#
+# Este arquivo NAO e executado (fica fora de .github/workflows/, de proposito,
+# pra nao ser pego pelo GitHub Actions). Serve so de documentacao: e a versao
+# do workflow usada quando a VM de destino e amd64/x86_64, sem QEMU/buildx e
+# sem `platforms:` (o build-push-action builda na arquitetura nativa do
+# runner, que e amd64).
+#
+# A versao ativa (.github/workflows/deploy.yml) builda para linux/arm64
+# porque a VM de producao atual e arm64 (Azure Ampere/Dpsv5 e similares).
+# Se um dia a VM voltar a ser amd64, basta usar esta versao no lugar —
+# ou, para suportar as duas arquiteturas ao mesmo tempo, usar
+# `platforms: linux/amd64,linux/arm64` no workflow ativo (builda uma
+# manifest list; o Docker na VM escolhe a imagem certa sozinho).
+
+name: Deploy
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch:
+
+env:
+    REGISTRY: ghcr.io
+    IMAGE_OWNER: vitorluuiz
+
+permissions:
+    contents: read
+    packages: write
+
+jobs:
+    build-and-push:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                include:
+                    - service: web
+                      context: ./nextjs
+                    - service: api
+                      context: ./.NET
+                    - service: realtime
+                      context: ./realtime
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - uses: docker/build-push-action@v6
+              with:
+                  context: ${{ matrix.context }}
+                  push: true
+                  build-args: |
+                      NEXT_PUBLIC_REALTIME_URL=${{ secrets.NEXT_PUBLIC_REALTIME_URL_PROD }}
+                  tags: |
+                      ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/codex-${{ matrix.service }}:latest
+                      ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/codex-${{ matrix.service }}:${{ github.sha }}
+
+    deploy:
+        needs: build-and-push
+        runs-on: ubuntu-latest
+        steps:
+            - uses: appleboy/ssh-action@v1
+              with:
+                  host: ${{ secrets.VPS_HOST }}
+                  username: ${{ secrets.VPS_USER }}
+                  key: ${{ secrets.VPS_SSH_KEY }}
+                  script: |
+                      echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+                      cd /opt/codex
+                      git pull
+                      docker compose -f docker-compose.prod.yml pull
+                      docker compose -f docker-compose.prod.yml up -d --remove-orphans
