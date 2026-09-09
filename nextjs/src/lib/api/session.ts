@@ -3,9 +3,8 @@ import 'server-only';
 import { cookies } from 'next/headers';
 
 import { apiRequestOrNull } from './client';
+import { SESSION_COOKIE } from '@/lib/cookies';
 import type { Session } from '@/lib/types';
-
-const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME || 'codex_session';
 
 const EMPTY: Session = { user: null, participantId: null, roomCode: null };
 

@@ -25,7 +25,7 @@ estão dentro do MVP.
 
 | Não entra | Por quê |
 |---|---|
-| Login OAuth | não iniciado; login por e-mail/senha cobre o fluxo |
+| Tela de vínculos OAuth no perfil | o login social entrou; ver e desconectar provedores já ligados, não |
 | Geração de fase por IA | depende de decisão de provedor; o editor só não mostra o botão |
 | Correção de desafios `text` e `code` | mesma decisão de IA — os tipos existem, a correção não |
 | `POST /matches/{id}/phases/{id}/run` (executar código) | exige sandbox |
@@ -109,7 +109,30 @@ Gere um valor qualquer, longo e aleatório:
 **Se os três não baterem, nada funciona:** o handshake do WebSocket responde 401 e
 nenhuma tela carrega dados.
 
-### 2. Connection string do PostgreSQL
+### 2. Login social (opcional)
+
+Cada provedor é independente: sem credenciais, o botão responde `501
+OAUTH_PROVIDER_NOT_CONFIGURED` e os outros continuam funcionando. O resto da
+aplicação não depende de nenhum deles.
+
+| Onde | Chave | Como |
+|---|---|---|
+| API | `CodexApi:OAuth:RedirectBaseUrl` | já vem `http://localhost:3000` no `appsettings.Development.json` |
+| API | `CodexApi:OAuth:{Google,Microsoft,GitHub}:ClientId` e `:ClientSecret` | `dotnet user-secrets` (dev) ou `CodexApi__OAuth__Google__ClientId` (env, em produção) |
+
+O `redirect_uri` a registrar em cada provedor é
+`{RedirectBaseUrl}/auth/callback/{provedor}` — a origem do **Next**, não a da API,
+porque o provedor devolve o browser, e o browser nunca fala com a API. Os três
+comparam essa URL caractere a caractere.
+
+```powershell
+dotnet user-secrets set "CodexApi:OAuth:Google:ClientId" "..." --project .NET/src/Codex.Api
+```
+
+Um OAuth App do GitHub aceita **uma** callback URL, então desenvolvimento e
+produção precisam de dois aplicativos separados.
+
+### 3. Connection string do PostgreSQL
 
 Só a API precisa. Vai em `ConnectionStrings:Default` (user-secrets em dev,
 `ConnectionStrings__Default` em produção). Nunca em `appsettings.json` — o arquivo

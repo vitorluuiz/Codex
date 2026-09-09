@@ -11,11 +11,11 @@ são os registros de decisão de cada leva de trabalho.
 
 **Resumo executivo:** das 14 seções do contrato REST, **as seções 2 a 10
 (sessão/auth + perfil, entrar em sala, lobby, conjuntos de fases, fila da sala,
-partida, respostas, comparação, painel do líder) estão completas**, exceto por
-OAuth, pela geração de fase por IA, pela correção de `text`/`code`, pelo
-`POST …/run` e pelo modo `self-paced` — e as quatro últimas dependem da mesma
-decisão de produto pendente (provedor de IA e sandbox) ou de mudança no serviço de
-WS. Com a seção 7 fechada, **uma aula inteira de quiz/fill roda do lobby ao pódio
+partida, respostas, comparação, painel do líder) estão completas**, exceto pela
+geração de fase por IA, pela correção de `text`/`code`, pelo `POST …/run` e pelo
+modo `self-paced` — todas dependentes da mesma decisão de produto pendente
+(provedor de IA e sandbox) ou de mudança no serviço de WS. O login OAuth, que era
+a quinta exceção desta lista, entrou com os três provedores (`api-oauth-log.md`). Com a seção 7 fechada, **uma aula inteira de quiz/fill roda do lobby ao pódio
 pela UI**: criar conjunto, criar sala, aprovar aluno, iniciar, responder, ver o
 painel, comparar com a turma e encerrar. As seções 11–12 (relatórios, landing)
 **existem só como modelo de dados** (entidades EF Core), sem endpoint próprio. O
@@ -33,7 +33,8 @@ na API).
 | 2 | `GET /session` | ✅ | `Endpoints/SessionEndpoints.cs` |
 | 2 | `POST /auth/login` | ✅ | `Endpoints/AuthEndpoints.cs` |
 | 2 | `POST /auth/signup` | ✅ | `Endpoints/AuthEndpoints.cs` |
-| 2 | `POST /auth/oauth/{provider}/authorize` | ❌ | não iniciada |
+| 2 | `POST /auth/oauth/{provider}/authorize` | ✅ | `Endpoints/AuthEndpoints.cs` · `Services/OAuthService.cs` |
+| 2 | `POST /auth/oauth/{provider}/callback` | ✅ | fora do contrato original; o callback aterrissa no Next, não na API — ver `api-oauth-log.md` |
 | 2 | `POST /auth/logout` | ⚠️ parcial | responde `204`, mas não invalida o token no servidor (token é stateless — ver §3) |
 | 2 | `PATCH /users/me` | ✅ | `Endpoints/UserEndpoints.cs` · `Services/UserProfileService.cs` |
 | 2 | `GET /users/{userId}/profile` | ✅ | `Endpoints/UserEndpoints.cs`; `matches` acendeu com a seção 7 (partida encerrada entra no histórico) |
@@ -77,10 +78,10 @@ na API).
 | 11 | Relatórios (`report`, `report/export`, `GET /jobs/{jobId}`) | ❌ | não iniciada; contrato já registra que não há tela pronta |
 | 12 | `GET /marketing/landing` | ❌ | opcional — hoje o conteúdo é local em `src/content/landing.ts` no front |
 
-**Contagem:** 43 de ~46 rotas do contrato têm endpoint no backend — 14 das seções
-2–4 (incluindo `GET /rooms/active`, que o contrato não tinha), as 6 da seção 5, as 8
-da seção 6 e as 15 das seções 7–10. Faltam três, todas por decisão de produto
-pendente: `POST /auth/oauth/{provider}/authorize`,
+**Contagem:** 45 de ~47 rotas do contrato têm endpoint no backend — 16 das seções
+2–4 (incluindo `GET /rooms/active` e `POST /auth/oauth/{provider}/callback`, que o
+contrato não tinha), as 6 da seção 5, as 8 da seção 6 e as 15 das seções 7–10.
+Faltam duas, ambas por decisão de produto pendente:
 `POST /phase-sets/phases/generate` e `POST …/run`. Fora da tabela do contrato REST,
 existe também `POST /realtime-ticket` (`Endpoints/RealtimeEndpoints.cs`), que vem do
 `websocket-contract.md` §2.

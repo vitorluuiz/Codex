@@ -43,6 +43,15 @@ services:
       ConnectionStrings__Default: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       CodexApi__ServiceToken: ${API_SERVICE_TOKEN}
       CodexApi__Realtime__RedisConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
+      # Login social. Vazio desliga o provedor: a rota responde 501 OAUTH_PROVIDER_NOT_CONFIGURED
+      # em vez de quebrar o resto da API, entao da para ligar um provedor de cada vez.
+      CodexApi__OAuth__RedirectBaseUrl: ${OAUTH_REDIRECT_BASE_URL:-}
+      CodexApi__OAuth__Google__ClientId: ${OAUTH_GOOGLE_CLIENT_ID:-}
+      CodexApi__OAuth__Google__ClientSecret: ${OAUTH_GOOGLE_CLIENT_SECRET:-}
+      CodexApi__OAuth__Microsoft__ClientId: ${OAUTH_MICROSOFT_CLIENT_ID:-}
+      CodexApi__OAuth__Microsoft__ClientSecret: ${OAUTH_MICROSOFT_CLIENT_SECRET:-}
+      CodexApi__OAuth__GitHub__ClientId: ${OAUTH_GITHUB_CLIENT_ID:-}
+      CodexApi__OAuth__GitHub__ClientSecret: ${OAUTH_GITHUB_CLIENT_SECRET:-}
     networks:
       - codex
 

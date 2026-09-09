@@ -22,6 +22,9 @@ export type PlanId = 'free' | 'intermediate' | 'pro';
  */
 export type Audience = 'teacher' | 'recruiter';
 
+/** Provedores de login social do contrato (api-rest.md secao 2). */
+export type OAuthProvider = 'google' | 'microsoft' | 'github';
+
 export interface User {
   id: string;
   name: string;

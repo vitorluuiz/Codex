@@ -7,6 +7,7 @@ using Codex.Api.Data;
 using Codex.Api.Domain.Entities;
 using Codex.Api.Endpoints;
 using Codex.Api.Services;
+using Codex.Api.Services.OAuth;
 using Codex.Api.Services.Realtime;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
@@ -28,9 +29,11 @@ builder.Services.AddDataProtection()
     .PersistKeysToDbContext<AppDbContext>();
 
 builder.Services.AddSingleton<ISessionTokenService, SessionTokenService>();
+builder.Services.AddSingleton<IOAuthStateService, OAuthStateService>();
 builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddSingleton<LabelFormatter>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddCodexOAuth(builder.Configuration);
 builder.Services.AddScoped<RoomAccessService>();
 builder.Services.AddScoped<RoomQueueService>();
 builder.Services.AddScoped<RoomService>();

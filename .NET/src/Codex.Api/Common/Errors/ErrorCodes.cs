@@ -87,4 +87,20 @@ public static class ErrorCodes
     /// repassa-lo ao cliente sem traduzir.
     /// </summary>
     public const string Unauthenticated = "UNAUTHENTICATED";
+
+    // Login social (secao 2). Fora da tabela da secao 1 pelo mesmo motivo dos dois acima: o
+    // contrato so cataloga o que tem dialogo proprio, e o front trata todos estes como uma
+    // falha unica na faixa de erro de /entrar.
+
+    /// <summary>Provedor sem ClientId/ClientSecret nesta instalacao. 501, e nao 500: a rota existe, a configuracao e que nao foi feita — permite ligar um provedor de cada vez.</summary>
+    public const string OAuthProviderNotConfigured = "OAUTH_PROVIDER_NOT_CONFIGURED";
+
+    /// <summary>O <c>state</c> do callback nao decifra, expirou, ou e de outro provedor. Cobre tanto adulteracao quanto a aba deixada aberta por muito tempo.</summary>
+    public const string OAuthStateInvalid = "OAUTH_STATE_INVALID";
+
+    /// <summary>A troca do <c>code</c> pelo token, ou a leitura do perfil, falhou no provedor.</summary>
+    public const string OAuthExchangeFailed = "OAUTH_EXCHANGE_FAILED";
+
+    /// <summary>O provedor nao afirma que o email e verificado (caso comum no GitHub com email privado). Sem isso nao ha como vincular a uma conta existente sem abrir tomada de conta.</summary>
+    public const string OAuthEmailNotVerified = "OAUTH_EMAIL_NOT_VERIFIED";
 }
