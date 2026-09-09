@@ -17,6 +17,14 @@ public enum Audience
     Recruiter,
 }
 
+/// <summary>Provedores de login social previstos no contrato (api-rest.md secao 2) e ja desenhados no front (ProviderIcons.tsx).</summary>
+public enum OAuthProvider
+{
+    Google,
+    Microsoft,
+    GitHub,
+}
+
 public enum RoomStatus
 {
     Lobby,

@@ -23,21 +23,46 @@ function SubmitButton({ children, disabled }: { children: string; disabled: bool
   );
 }
 
-function Providers({ mode }: { mode: Mode }) {
+/**
+ * Um `<form>` com tres botoes de submit, e nao tres `onClick`: assim a falha do provedor tem
+ * onde aparecer. Antes o retorno da action era descartado e um provedor fora do ar virava um
+ * clique morto.
+ */
+function ProviderButtons() {
+  const { pending } = useFormStatus();
+
   return (
-    <div className={cx(styles.providers, mode === 'signup' && styles.providersTight)}>
+    <>
       {PROVIDERS.map(({ id, label, Mark }) => (
         <button
           key={id}
-          type="button"
+          type="submit"
+          name="provider"
+          value={id}
           className={styles.provider}
-          onClick={() => startOAuthAction(id)}
+          disabled={pending}
         >
           <Mark />
           Continuar com {label}
         </button>
       ))}
-    </div>
+    </>
+  );
+}
+
+function Providers({ mode, initialError }: { mode: Mode; initialError: string | null }) {
+  const [state, formAction] = useActionState(startOAuthAction, { error: initialError });
+
+  return (
+    <>
+      {state.error && <p className={styles.formError}>{state.error}</p>}
+      <form
+        action={formAction}
+        className={cx(styles.providers, mode === 'signup' && styles.providersTight)}
+      >
+        <ProviderButtons />
+      </form>
+    </>
   );
 }
 
@@ -175,7 +200,14 @@ function SignupForm() {
   );
 }
 
-export function AuthPanel({ initialMode }: { initialMode: Mode }) {
+export function AuthPanel({
+  initialMode,
+  initialError = null,
+}: {
+  initialMode: Mode;
+  /** Erro trazido de volta pelo callback do provedor (`/entrar?erro=oauth`). */
+  initialError?: string | null;
+}) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const isLogin = mode === 'login';
 
@@ -205,7 +237,7 @@ export function AuthPanel({ initialMode }: { initialMode: Mode }) {
       {isLogin ? <LoginForm /> : <SignupForm />}
 
       <Divider label={isLogin ? 'ou continue com' : 'ou cadastre-se com'} tight={!isLogin} />
-      <Providers mode={mode} />
+      <Providers mode={mode} initialError={initialError} />
 
       <p className={cx(styles.footNote, !isLogin && styles.footNoteTight)}>
         {isLogin ? (

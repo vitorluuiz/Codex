@@ -131,10 +131,39 @@ nele no servidor.
 ```json
 { "redirectTo": "/perfil" }
 ```
-→ `{ "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?…" }`
+→ `{ "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?…", "state": "…" }`
 
-O callback do provedor bate no backend, que redireciona para o Next já com o
-cookie de sessão setado.
+`redirectTo` só aceita caminho interno; qualquer outra coisa (`//host`,
+`https://host`) vira `/perfil` em silêncio. Provedor sem credenciais nesta
+instalação → `501 OAUTH_PROVIDER_NOT_CONFIGURED`.
+
+O `state` volta junto porque quem o guarda é o Next, num cookie de dez minutos.
+É o que amarra o fluxo a um browser: sem essa conferência, alguém poderia iniciar
+um login e induzir outra pessoa a completá-lo, deixando-a logada numa conta que
+não é dela.
+
+### `POST /auth/oauth/{provider}/callback`
+
+```json
+{ "code": "…", "state": "…" }
+```
+→ `{ "token": "…", "expiresIn": 43200, "user": { … }, "redirectTo": "/perfil" }`
+
+**O callback do provedor não bate no backend.** O `redirect_uri` registrado nos
+três provedores é `{origem do Next}/auth/callback/{provider}`, porque o redirect
+é uma navegação de browser e nunca traria o `x-service-token` que a API exige de
+toda rota. O Next confere o `state` contra o cookie, chama esta rota pelo
+servidor e grava o cookie de sessão — o mesmo caminho do login por senha.
+
+| HTTP | `code` | Quando |
+|---|---|---|
+| 400 | `OAUTH_STATE_INVALID` | `state` adulterado, expirado, ou de outro provedor |
+| 409 | `OAUTH_EMAIL_NOT_VERIFIED` | o provedor não confirma um email verificado (email privado no GitHub, conta Microsoft sem email) |
+| 502 | `OAUTH_EXCHANGE_FAILED` | o provedor recusou a troca do código ou não devolveu o perfil |
+
+Conta com o mesmo email e senha já cadastrada é **vinculada**, não duplicada,
+desde que o provedor afirme que o email é verificado. Conta criada por aqui nasce
+sem senha, e `POST /auth/login` já recusa senha para ela.
 
 ### `POST /auth/logout`
 → `204`. Invalida o token.
@@ -839,7 +868,7 @@ Salas e participantes convidados expiram. Configure TTL em `rooms.expiresAt`
 | Tela | Rotas |
 |---|---|
 | Landing | nenhuma (conteúdo local) |
-| Auth | `POST /auth/login`, `POST /auth/signup`, `POST /auth/oauth/{provider}/authorize` |
+| Auth | `POST /auth/login`, `POST /auth/signup`, `POST /auth/oauth/{provider}/authorize`, `POST /auth/oauth/{provider}/callback` |
 | Entrar em Sala | `GET /session`, `GET /rooms/active`, `GET /rooms/{code}/availability`, `POST /rooms/{code}/participants` |
 | Lobby (jogador) | `GET /session`, `GET /rooms/{code}`, `GET /rooms/{code}/participants?status=approved` |
 | Lobby (líder) | as acima + `?status=pending`, `GET /rooms/{code}/queue`, `GET /phase-sets`, todas as de `/queue/*`, `PATCH /rooms/{code}`, aprovar/recusar/remover, `POST /rooms/{code}/match` |

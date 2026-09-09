@@ -22,6 +22,7 @@ public class User
 
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 
+    public ICollection<UserIdentity> Identities { get; init; } = [];
     public ICollection<Room> LedRooms { get; init; } = [];
     public ICollection<PhaseSet> PhaseSets { get; init; } = [];
 }

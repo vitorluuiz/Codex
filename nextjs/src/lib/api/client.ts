@@ -2,6 +2,8 @@ import 'server-only';
 
 import { cookies } from 'next/headers';
 
+import { SESSION_COOKIE } from '@/lib/cookies';
+
 /**
  * Cliente HTTP usado exclusivamente por Server Components e Server Actions.
  * O browser nunca fala com a API diretamente — só com o servidor de WebSocket.
@@ -36,8 +38,6 @@ export interface RequestOptions {
   /** Envia o cookie de sessão da pessoa junto. Padrão: `true`. */
   withSession?: boolean;
 }
-
-const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME || 'codex_session';
 
 async function buildHeaders(withSession: boolean): Promise<Headers> {
   const headers = new Headers({

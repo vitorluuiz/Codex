@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { revalidateTag } from 'next/cache';
 
 import { ApiError, ApiNotConfiguredError, apiRequest } from '@/lib/api/client';
+import { SESSION_COOKIE } from '@/lib/cookies';
 import type { RoomQueue } from '@/lib/api/rooms';
 import type {
   AvatarIndex,
@@ -12,8 +13,6 @@ import type {
   PhaseSetSummary,
   Room,
 } from '@/lib/types';
-
-const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME || 'codex_session';
 
 /* -------------------------------------------------------------------------- */
 /* Entrada na sala                                                             */
