@@ -4,18 +4,20 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 
 import { Avatar } from '@/components/avatar/Avatar';
-import { Button, Dialog, Input, Tabs, Tag, Toast, ToastViewport } from '@/components/ds';
-import { AppSidebar } from '@/components/nav/AppSidebar';
+import { Button, Dialog, Input, Tag, Toast, ToastViewport } from '@/components/ds';
+import { AppSidebar, type ProfileMode } from '@/components/nav/AppSidebar';
 import { AUDIENCE_LABEL } from '@/components/nav/audienceLabels';
 import { logoutAction } from '@/lib/actions/auth';
 import { createRoomAction, exportMatchReportAction, updateProfileAction } from '@/lib/actions/profile';
+import { closeRoomAction } from '@/lib/actions/room';
 import { cx } from '@/lib/cx';
+import { roomPath } from '@/lib/roomPath';
 import type { ActiveRoom, Audience, LeaderMatchSummary, LeaderProfile } from '@/lib/types';
 import { MatchHistorySection } from './MatchHistorySection';
+import { ParticipantProfileSection } from './ParticipantProfileSection';
+import { MOCK_PARTICIPANT_PROFILE } from './participantMock';
 import { SetsSection } from './SetsSection';
 import styles from './Profile.module.css';
-
-type ProfileTab = 'leader' | 'participant';
 
 /** Quem recruta chama a turma de outra coisa. Só o vocabulário muda. */
 const PARTICIPANTS_LABEL: Record<Audience, string> = {
@@ -41,17 +43,15 @@ export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: Profile
   const [, startTransition] = useTransition();
 
   const [user, setUser] = useState(profile.user);
-  const [tab, setTab] = useState<ProfileTab>('leader');
+  const [profileMode, setProfileMode] = useState<ProfileMode>('leader');
   const [editOpen, setEditOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const audienceLabel = AUDIENCE_LABEL[user.audience];
   const participantsLabel = PARTICIPANTS_LABEL[user.audience];
 
-  // A mesma lista alimenta as duas abas; o `role` decide qual. Hoje só a de
-  // líder consome — a de participante ainda não tem tela —, mas o corte é aqui
-  // para o dia em que tiver não precisar de outra rota.
   const ledRooms = activeRooms.filter((room) => room.role === 'leader');
+  const joinedRoom = activeRooms.find((room) => room.role === 'participant');
 
   function openRoom(setId?: string) {
     startTransition(async () => {
@@ -67,6 +67,13 @@ export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: Profile
     });
   }
 
+  function closeRoom(room: ActiveRoom) {
+    startTransition(async () => {
+      await closeRoomAction(room.code);
+      router.refresh();
+    });
+  }
+
   return (
     <div className={cx(styles.layout, !isOwnProfile && styles.layoutSolo)}>
       {isOwnProfile && (
@@ -75,6 +82,8 @@ export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: Profile
           audienceLabel={audienceLabel}
           active="perfil"
           onSignOut={() => startTransition(() => void logoutAction())}
+          profileMode={profileMode}
+          onProfileModeChange={setProfileMode}
         />
       )}
 
@@ -96,27 +105,23 @@ export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: Profile
               <Button variant="secondary" onClick={() => setEditOpen(true)}>
                 Editar perfil
               </Button>
-              <Button onClick={() => openRoom()}>Criar sala</Button>
+              {profileMode === 'leader' ? (
+                <Button onClick={() => openRoom()}>Criar sala</Button>
+              ) : (
+                <>
+                  {joinedRoom && (
+                    <Button variant="secondary" onClick={() => router.push(roomPath(joinedRoom))}>
+                      Retornar à sala
+                    </Button>
+                  )}
+                  <Button onClick={() => router.push('/entrar')}>Entrar em uma sala</Button>
+                </>
+              )}
             </div>
           )}
         </header>
 
-        <Tabs
-          label="Faces do perfil"
-          active={tab}
-          onChange={setTab}
-          tabs={[
-            { id: 'leader', label: 'Perfil de líder' },
-            { id: 'participant', label: 'Perfil de participante' },
-          ]}
-        />
-
-        {tab === 'participant' ? (
-          <p className={styles.placeholder}>
-            O perfil de participante ainda não tem conteúdo definido — desafios praticados,
-            pontuação e conquistas viriam aqui.
-          </p>
-        ) : (
+        {profileMode === 'leader' ? (
           <>
             <SetsSection
               sets={profile.sets}
@@ -129,8 +134,11 @@ export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: Profile
               activeRooms={ledRooms}
               participantsLabel={participantsLabel}
               onDownload={downloadReport}
+              onCloseRoom={closeRoom}
             />
           </>
+        ) : (
+          <ParticipantProfileSection data={MOCK_PARTICIPANT_PROFILE} />
         )}
       </main>
 

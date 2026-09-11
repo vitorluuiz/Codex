@@ -195,20 +195,26 @@ front.
       "playedAtLabel": "28 jul 2026 · 14:32",
       "participantCount": 24,
       "avgScore": 640,
+      "maxScore": 800,
       "accuracyRate": 78,
-      "durationLabel": "32 min"
+      "durationLabel": "32 min",
+      "phaseAccuracy": [92, 81, 70, 65, 88, 74, 60, 95]
     }
   ]
 }
 ```
 
-Duas decisões que valem a pena registrar:
+Três decisões que valem a pena registrar:
 
 1. **`playedAtLabel` e `durationLabel` vêm prontos**, como `updatedLabel` em
    `/phase-sets`. O front não carrega biblioteca de datas.
 2. **A linha do histórico já traz os números do relatório resumido**
    (`accuracyRate`, `durationLabel`). A lista e o diálogo "Ver relatório" leem do
    mesmo objeto — abrir o diálogo não custa uma segunda ida ao servidor.
+3. **`phaseAccuracy` é o acerto médio da turma em cada fase, 0..100, na ordem em
+   que foram jogadas** — alimenta o mini-gráfico de barras do card do histórico.
+   `maxScore` é a maior pontuação possível da partida, para o card mostrar
+   `avgScore / maxScore`.
 
 Num perfil de outra pessoa, `email` pode vir vazio: o front só o exibe, não
 decide nada com ele.
@@ -283,11 +289,16 @@ esqueceu.
     "leaderName": "Marina Duarte",
     "setTitle": "Frações & Funções Básicas",
     "phaseCount": 8,
+    "currentPhase": 3,
     "participantCount": 3,
     "createdAtLabel": "28 jul 2026 · 14:32"
   }
 ]
 ```
+
+`currentPhase` só vem para `role: "leader"` e `status: "running"` — mesma regra de
+`setTitle`/`phaseCount`. É o que o histórico do perfil mostra em "fase 3" para uma sala
+ainda em andamento; `null` nos demais casos.
 
 Decisões que esta rota carrega:
 
@@ -343,6 +354,15 @@ front para esconder dado de líder.
 { "locked": true, "requireAccount": false, "capacity": 30 }
 ```
 → `Room` atualizado. Publica `room.settings` no WebSocket.
+
+### `DELETE /rooms/{code}` — líder
+Encerra a sala inteira — o "Encerrar sala" do histórico do perfil, para quando o
+líder quer fechá-la sem entrar (diferente de `POST /matches/{matchId}/finish`, que
+encerra só a partida em curso e mostra o pódio a quem está dentro). Publica
+`room.closed` no WebSocket, tirando todo mundo para fora, e some da lista de
+`GET /rooms/active`.
+
+→ `204`.
 
 ### `POST /rooms/{code}/participants/{id}/approve` — líder
 ### `POST /rooms/{code}/participants/{id}/reject` — líder
@@ -936,6 +956,6 @@ Salas e participantes convidados expiram. Configure TTL em `rooms.expiresAt`
 | Lobby (líder) | as acima + `?status=pending`, `GET /rooms/{code}/queue`, `GET /phase-sets`, todas as de `/queue/*`, `PATCH /rooms/{code}`, aprovar/recusar/remover, `POST /rooms/{code}/match` |
 | Desafios (aluno) | `GET /rooms/{code}/match`, `GET /matches/{id}/current-phase`, `GET /matches/{id}/scoreboard/me`, `POST …/submissions`, `POST …/run`, `POST …/ready`, `GET …/comparison`, `GET /matches/{id}/podium` |
 | Desafios (líder) | `GET /matches/{id}/current-phase`, `GET …/stats`, `advance`, `pause`, `restart`, `finish`, `return-to-lobby`, `DELETE …/participants/{id}` |
-| Perfil | `GET /users/{id}/profile`, `GET /rooms/active` (só o próprio), `PATCH /users/me`, `POST /rooms`, `POST /matches/{id}/report/export`, `POST /auth/logout` |
+| Perfil | `GET /users/{id}/profile`, `GET /rooms/active` (só o próprio), `PATCH /users/me`, `POST /rooms`, `DELETE /rooms/{code}` (encerrar sala), `POST /matches/{id}/report/export`, `POST /auth/logout` |
 | Conjuntos de desafios | `GET /session`, `GET /phase-sets/library`, `POST /rooms`, `DELETE /phase-sets/{id}`, `POST /auth/logout` |
 | Editor de Conjunto | `GET /phase-sets/{id}/draft`, `POST /phase-sets`, `PUT /phase-sets/{id}/draft`, `POST /phase-sets/phases/generate` |

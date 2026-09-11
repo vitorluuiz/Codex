@@ -86,6 +86,13 @@ export interface ActiveRoom {
   setTitle: string | null;
   phaseCount: number | null;
   participantCount: number;
+  /**
+   * Posição 1-based da fase em andamento. `null` fora de `status: 'running'`
+   * ou fora de `role: 'leader'` — mesma regra de `setTitle`/`phaseCount`: é o
+   * que o histórico do perfil mostra em "fase 3" para uma sala que o líder
+   * ainda está conduzindo.
+   */
+  currentPhase: number | null;
   /** Já formatado pelo servidor. Ex.: "28 jul 2026 · 14:32". */
   createdAtLabel: string;
 }
@@ -496,10 +503,17 @@ export interface LeaderMatchSummary {
   playedAtLabel: string;
   participantCount: number;
   avgScore: number;
+  /** Maior pontuação possível na partida — o card mostra `avgScore / maxScore`. */
+  maxScore: number;
   /** 0..100. */
   accuracyRate: number;
   /** Ex.: "32 min". */
   durationLabel: string;
+  /**
+   * Acerto médio da turma em cada fase, 0..100, na ordem em que foram jogadas.
+   * Alimenta o mini-gráfico de barras do card do histórico.
+   */
+  phaseAccuracy: number[];
 }
 
 /** Payload de `GET /users/{id}/profile`. */

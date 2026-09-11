@@ -52,8 +52,49 @@
 }
 
 .liveChip {
-  background: var(--accent-primary);
-  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--tone-pink-surface);
+  color: var(--pink-600);
+}
+
+.liveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pink-500);
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.sparkline {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 30px;
+  flex: 0.9;
+}
+
+.sparklineBar {
+  flex: 1;
+  border-radius: 3px;
+  min-height: 4px;
+}
+
+.statMax {
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+  font-weight: var(--fw-regular);
 }
 
 .resumeLink {

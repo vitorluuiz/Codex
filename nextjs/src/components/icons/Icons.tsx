@@ -67,6 +67,17 @@ export const Icon = {
       <circle cx="12" cy="12" r="4" />
     </svg>
   ),
+  Award: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <circle cx="12" cy="8" r="6" />
+      <path d="M8.5 13.5 7 22l5-3 5 3-1.5-8.5" />
+    </svg>
+  ),
+  Flame: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)} fill="currentColor" stroke="none">
+      <path d="M12 2c-.3 3.4-2.2 4.9-4 7-1.6 2-2 3.4-2 5a6 6 0 0 0 12 0c0-2.4-1.3-3.7-2-5 1.6.6 2.3 1.7 2.6 2.8.9-1.3 1.4-2.9 1.4-4.6C20 4.5 16.6 2.6 12 2z" />
+    </svg>
+  ),
   Trophy: ({ size = 24, className }: IconProps) => (
     <svg {...base(size, className)}>
       <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4z" />
