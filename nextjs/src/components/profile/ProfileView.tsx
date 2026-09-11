@@ -5,21 +5,17 @@ import { useState, useTransition } from 'react';
 
 import { Avatar } from '@/components/avatar/Avatar';
 import { Button, Dialog, Input, Tabs, Tag, Toast, ToastViewport } from '@/components/ds';
+import { AppSidebar } from '@/components/nav/AppSidebar';
+import { AUDIENCE_LABEL } from '@/components/nav/audienceLabels';
 import { logoutAction } from '@/lib/actions/auth';
 import { createRoomAction, exportMatchReportAction, updateProfileAction } from '@/lib/actions/profile';
 import { cx } from '@/lib/cx';
 import type { ActiveRoom, Audience, LeaderMatchSummary, LeaderProfile } from '@/lib/types';
 import { MatchHistorySection } from './MatchHistorySection';
-import { ProfileSidebar } from './ProfileSidebar';
 import { SetsSection } from './SetsSection';
 import styles from './Profile.module.css';
 
 type ProfileTab = 'leader' | 'participant';
-
-const AUDIENCE_LABEL: Record<Audience, string> = {
-  teacher: 'Professor(a)',
-  recruiter: 'Líder de recrutamento',
-};
 
 /** Quem recruta chama a turma de outra coisa. Só o vocabulário muda. */
 const PARTICIPANTS_LABEL: Record<Audience, string> = {
@@ -74,9 +70,10 @@ export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: Profile
   return (
     <div className={cx(styles.layout, !isOwnProfile && styles.layoutSolo)}>
       {isOwnProfile && (
-        <ProfileSidebar
+        <AppSidebar
           user={user}
           audienceLabel={audienceLabel}
+          active="perfil"
           onSignOut={() => startTransition(() => void logoutAction())}
         />
       )}

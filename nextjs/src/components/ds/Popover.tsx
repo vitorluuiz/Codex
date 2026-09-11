@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import { cssVars } from '@/lib/cssVars';
 import { cx } from '@/lib/cx';
@@ -37,6 +38,12 @@ const GAP = 10;
  * Popover ancorado com posicionamento resolvido em JS (viewport-aware: vira
  * para cima quando não cabe embaixo) e desenhado em CSS. Os números viajam como
  * custom properties — ver `src/lib/cssVars.ts`.
+ *
+ * Vai para o fim do `<body>` por portal, e não fica onde foi escrito, porque as
+ * coordenadas de `anchorFrom` são de viewport e `position: fixed` só as respeita
+ * enquanto nenhum ancestral tiver `transform`, `filter` ou `perspective` — um
+ * card que sobe 2px no hover viraria o bloco de contenção do popover e o
+ * arrastaria junto a cada entrada e saída do mouse.
  */
 export function Popover({
   anchor,
@@ -47,12 +54,35 @@ export function Popover({
   children,
   label,
 }: PopoverProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') onClose();
     }
+
+    // `anchorFrom` mede uma vez, no clique. Rolar ou redimensionar move o
+    // gatilho e deixa o popover ancorado no vazio, então a saída é fechar —
+    // reposicionar a cada quadro daria a impressão de que ele está solto.
+    function onScroll(event: Event) {
+      // Rolar a lista de dentro do próprio popover não conta: só o que está
+      // atrás dele desancora o popover.
+      const target = event.target as Node | null;
+      if (target && panelRef.current?.contains(target)) return;
+      onClose();
+    }
+
     document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    // Captura porque `scroll` não borbulha: sem isto, rolar um painel interno
+    // da página passaria despercebido.
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onClose);
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onClose);
+    };
   }, [onClose]);
 
   const viewportWidth = typeof window === 'undefined' ? 1280 : window.innerWidth;
@@ -67,10 +97,13 @@ export function Popover({
   const flipped = spaceBelow < estimatedHeight + MARGIN && anchor.top > spaceBelow;
   const top = flipped ? anchor.top - estimatedHeight - GAP : anchor.bottom + GAP;
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
       <div className={styles.backdrop} onClick={onClose} role="presentation" />
       <div
+        ref={panelRef}
         className={styles.popover}
         role="dialog"
         aria-label={label}
@@ -84,6 +117,7 @@ export function Popover({
         <span className={cx(styles.arrow, flipped ? styles.arrowBottom : styles.arrowTop)} />
         {children}
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

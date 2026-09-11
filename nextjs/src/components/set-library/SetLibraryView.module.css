@@ -1,0 +1,221 @@
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+  background: var(--surface-page);
+  font-family: var(--font-body);
+}
+
+.content {
+  padding: clamp(24px, 3.5vw, 44px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  min-width: 0;
+}
+
+/* Tarja de dados de exemplo — temporária, sai junto com `mockLibrary.ts`.
+   Ocupa a linha inteira acima da barra lateral para que ninguém confunda a tela
+   de validação de layout com a tela ligada na API. */
+.sampleNotice {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px clamp(24px, 3.5vw, 44px);
+  background: var(--tone-amber-surface);
+  color: var(--amber-600);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+  text-align: center;
+}
+
+.sampleNotice code {
+  font-family: var(--font-mono);
+  font-size: var(--text-body-s);
+}
+
+/* --- Topo ----------------------------------------------------------------- */
+
+/* O topo sangra até as bordas da coluna: a capa é uma faixa da página, não um
+   cartão dentro dela. Daí as margens negativas do mesmo tamanho do padding. */
+.hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: clamp(24px, 3.5vw, 44px) clamp(24px, 3.5vw, 44px) 0;
+  margin: calc(-1 * clamp(24px, 3.5vw, 44px)) calc(-1 * clamp(24px, 3.5vw, 44px)) 0;
+}
+
+.heroCover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+}
+
+/* Véu quase opaco: a capa é textura atrás de um título preto, não uma imagem
+   para olhar. Sem ela o `--text-primary` some numa foto clara. */
+.heroVeil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+  background: color-mix(in srgb, var(--surface-page) 88%, transparent);
+}
+
+.header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-display-s);
+  color: var(--text-primary);
+}
+
+.subtitle {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+}
+
+.tabs {
+  position: relative;
+  padding-bottom: var(--space-1);
+}
+
+/* --- Pastas --------------------------------------------------------------- */
+
+.folders {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.foldersLabel {
+  margin-right: var(--space-1);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.folder {
+  padding: 7px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-caption);
+  cursor: pointer;
+}
+
+.folder:hover {
+  color: var(--text-primary);
+}
+
+.folderOn,
+.folderOn:hover {
+  background: var(--surface-inverse);
+  border-color: transparent;
+  color: var(--text-inverse);
+}
+
+/* --- Grade ---------------------------------------------------------------- */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+.ghost {
+  min-height: 250px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  border: 2px dashed var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: none;
+  color: var(--text-secondary);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-body-s);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.ghost:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--space-12);
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: var(--text-body-s);
+}
+
+/* --- Seleção em massa ----------------------------------------------------- */
+
+.bulkBar {
+  position: fixed;
+  bottom: var(--space-6);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--ink-950);
+  box-shadow: var(--shadow-l);
+}
+
+.bulkCount {
+  color: var(--ink-0);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-body-s);
+  white-space: nowrap;
+}
+
+.bulkActions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* --- Diálogo de exclusão -------------------------------------------------- */
+
+.dialogText {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-body-s);
+}
+
+/* Mesma quebra da barra lateral: abaixo de 900px ela vira cabeçalho e a
+   coluna de 260px deixa de existir. */
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}

@@ -140,6 +140,45 @@ export interface PhaseSetSummary {
   authorName: string | null;
 }
 
+/**
+ * Um conjunto como a biblioteca o mostra (`GET /phase-sets/library`).
+ *
+ * É o `PhaseSetSummary` do seletor da sala mais o que só o card da biblioteca
+ * usa: capa, disciplina, pasta e os números do rodapé. Ficou em outra rota
+ * porque o seletor do lobby abre no meio de uma aula e não pode pagar por
+ * agregações de acerto médio que ninguém vai ler ali.
+ */
+export interface PhaseSetLibraryEntry extends PhaseSetSummary {
+  /** Fases por tipo. Tipo ausente significa nenhuma fase daquele tipo. */
+  phaseKindCounts: Partial<Record<PhaseKind, number>>;
+  /** 0..100, acerto médio de quem já jogou. `null` enquanto ninguém jogou. */
+  accuracyRate: number | null;
+  /** Já formatada pelo servidor. Ex.: "32 min". */
+  durationLabel: string;
+  /** Disciplina do conjunto. Ex.: "Matemática". */
+  subject: string;
+  /** Pasta em que o autor guardou. `null` em conjuntos da comunidade. */
+  folder: string | null;
+  /** Quantas partidas já usaram o conjunto — é o que ordena "Mais usados". */
+  useCount: number;
+  coverUrl: string | null;
+}
+
+/**
+ * Payload de `GET /phase-sets/library`.
+ *
+ * As listas de disciplinas e pastas vêm do servidor em vez de saírem de `sets`:
+ * uma pasta recém-esvaziada tem que continuar clicável, senão o filtro some
+ * justamente quando a pessoa quer voltar para ela.
+ */
+export interface PhaseSetLibrary {
+  sets: PhaseSetLibraryEntry[];
+  subjects: string[];
+  folders: string[];
+  /** Capa do topo da tela. */
+  coverUrl: string | null;
+}
+
 interface PhaseBase {
   id: string;
   setId: string;

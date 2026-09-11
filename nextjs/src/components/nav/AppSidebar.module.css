@@ -47,6 +47,18 @@
   font-weight: var(--fw-bold);
 }
 
+.navItemLink,
+.navItemLink:hover {
+  color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.navItemLink:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+
 .navItemSoon {
   color: var(--ink-400);
   cursor: not-allowed;

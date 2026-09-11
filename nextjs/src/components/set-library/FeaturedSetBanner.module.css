@@ -1,0 +1,152 @@
+.banner {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--space-8);
+  align-items: center;
+  padding: 30px var(--space-8);
+  border-radius: var(--radius-xl);
+  background: var(--ink-950);
+  overflow: hidden;
+}
+
+.cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+}
+
+/* Sem capa o banner já é escuro; com capa o véu é o que mantém o título legível
+   sobre uma foto qualquer. */
+.shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(10, 12, 20, 0.62);
+}
+
+.main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-400);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-display-m);
+  line-height: var(--lh-tight);
+  color: var(--ink-0);
+  text-wrap: pretty;
+}
+
+.kinds {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--ink-0);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--kind-color);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: var(--space-1);
+}
+
+.ghostAction,
+.ghostAction:hover {
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 22px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  color: var(--ink-0);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-body-s);
+  text-decoration: none;
+}
+
+.ghostAction:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.stats {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin: 0;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.statValue,
+.statValueHighlight {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-heading);
+  color: var(--ink-0);
+}
+
+.statValueHighlight {
+  color: var(--accent-streak);
+}
+
+.statLabel {
+  font-size: var(--text-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-400);
+}
+
+/* Numa coluna só, os números viram uma linha abaixo do texto em vez de uma
+   coluna estreita que quebra cada rótulo em três linhas. */
+@media (max-width: 860px) {
+  .banner {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+}

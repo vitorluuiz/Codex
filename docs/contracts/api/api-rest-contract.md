@@ -372,6 +372,68 @@ biblioteca da comunidade não cabe no cliente.
 `updatedLabel` vem pronto do servidor (já relativo e localizado) para o front não
 precisar de biblioteca de datas.
 
+### `GET /phase-sets/library`
+
+Alimenta a tela "Conjuntos de desafios". Devolve os conjuntos do autor e os da
+comunidade na **mesma** resposta: as duas abas trocam a cada clique, e refazer a
+busca a cada troca faria a grade piscar sem nenhuma informação nova ter chegado.
+
+É rota separada de `GET /phase-sets` pelo motivo oposto: aquela abre o seletor no
+meio de uma aula e não pode esperar as agregações de acerto médio e duração que
+só o card da biblioteca lê.
+
+```json
+{
+  "sets": [
+    {
+      "id": "s1",
+      "title": "Frações & Funções Básicas",
+      "phaseCount": 8,
+      "source": "owned",
+      "updatedLabel": "editado há 2 dias",
+      "authorName": null,
+      "phaseKindCounts": { "quiz": 5, "fill": 3 },
+      "accuracyRate": 78,
+      "durationLabel": "32 min",
+      "subject": "Matemática",
+      "folder": "Matemática 2º ano",
+      "useCount": 12,
+      "coverUrl": null
+    },
+    {
+      "id": "p1",
+      "title": "Big-O sem sofrimento",
+      "phaseCount": 10,
+      "source": "community",
+      "updatedLabel": "1.840 usos",
+      "authorName": "Comunidade Codex",
+      "phaseKindCounts": { "code": 6, "quiz": 4 },
+      "accuracyRate": 64,
+      "durationLabel": "45 min",
+      "subject": "Programação",
+      "folder": null,
+      "useCount": 1840,
+      "coverUrl": null
+    }
+  ],
+  "subjects": ["Matemática", "Programação", "Estatística"],
+  "folders": ["Matemática 2º ano", "Programação", "Provas"],
+  "coverUrl": null
+}
+```
+
+`sets` já vem ordenada por recência — é essa ordem que a aba "Recentes" usa e é o
+primeiro conjunto `owned` que vira o destaque do topo. `updatedLabel` vem pronto
+(relativo e localizado) pelo mesmo motivo de `GET /phase-sets`.
+
+`subjects` e `folders` são as listas dos filtros e não saem de `sets`: uma pasta
+recém-esvaziada tem que continuar clicável, senão o filtro some justamente quando
+a pessoa quer voltar para ela. `folder` é sempre `null` em `source: "community"`.
+
+`accuracyRate` é `null` enquanto nenhuma partida usou o conjunto — a tela escreve
+"sem partidas" em vez de `0%`. Busca, tipo, disciplina, pasta e ordenação são
+aplicados no cliente sobre esta resposta.
+
 ### `GET /phase-sets/{setId}/draft` — autor
 
 Conjunto na forma que o **editor** manipula, que é diferente da que a partida
@@ -875,4 +937,5 @@ Salas e participantes convidados expiram. Configure TTL em `rooms.expiresAt`
 | Desafios (aluno) | `GET /rooms/{code}/match`, `GET /matches/{id}/current-phase`, `GET /matches/{id}/scoreboard/me`, `POST …/submissions`, `POST …/run`, `POST …/ready`, `GET …/comparison`, `GET /matches/{id}/podium` |
 | Desafios (líder) | `GET /matches/{id}/current-phase`, `GET …/stats`, `advance`, `pause`, `restart`, `finish`, `return-to-lobby`, `DELETE …/participants/{id}` |
 | Perfil | `GET /users/{id}/profile`, `GET /rooms/active` (só o próprio), `PATCH /users/me`, `POST /rooms`, `POST /matches/{id}/report/export`, `POST /auth/logout` |
+| Conjuntos de desafios | `GET /session`, `GET /phase-sets/library`, `POST /rooms`, `DELETE /phase-sets/{id}`, `POST /auth/logout` |
 | Editor de Conjunto | `GET /phase-sets/{id}/draft`, `POST /phase-sets`, `PUT /phase-sets/{id}/draft`, `POST /phase-sets/phases/generate` |

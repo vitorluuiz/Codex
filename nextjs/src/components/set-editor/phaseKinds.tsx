@@ -38,6 +38,17 @@ export const KIND_META: Record<PhaseKind, KindMeta> = {
   },
 };
 
+/**
+ * Rótulo curto, para quando o tipo aparece junto de um número ("9 quiz").
+ * "Completar frase" por extenso quebraria a linha do chip no card.
+ */
+export const KIND_SHORT_LABEL: Record<PhaseKind, string> = {
+  quiz: 'quiz',
+  code: 'código',
+  text: 'dissertativa',
+  fill: 'completar',
+};
+
 export const KIND_ORDER: PhaseKind[] = ['quiz', 'code', 'text', 'fill'];
 
 export const QUESTION_LABEL: Record<PhaseKind, string> = {

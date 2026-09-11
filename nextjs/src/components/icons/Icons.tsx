@@ -123,6 +123,11 @@ export const Icon = {
       <path d="M15 18l-6-6 6-6" />
     </svg>
   ),
+  ChevronDown: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  ),
   ChevronRight: ({ size = 24, className }: IconProps) => (
     <svg {...base(size, className)}>
       <path d="M9 18l6-6-6-6" />
