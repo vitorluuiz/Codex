@@ -8,6 +8,8 @@ import { Icon } from '@/components/icons/Icons';
 import { roomPath } from '@/lib/roomPath';
 import type { ActiveRoom, LeaderMatchSummary } from '@/lib/types';
 import styles from './MatchHistorySection.module.css';
+import { cssVars } from '@/lib/cssVars';
+import { cx } from '@/lib/cx';
 
 const MODE_LABEL: Record<LeaderMatchSummary['mode'], string> = {
   live: 'Ao vivo',
@@ -22,7 +24,7 @@ function accuracyColor(value: number): string {
 }
 
 function PhaseSparkline({ values, remainingValuesCount }: { values: number[], remainingValuesCount?: number }) {
-  const remainingValues = remainingValuesCount? new Array(remainingValuesCount).fill(33) : [];
+  const remainingValues = remainingValuesCount ? new Array(remainingValuesCount).fill(50) : [];
 
   return (
     <div className={styles.sparkline}>
@@ -36,8 +38,8 @@ function PhaseSparkline({ values, remainingValuesCount }: { values: number[], re
       {remainingValues.map((value, index) => (
         <div
           key={index}
-          className={styles.sparklineBar}
-          style={{ height: `${Math.max(value, 8)}%`, background: 'grey' }}
+          className={cx(styles.sparklineBar, styles.sparklineBarRemaining)}
+          style={{ height: `${Math.max(value, 8)}%` }}
         />
       ))}
     </div>
@@ -102,21 +104,20 @@ export function MatchHistorySection({
                 </span>
                 <div className={styles.subline}>
                   <span className={styles.date}>
-                    {room.participantCount} {participantsLabel.toLowerCase()}
-                    {room.currentPhase != null ? ` · fase ${room.currentPhase}` : ''}
+                    {room.createdAtLabel}
                   </span>
                 </div>
               </div>
 
               <div className={styles.rowLiveStatus}>
-                <PhaseSparkline values={[98, 78, 56, 10, 95]} remainingValuesCount={3}/>
-                {/* Mudar liveDot */}
+                <PhaseSparkline values={[98, 78, 56, 10, 95, 70, 75, 20]} remainingValuesCount={3} />
                 <div className={styles.liveInfos}>
                   <span className={`${styles.modeChip} ${styles.liveChip}`}>
                     <span className={styles.liveDot} />
                     Em andamento
                   </span>
-                  <span>19 participantes fase 4/8</span>
+                  <span>{room.participantCount} {participantsLabel.toLowerCase()}
+                    {room.currentPhase != null ? ` · fase ${room.currentPhase}` : ' no lobby'}</span>
                 </div>
               </div>
 
@@ -150,7 +151,7 @@ export function MatchHistorySection({
               <div className={styles.stat}>
                 <span className={`${styles.statValue} ${styles.statScore}`}>
                   {match.avgScore}
-                  <span className={styles.statMax}> / {match.maxScore}</span>
+                  <span className={styles.statMax}> / {match.maxScore? match.maxScore : 100}</span>
                 </span>
                 <span className={styles.statLabel}>
                   {match.participantCount} {participantsLabel}

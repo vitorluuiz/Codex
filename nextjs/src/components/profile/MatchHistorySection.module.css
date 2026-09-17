@@ -84,7 +84,7 @@
   display: flex;
   align-items: flex-end;
   gap: 4px;
-  width: 200px;
+  width: 300px;
   height: 30px;
   flex: 0.9;
 }
@@ -93,6 +93,10 @@
   flex: 1;
   border-radius: 3px;
   min-height: 4px;
+}
+
+.sparklineBarRemaining{
+  background-color: var(--ink-100);
 }
 
 .statMax {
@@ -176,7 +180,7 @@
 .statValue {
   font-weight: var(--fw-bold);
   color: var(--text-primary);
-  font-size: var(--text-body);
+  font-size: var(--text-heading);
   white-space: nowrap;
 }
 
@@ -195,8 +199,10 @@
 
 .rowLiveStatus {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: var(--space-4);
+  /* gap: var(--space-5); */
+  flex-wrap: wrap;
 }
 
 .liveInfos {
