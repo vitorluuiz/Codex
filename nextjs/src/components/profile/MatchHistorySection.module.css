@@ -55,7 +55,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: var(--tone-pink-surface);
+  background: none !important;
+  text-transform: uppercase;
   color: var(--pink-600);
 }
 
@@ -68,10 +69,12 @@
 }
 
 @keyframes pulse-dot {
+
   0%,
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.35;
   }
@@ -81,6 +84,7 @@
   display: flex;
   align-items: flex-end;
   gap: 4px;
+  width: 200px;
   height: 30px;
   flex: 0.9;
 }
@@ -100,13 +104,12 @@
 .resumeLink {
   display: inline-flex;
   align-items: center;
-  height: 36px;
-  padding: 0 16px;
+  padding: 12px 22px;
   border-radius: var(--radius-pill);
   background: var(--accent-primary);
   color: #fff;
-  font-size: var(--text-body-s);
-  font-weight: var(--fw-semibold);
+  font-size: var(--text-body);
+  font-weight: var(--fw-bold);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -188,6 +191,20 @@
   letter-spacing: 0.04em;
   text-align: center;
 }
+
+
+.rowLiveStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.liveInfos {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--text-caption);
+}
+
 
 .rowActions {
   display: flex;

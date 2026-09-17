@@ -6,10 +6,21 @@
 
 .popover {
   position: fixed;
-  top: var(--popover-top);
   left: var(--popover-left);
   width: var(--popover-width);
   z-index: 20;
+}
+
+/* Ancorar pelo topo quando abre para baixo e pelo rodapé quando abre para cima
+   mantém parada a borda voltada para o gatilho, seja qual for a altura real do
+   conteúdo. `top` venceria `bottom` numa caixa fixed, então cada direção
+   declara só a sua propriedade. */
+.below {
+  top: var(--popover-top);
+}
+
+.above {
+  bottom: var(--popover-bottom);
 }
 
 .arrow {

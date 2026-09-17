@@ -21,7 +21,9 @@ function accuracyColor(value: number): string {
   return 'var(--accent-danger)';
 }
 
-function PhaseSparkline({ values }: { values: number[] }) {
+function PhaseSparkline({ values, remainingValuesCount }: { values: number[], remainingValuesCount?: number }) {
+  const remainingValues = remainingValuesCount? new Array(remainingValuesCount).fill(33) : [];
+
   return (
     <div className={styles.sparkline}>
       {values.map((value, index) => (
@@ -29,6 +31,13 @@ function PhaseSparkline({ values }: { values: number[] }) {
           key={index}
           className={styles.sparklineBar}
           style={{ height: `${Math.max(value, 8)}%`, background: accuracyColor(value) }}
+        />
+      ))}
+      {remainingValues.map((value, index) => (
+        <div
+          key={index}
+          className={styles.sparklineBar}
+          style={{ height: `${Math.max(value, 8)}%`, background: 'grey' }}
         />
       ))}
     </div>
@@ -92,14 +101,22 @@ export function MatchHistorySection({
                     : `${room.phaseCount ?? 0} fases`}
                 </span>
                 <div className={styles.subline}>
-                  <span className={`${styles.modeChip} ${styles.liveChip}`}>
-                    <span className={styles.liveDot} />
-                    Em andamento
-                  </span>
                   <span className={styles.date}>
                     {room.participantCount} {participantsLabel.toLowerCase()}
                     {room.currentPhase != null ? ` · fase ${room.currentPhase}` : ''}
                   </span>
+                </div>
+              </div>
+
+              <div className={styles.rowLiveStatus}>
+                <PhaseSparkline values={[98, 78, 56, 10, 95]} remainingValuesCount={3}/>
+                {/* Mudar liveDot */}
+                <div className={styles.liveInfos}>
+                  <span className={`${styles.modeChip} ${styles.liveChip}`}>
+                    <span className={styles.liveDot} />
+                    Em andamento
+                  </span>
+                  <span>19 participantes fase 4/8</span>
                 </div>
               </div>
 
@@ -128,7 +145,7 @@ export function MatchHistorySection({
                 </div>
               </div>
 
-              {match.phaseAccuracy?.length > 0 && <PhaseSparkline values={match.phaseAccuracy} />}
+              <PhaseSparkline values={[98, 78, 56, 10, 95]} />
 
               <div className={styles.stat}>
                 <span className={`${styles.statValue} ${styles.statScore}`}>

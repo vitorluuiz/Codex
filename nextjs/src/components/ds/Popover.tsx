@@ -25,6 +25,10 @@ interface PopoverProps {
   width?: number;
   /** `center` alinha pelo meio do gatilho; `end` alinha a borda direita. */
   align?: 'center' | 'end';
+  /**
+   * Altura aproximada do conteúdo. Só decide a direção da abertura — não entra
+   * na posição final —, então errar por alguns pixels não desalinha nada.
+   */
   estimatedHeight?: number;
   onClose: () => void;
   children: ReactNode;
@@ -95,7 +99,14 @@ export function Popover({
 
   const spaceBelow = viewportHeight - anchor.bottom;
   const flipped = spaceBelow < estimatedHeight + MARGIN && anchor.top > spaceBelow;
-  const top = flipped ? anchor.top - estimatedHeight - GAP : anchor.bottom + GAP;
+
+  // Aberto para cima, a âncora é o rodapé: o CSS mede a partir da base da
+  // viewport e a borda de baixo do painel para no mesmo ponto acima do gatilho
+  // qualquer que seja a altura real. Descontar `estimatedHeight` de `top`
+  // deixaria cada popover da tela a uma distância diferente do seu gatilho.
+  const placement: Record<string, string> = flipped
+    ? { '--popover-bottom': `${viewportHeight - anchor.top + GAP}px` }
+    : { '--popover-top': `${Math.max(MARGIN, anchor.bottom + GAP)}px` };
 
   if (typeof document === 'undefined') return null;
 
@@ -104,11 +115,11 @@ export function Popover({
       <div className={styles.backdrop} onClick={onClose} role="presentation" />
       <div
         ref={panelRef}
-        className={styles.popover}
+        className={cx(styles.popover, flipped ? styles.above : styles.below)}
         role="dialog"
         aria-label={label}
         style={cssVars({
-          '--popover-top': `${Math.max(MARGIN, top)}px`,
+          ...placement,
           '--popover-left': `${left}px`,
           '--popover-width': `${width}px`,
           '--popover-arrow-left': `${arrowLeft}px`,
