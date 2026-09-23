@@ -114,7 +114,7 @@ export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: Profile
                       Retornar à sala
                     </Button>
                   )}
-                  <Button onClick={() => router.push('/entrar')}>Entrar em uma sala</Button>
+                  <Button onClick={() => router.push('/sala')}>Entrar em uma sala</Button>
                 </>
               )}
             </div>
