@@ -133,12 +133,22 @@ public static class PhaseGrading
                     throw Validation($"answer.blanks deve ter exatamente {blankCount} posicoes.");
                 }
 
+                if (blanks.Any(blank => PhaseLimits.ExceedsLength(blank, PhaseLimits.MaxOptionLength)))
+                {
+                    throw Validation($"answer.blanks aceita no maximo {PhaseLimits.MaxOptionLength} caracteres por lacuna.");
+                }
+
                 break;
 
             case PhaseKind.Text:
                 if (string.IsNullOrWhiteSpace(answer.Value))
                 {
                     throw Validation("answer.value nao pode ser vazio.");
+                }
+
+                if (PhaseLimits.ExceedsLength(answer.Value, PhaseLimits.MaxAnswerTextLength))
+                {
+                    throw Validation($"answer.value deve ter no maximo {PhaseLimits.MaxAnswerTextLength} caracteres.");
                 }
 
                 break;
@@ -155,6 +165,14 @@ public static class PhaseGrading
                 if (string.IsNullOrWhiteSpace(answer.Source))
                 {
                     throw Validation("answer.source nao pode ser vazio.");
+                }
+
+                // O unico campo que um aluno envia sem teto nenhum ate aqui — e o que mais cresce,
+                // porque e codigo colado. E ele que decide o tamanho do bucket do participante no
+                // documento da partida (400 submissoes) e o consumo do Redis durante a partida.
+                if (PhaseLimits.ExceedsLength(answer.Source, PhaseLimits.MaxAnswerSourceLength))
+                {
+                    throw Validation($"answer.source deve ter no maximo {PhaseLimits.MaxAnswerSourceLength} caracteres.");
                 }
 
                 break;
@@ -214,6 +232,20 @@ public static class PhaseGrading
         var score = phase.BasePoints * phase.PointsMultiplier * accuracy * timeBonus;
         return (int)decimal.Round(score, MidpointRounding.AwayFromZero);
     }
+
+    /// <summary>
+    /// A maior nota que esta fase pode dar: acerto total, respondido sem gastar tempo nenhum.
+    ///
+    /// <b>Derivada de <see cref="Score"/>, nao recalculada</b> — passar <c>secondsRemaining =
+    /// TimeSeconds</c> leva o bonus de tempo a exatamente <c>1.0</c>, entao o resultado e
+    /// <c>round(basePoints × pointsMultiplier)</c> sem que este metodo precise saber disso. Uma
+    /// segunda copia da formula aqui seria a primeira coisa a divergir quando a pontuacao mudasse.
+    ///
+    /// Vai gravada em <c>matches.phases[].maxScore</c> no fim da partida: o relatorio de uma
+    /// partida antiga precisa do teto que valia <i>naquele dia</i>, e nao do que a formula daria
+    /// hoje.
+    /// </summary>
+    public static int MaxScore(RoomQueuePhase phase) => Score(phase, 1m, phase.TimeSeconds);
 
     /// <summary>
     /// A resposta certa em texto, para o <c>correctAnswerLabel</c> do <c>comparison</c> — o unico

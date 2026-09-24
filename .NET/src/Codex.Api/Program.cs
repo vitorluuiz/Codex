@@ -4,6 +4,7 @@ using Codex.Api.Common.Formatting;
 using Codex.Api.Common.Json;
 using Codex.Api.Common.RateLimiting;
 using Codex.Api.Data;
+using Codex.Api.Documents;
 using Codex.Api.Domain.Entities;
 using Codex.Api.Endpoints;
 using Codex.Api.Services;
@@ -40,11 +41,13 @@ builder.Services.AddScoped<PhaseSetService>();
 builder.Services.AddScoped<MatchAccessService>();
 builder.Services.AddScoped<MatchStatsService>();
 builder.Services.AddScoped<MatchEventPublisher>();
+builder.Services.AddScoped<MatchDocumentWriter>();
 builder.Services.AddScoped<MatchService>();
 builder.Services.AddScoped<SubmissionService>();
 
 builder.Services.AddCodexRateLimiter(builder.Configuration);
 builder.Services.AddCodexRealtime(builder.Configuration);
+builder.Services.AddCodexDocuments(builder.Configuration);
 
 builder.Services
     .AddAuthentication(CodexSessionAuthenticationHandler.SchemeName)

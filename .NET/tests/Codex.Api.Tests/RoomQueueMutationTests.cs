@@ -355,6 +355,30 @@ public class RoomQueueMutationTests
     }
 
     /// <summary>
+    /// A fila e a segunda porta para o mesmo <c>ContentJson</c> que o editor escreve. Duas portas
+    /// para o mesmo campo com tetos diferentes e o jeito garantido de gravar por uma o que a outra
+    /// recusaria — e o que decide o tamanho do documento da partida no fim.
+    /// </summary>
+    [Fact]
+    public async Task Expected_answer_longer_than_the_ceiling_is_VALIDATION_ERROR()
+    {
+        var ctx = new RoomTestContext();
+        var set = ctx.AddPhaseSet(ctx.Leader, "Dissertativas", PhaseKind.Text, new PhaseContent(Question: "Explique"));
+        var before = await ctx.Queue.AddSetAsync(ctx.Room.Code, new AddQueueSetRequest(set.Id.ToString()), ctx.AsLeader, Ct);
+
+        var exception = await Assert.ThrowsAsync<ApiException>(
+            () => ctx.Queue.UpdatePhaseAsync(
+                ctx.Room.Code,
+                before.Phases[0].Id.ToString(),
+                new UpdateQueuePhaseRequest(null, null, null, null, new string('x', PhaseLimits.MaxExpectedAnswerLength + 1)),
+                ctx.AsLeader,
+                Ct));
+
+        Assert.Equal(ErrorCodes.ValidationError, exception.Code);
+        Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
+    }
+
+    /// <summary>
     /// Os mesmos limites do editor (secao 5), agora em PhaseLimits: gravar pela fila um tempo que o
     /// editor recusaria deixaria a fase invalida sem nunca ter passado por uma validacao.
     /// </summary>

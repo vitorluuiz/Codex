@@ -2,12 +2,14 @@ using System.Security.Claims;
 using Codex.Api.Common.Auth;
 using Codex.Api.Common.Formatting;
 using Codex.Api.Data;
+using Codex.Api.Documents;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
 using Codex.Api.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Codex.Api.Tests;
 
@@ -32,6 +34,15 @@ public class RoomTestContext
     public ISessionTokenService Tokens { get; }
 
     /// <summary>
+    /// O store de documentos em memoria. Enquanto durar a escrita dupla (passos 3 e 4 da secao 8.2
+    /// da migracao-dados), e por aqui que um teste confere que o snapshot da partida encerrada bate
+    /// com o que o Postgres calcula — a comparacao so e possivel enquanto os dois lados existem.
+    /// </summary>
+    public InMemoryMatchDocumentStore Documents { get; }
+
+    public MatchDocumentWriter MatchDocuments { get; }
+
+    /// <summary>
     /// Substituto do broker. Nos testes ele nao e so um no-op: e o unico jeito de afirmar que a
     /// mutacao publicou o evento certo, no canal certo — se so verificassemos o banco, uma
     /// publicacao esquecida passaria despercebida ate alguem abrir dois browsers.
@@ -51,18 +62,20 @@ public class RoomTestContext
         Tokens = new SessionTokenService(new EphemeralDataProtectionProvider());
         var configuration = new ConfigurationBuilder().Build();
 
+        Documents = new InMemoryMatchDocumentStore();
         var access = new RoomAccessService(Db);
         Labels = new LabelFormatter(configuration);
         Queue = new RoomQueueService(Db, access, Realtime);
         Rooms = new RoomService(Db, access, Queue, Labels, Realtime);
         Participants = new ParticipantService(Db, access, Rooms, Tokens, Realtime, configuration);
-        Profiles = new UserProfileService(Db, Labels);
+        Profiles = new UserProfileService(Db, Labels, Documents, new DocumentOptions());
         PhaseSets = new PhaseSetService(Db, Labels);
 
         var matchAccess = new MatchAccessService(Db);
         MatchStats = new MatchStatsService(Db);
         var matchEvents = new MatchEventPublisher(MatchStats, Realtime);
-        Matches = new MatchService(Db, access, matchAccess, MatchStats, matchEvents);
+        MatchDocuments = new MatchDocumentWriter(Db, Documents, NullLogger<MatchDocumentWriter>.Instance);
+        Matches = new MatchService(Db, access, matchAccess, MatchStats, matchEvents, MatchDocuments);
         Submissions = new SubmissionService(Db, matchAccess, Matches, MatchStats, matchEvents);
 
         Leader = new User { Name = "Marina Duarte", Email = "marina@escola.br" };

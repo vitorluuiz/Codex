@@ -4,6 +4,7 @@ using Codex.Api.Common.Errors;
 using Codex.Api.Contracts.Matches;
 using Codex.Api.Contracts.Phases;
 using Codex.Api.Data;
+using Codex.Api.Documents;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -32,7 +33,8 @@ public class MatchService(
     RoomAccessService roomAccess,
     MatchAccessService matchAccess,
     MatchStatsService stats,
-    MatchEventPublisher events)
+    MatchEventPublisher events,
+    MatchDocumentWriter documents)
 {
     /// <summary>
     /// Quanto tempo a sala sobrevive ao fim da partida. "Configure TTL em <c>rooms.expiresAt</c>
@@ -339,6 +341,18 @@ public class MatchService(
             }
 
             await db.SaveChangesAsync(ct);
+
+            // O snapshot da partida no banco de documentos, logo depois de o Postgres ter fechado.
+            //
+            // Escrita dupla proposital: enquanto o Postgres ainda guarda a partida, os dois lados
+            // convivem e podem ser comparados (o que MatchDocumentWriterTests faz). No passo 5 da
+            // secao 8.2 da migracao-dados a ordem inverte — o documento vira a unica copia, e e o
+            // SaveChangesAsync daqui que desaparece.
+            //
+            // Dentro do `if`: encerrar e idempotente, e remontar o snapshot a cada clique do lider
+            // numa partida ja encerrada seria trabalho sem efeito. Refazer o commit depois de uma
+            // falha continua possivel porque BuildAsync e idempotente.
+            await documents.CommitAsync(match, ct);
         }
 
         var podium = await stats.GetPodiumAsync(match, ct);

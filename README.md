@@ -53,7 +53,7 @@ Três regras que explicam a maior parte da configuração abaixo:
 
 | Serviço | Pasta | Porta | Stack |
 |---|---|---|---|
-| API | `.NET/src/Codex.Api` | `5282` (http) / `7091` (https) | .NET 10, Minimal API, EF Core, PostgreSQL |
+| API | `.NET/src/Codex.Api` | `5282` (http) / `7091` (https) | .NET 10, Minimal API, EF Core, PostgreSQL, MongoDB |
 | Realtime | `realtime` | `4001` (upgrade em `/realtime`) | Node, `ws`, `ioredis` |
 | Web | `nextjs` | `3000` | Next.js 15 (App Router, RSC), React 19, CSS Modules |
 
@@ -66,6 +66,7 @@ Três regras que explicam a maior parte da configuração abaixo:
 | [.NET SDK](https://dotnet.microsoft.com/download) | **10.0** | `TargetFramework` é `net10.0` |
 | [Node.js](https://nodejs.org) | **20.12+** | o `start` do realtime usa `--env-file-if-exists` |
 | [PostgreSQL](https://www.postgresql.org/download/) | 14+ | obrigatório — a API não sobe sem banco |
+| [MongoDB](https://www.mongodb.com/try/download/community) | 7+ | **opcional em dev**; guarda as partidas encerradas |
 | [Redis](https://redis.io/download) | 6+ | **opcional em dev**; sem ele não há eventos de tempo real |
 | `dotnet-ef` | 10.x | `dotnet tool install --global dotnet-ef` |
 
@@ -74,11 +75,20 @@ o lobby e a partida param de atualizar sozinhos (é preciso recarregar a página
 O realtime cai para um broker em memória, válido para **uma** instância só. Com
 `NODE_ENV=production`, a ausência de `REDIS_URL` vira erro de inicialização.
 
-No Windows, a forma mais rápida de ter os dois:
+Sobre o MongoDB: guarda as **partidas encerradas**
+([`migracao-dados.md`](docs/contracts/postgresql/migracao-dados.md)). Sem
+`CodexApi:Documents:ConnectionString` a API sobe e o snapshot fica num store em
+memória — o Postgres continua sendo a fonte da verdade da partida, então nada na
+tela quebra, mas o histórico do líder some a cada restart. É assim que os testes
+rodam. Isso deixa de ser aceitável no passo 5 daquele documento, quando o
+documento passar a ser a única cópia.
+
+No Windows, a forma mais rápida de ter os três:
 
 ```powershell
 docker run -d --name codex-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16
 docker run -d --name codex-redis -p 6379:6379 redis:7
+docker run -d --name codex-mongo -p 27017:27017 mongo:8.0
 ```
 
 ---
@@ -219,7 +229,8 @@ A referência OpenAPI da API fica em `http://localhost:5282/openapi/v1.json` (s�
 | Projeto | Comando | O que faz |
 |---|---|---|
 | API | `dotnet run --launch-profile http` | sobe em `:5282` |
-| API | `dotnet test` (na pasta `.NET`) | xUnit, banco em memória — não precisa de PostgreSQL nem Redis |
+| API | `dotnet test` (na pasta `.NET`) | xUnit, banco em memória — não precisa de PostgreSQL, Redis nem Mongo |
+| API | `CODEX_TEST_MONGO=mongodb://localhost:27017 dotnet test` | inclui os 4 testes de integração do store de documentos, que sem a variável ficam `Skipped` |
 | API | `dotnet ef migrations add <Nome>` | nova migration (rode em `.NET\src\Codex.Api`) |
 | Realtime | `npm run dev` | `build` + `start` |
 | Realtime | `npm test` | smoke do protocolo contra uma API falsa |

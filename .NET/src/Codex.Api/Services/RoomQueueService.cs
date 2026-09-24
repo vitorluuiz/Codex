@@ -311,6 +311,14 @@ public class RoomQueueService(AppDbContext db, RoomAccessService roomAccess, IRe
                 throw Validation("expectedAnswer so vale para fases text e code.");
             }
 
+            // Mesmo teto do editor (PhaseSetService): esta rota escreve no mesmo ContentJson, e
+            // duas portas para o mesmo campo com limites diferentes e o jeito garantido de gravar
+            // pela fila o que o editor recusaria.
+            if (PhaseLimits.ExceedsLength(expectedAnswer, PhaseLimits.MaxExpectedAnswerLength))
+            {
+                throw Validation($"expectedAnswer deve ter no maximo {PhaseLimits.MaxExpectedAnswerLength} caracteres.");
+            }
+
             // Reserializa o conteudo inteiro a partir do que estava gravado, em vez de remendar a
             // string: o ContentJson e a forma de autoria completa da fase (PhaseContent), e um
             // patch textual perderia os campos do kind na primeira mudanca de formato.
