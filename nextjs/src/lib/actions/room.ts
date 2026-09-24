@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { revalidateTag } from 'next/cache';
 
 import { ApiError, ApiNotConfiguredError, apiRequest } from '@/lib/api/client';
+import { SESSION_COOKIE } from '@/lib/cookies';
 import type { RoomQueue } from '@/lib/api/rooms';
 import type {
   AvatarIndex,
@@ -12,8 +13,6 @@ import type {
   PhaseSetSummary,
   Room,
 } from '@/lib/types';
-
-const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME || 'codex_session';
 
 /* -------------------------------------------------------------------------- */
 /* Entrada na sala                                                             */
@@ -100,6 +99,15 @@ export async function updateRoomSettingsAction(
   patch: Partial<Pick<Room, 'locked' | 'requireAccount' | 'capacity'>>,
 ) {
   await apiRequest(`/rooms/${code}`, { method: 'PATCH', body: patch });
+  revalidateTag(`room:${code}`);
+}
+
+/**
+ * `DELETE /rooms/{code}` — encerra a sala inteira sem o líder precisar entrar
+ * nela. Usado pelo botão "Encerrar sala" do histórico do perfil.
+ */
+export async function closeRoomAction(code: string) {
+  await apiRequest(`/rooms/${code}`, { method: 'DELETE' });
   revalidateTag(`room:${code}`);
 }
 

@@ -12,6 +12,7 @@ namespace Codex.Api.Data;
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options), IDataProtectionKeyContext
 {
     public DbSet<User> Users => Set<User>();
+    public DbSet<UserIdentity> UserIdentities => Set<UserIdentity>();
     public DbSet<Room> Rooms => Set<Room>();
     public DbSet<Participant> Participants => Set<Participant>();
     public DbSet<PhaseSet> PhaseSets => Set<PhaseSet>();

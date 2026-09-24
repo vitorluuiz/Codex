@@ -4,9 +4,14 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { ApiError, ApiNotConfiguredError, apiRequest } from '@/lib/api/client';
+import {
+  OAUTH_STATE_COOKIE,
+  OAUTH_STATE_MAX_AGE,
+  SESSION_COOKIE,
+  persistSession,
+} from '@/lib/cookies';
+import type { OAuthProvider } from '@/lib/types';
 import type { User } from '@/lib/types';
-
-const SESSION_COOKIE = process.env.SESSION_COOKIE_NAME || 'codex_session';
 
 export interface AuthFormState {
   error: string | null;
@@ -16,17 +21,6 @@ interface AuthResponse {
   token: string;
   expiresIn: number;
   user: User;
-}
-
-async function persist(token: string, expiresIn: number) {
-  const store = await cookies();
-  store.set(SESSION_COOKIE, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: expiresIn,
-  });
 }
 
 function describe(error: unknown): string {
@@ -56,7 +50,7 @@ export async function loginAction(
         rememberMe: formData.get('rememberMe') === 'on',
       },
     });
-    await persist(result.token, result.expiresIn);
+    await persistSession(result.token, result.expiresIn);
   } catch (error) {
     return { error: describe(error) };
   }
@@ -78,7 +72,7 @@ export async function signupAction(
         password: String(formData.get('password') ?? ''),
       },
     });
-    await persist(result.token, result.expiresIn);
+    await persistSession(result.token, result.expiresIn);
   } catch (error) {
     return { error: describe(error) };
   }
@@ -103,17 +97,40 @@ export async function logoutAction() {
   redirect('/');
 }
 
-/** `GET /auth/oauth/{provider}/authorize` — devolve a URL de redirecionamento. */
-export async function startOAuthAction(provider: 'google' | 'microsoft' | 'github') {
-  let url: string;
+/**
+ * `POST /auth/oauth/{provider}/authorize` — devolve a URL de consentimento.
+ *
+ * O `state` volta junto e é guardado num cookie: o callback só aceita o fluxo se o valor da
+ * query bater com ele. Redireciona para fora do site em caso de sucesso, então o único
+ * retorno possível é o de erro.
+ */
+export async function startOAuthAction(
+  _prev: AuthFormState,
+  formData: FormData,
+): Promise<AuthFormState> {
+  const provider = String(formData.get('provider') ?? '') as OAuthProvider;
+
+  let authorizeUrl: string;
   try {
-    const result = await apiRequest<{ authorizeUrl: string }>(
+    const result = await apiRequest<{ authorizeUrl: string; state: string }>(
       `/auth/oauth/${provider}/authorize`,
-      { method: 'POST', withSession: false, body: { redirectTo: '/sala' } },
+      { method: 'POST', withSession: false, body: { redirectTo: '/perfil' } },
     );
-    url = result.authorizeUrl;
-  } catch {
+    authorizeUrl = result.authorizeUrl;
+
+    const store = await cookies();
+    store.set(OAUTH_STATE_COOKIE, result.state, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: OAUTH_STATE_MAX_AGE,
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.code === 'OAUTH_PROVIDER_NOT_CONFIGURED') {
+      return { error: 'Este provedor ainda não está disponível. Entre com email e senha.' };
+    }
     return { error: 'Não foi possível iniciar o login com este provedor.' };
   }
-  redirect(url);
+  redirect(authorizeUrl);
 }

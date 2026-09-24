@@ -1,19 +1,50 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 
 import { Button, Dialog } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
-import { ROOM_STATUS_LABEL, describeActiveRoom } from '@/components/room/activeRoomLabels';
 import { roomPath } from '@/lib/roomPath';
 import type { ActiveRoom, LeaderMatchSummary } from '@/lib/types';
 import styles from './MatchHistorySection.module.css';
+import { cssVars } from '@/lib/cssVars';
+import { cx } from '@/lib/cx';
 
 const MODE_LABEL: Record<LeaderMatchSummary['mode'], string> = {
   live: 'Ao vivo',
   'self-paced': 'Próprio ritmo',
 };
+
+/** Cor da barra do mini-gráfico, na mesma escala usada no restante do app. */
+function accuracyColor(value: number): string {
+  if (value >= 75) return 'var(--accent-success)';
+  if (value >= 50) return 'var(--accent-streak)';
+  return 'var(--accent-danger)';
+}
+
+function PhaseSparkline({ values, remainingValuesCount }: { values: number[], remainingValuesCount?: number }) {
+  const remainingValues = remainingValuesCount ? new Array(remainingValuesCount).fill(50) : [];
+
+  return (
+    <div className={styles.sparkline}>
+      {values.map((value, index) => (
+        <div
+          key={index}
+          className={styles.sparklineBar}
+          style={{ height: `${Math.max(value, 8)}%`, background: accuracyColor(value) }}
+        />
+      ))}
+      {remainingValues.map((value, index) => (
+        <div
+          key={index}
+          className={cx(styles.sparklineBar, styles.sparklineBarRemaining)}
+          style={{ height: `${Math.max(value, 8)}%` }}
+        />
+      ))}
+    </div>
+  );
+}
 
 interface MatchHistorySectionProps {
   matches: LeaderMatchSummary[];
@@ -26,6 +57,7 @@ interface MatchHistorySectionProps {
   /** "Participantes" ou "Candidatos", conforme o público da conta. */
   participantsLabel: string;
   onDownload: (match: LeaderMatchSummary) => void;
+  onCloseRoom: (room: ActiveRoom) => void;
 }
 
 export function MatchHistorySection({
@@ -33,61 +65,77 @@ export function MatchHistorySection({
   activeRooms,
   participantsLabel,
   onDownload,
+  onCloseRoom,
 }: MatchHistorySectionProps) {
   const [report, setReport] = useState<LeaderMatchSummary | null>(null);
+  const [closing, startClosing] = useTransition();
+  const [closingCode, setClosingCode] = useState<string | null>(null);
+
+  const isEmpty = activeRooms.length === 0 && matches.length === 0;
+
+  function closeRoom(room: ActiveRoom) {
+    setClosingCode(room.code);
+    startClosing(() => {
+      onCloseRoom(room);
+    });
+  }
 
   return (
     <section className={styles.section}>
       <h2 className={styles.title}>Histórico de partidas como líder</h2>
 
-      {/*
-        Sala aberta vem antes do histórico porque é a única linha em que ainda dá
-        para agir: fechar a aba não encerra a sala, e sem este bloco o líder não
-        tinha caminho de volta — o código foi gerado pelo servidor, ninguém o
-        decorou. A sala pode estar em andamento; o destino do link acompanha o
-        `status`.
-      */}
-      {activeRooms.length > 0 && (
+      {isEmpty ? (
+        <p className={styles.empty}>Nenhuma partida realizada ainda.</p>
+      ) : (
         <ul className={styles.list}>
+          {/*
+            Sala aberta vem antes do histórico porque é a única linha em que ainda dá
+            para agir: fechar a aba não encerra a sala, e sem este bloco o líder não
+            tinha caminho de volta — o código foi gerado pelo servidor, ninguém o
+            decorou.
+          */}
           {activeRooms.map((room) => (
             <li key={room.code} className={`${styles.row} ${styles.rowActive}`}>
               <div className={styles.identity}>
-                <span className={styles.setTitle}>{describeActiveRoom(room)}</span>
+                <span className={styles.setTitle}>
+                  {room.setTitle
+                    ? `${room.setTitle} · ${room.phaseCount ?? 0} fases`
+                    : `${room.phaseCount ?? 0} fases`}
+                </span>
                 <div className={styles.subline}>
-                  <span className={`${styles.modeChip} ${styles.liveChip}`}>
-                    {ROOM_STATUS_LABEL[room.status]}
-                  </span>
                   <span className={styles.date}>
-                    Sala {room.code} · {room.createdAtLabel}
+                    {room.createdAtLabel}
                   </span>
                 </div>
               </div>
 
-              <div className={styles.stat}>
-                <span className={styles.statValue}>{room.participantCount}</span>
-                <span className={styles.statLabel}>{participantsLabel}</span>
+              <div className={styles.rowLiveStatus}>
+                <PhaseSparkline values={[98, 78, 56, 10, 95, 70, 75, 20]} remainingValuesCount={3} />
+                <div className={styles.liveInfos}>
+                  <span className={`${styles.modeChip} ${styles.liveChip}`}>
+                    <span className={styles.liveDot} />
+                    Em andamento
+                  </span>
+                  <span>{room.participantCount} {participantsLabel.toLowerCase()}
+                    {room.currentPhase != null ? ` · fase ${room.currentPhase}` : ' no lobby'}</span>
+                </div>
               </div>
 
               <div className={styles.rowActions}>
+                <Button
+                  variant="secondary"
+                  onClick={() => closeRoom(room)}
+                  disabled={closing && closingCode === room.code}
+                >
+                  Encerrar sala
+                </Button>
                 <Link href={roomPath(room)} className={styles.resumeLink}>
-                  Voltar para a sala
+                  Acompanhar
                 </Link>
               </div>
             </li>
           ))}
-        </ul>
-      )}
 
-      {matches.length === 0 ? (
-        <p className={styles.empty}>
-          {activeRooms.length === 0
-            ? 'Nenhuma partida realizada ainda.'
-            : activeRooms.length === 1
-              ? 'Nenhuma partida encerrada ainda — a sala acima ainda está de pé.'
-              : 'Nenhuma partida encerrada ainda — as salas acima ainda estão de pé.'}
-        </p>
-      ) : (
-        <ul className={styles.list}>
           {matches.map((match) => (
             <li key={match.id} className={styles.row}>
               <div className={styles.identity}>
@@ -98,16 +146,16 @@ export function MatchHistorySection({
                 </div>
               </div>
 
-              <div className={styles.stat}>
-                <span className={styles.statValue}>{match.participantCount}</span>
-                <span className={styles.statLabel}>{participantsLabel}</span>
-              </div>
+              <PhaseSparkline values={[98, 78, 56, 10, 95]} />
 
               <div className={styles.stat}>
                 <span className={`${styles.statValue} ${styles.statScore}`}>
-                  {match.avgScore} pts
+                  {match.avgScore}
+                  <span className={styles.statMax}> / {match.maxScore? match.maxScore : 100}</span>
                 </span>
-                <span className={styles.statLabel}>Pontuação média</span>
+                <span className={styles.statLabel}>
+                  {match.participantCount} {participantsLabel}
+                </span>
               </div>
 
               <div className={styles.rowActions}>
@@ -147,7 +195,11 @@ export function MatchHistorySection({
 
             <div className={styles.reportGrid}>
               <ReportTile label={participantsLabel} value={String(report.participantCount)} />
-              <ReportTile label="Pontuação média" value={String(report.avgScore)} tone="score" />
+              <ReportTile
+                label="Pontuação média"
+                value={`${report.avgScore} / ${report.maxScore}`}
+                tone="score"
+              />
               <ReportTile label="Taxa de acerto" value={`${report.accuracyRate}%`} tone="success" />
               <ReportTile label="Duração" value={report.durationLabel} />
             </div>

@@ -1,3 +1,7 @@
+import type { ComponentType } from 'react';
+
+import type { OAuthProvider } from '@/lib/types';
+
 /** Marcas dos provedores OAuth — cores fixas por serem identidade de terceiros. */
 
 export function GoogleMark() {
@@ -42,8 +46,8 @@ export function GithubMark() {
   );
 }
 
-export const PROVIDERS = [
-  { id: 'google' as const, label: 'Google', Mark: GoogleMark },
-  { id: 'microsoft' as const, label: 'Microsoft', Mark: MicrosoftMark },
-  { id: 'github' as const, label: 'GitHub', Mark: GithubMark },
+export const PROVIDERS: { id: OAuthProvider; label: string; Mark: ComponentType }[] = [
+  { id: 'google', label: 'Google', Mark: GoogleMark },
+  { id: 'microsoft', label: 'Microsoft', Mark: MicrosoftMark },
+  { id: 'github', label: 'GitHub', Mark: GithubMark },
 ];

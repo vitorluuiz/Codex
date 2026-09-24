@@ -47,6 +47,18 @@
   font-weight: var(--fw-bold);
 }
 
+.navItemLink,
+.navItemLink:hover {
+  color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.navItemLink:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+
 .navItemSoon {
   color: var(--ink-400);
   cursor: not-allowed;
@@ -61,12 +73,118 @@
   border-top: 1px solid var(--border-subtle);
 }
 
+.switcher {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.switcherPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-2);
+  border-radius: var(--radius-l);
+  background: var(--surface-sunken);
+}
+
+.switcherHeading {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  padding: 4px var(--space-2) 6px;
+}
+
+.switcherOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius-m);
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.switcherOption:hover {
+  background: var(--surface-card);
+}
+
+.switcherOptionActive {
+  background: var(--surface-card);
+}
+
+.switcherIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-m);
+  background: var(--blue-100);
+  color: var(--blue-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.switcherText {
+  flex: 1;
+  min-width: 0;
+}
+
+.switcherLabel {
+  display: block;
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+
+.switcherHint {
+  display: block;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.switcherCheck {
+  color: var(--blue-500);
+  flex-shrink: 0;
+}
+
+.switcherChevron {
+  color: var(--ink-400);
+  flex-shrink: 0;
+}
+
 .account {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 0 var(--space-2);
   min-width: 0;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+
+.switcher .account {
+  padding: 9px var(--space-2);
+  border-radius: var(--radius-l);
+  background: var(--ink-950);
+  cursor: pointer;
+}
+
+.switcher .account .accountName {
+  color: #fff;
+}
+
+.switcher .account .accountRole {
+  color: var(--blue-300);
+  font-weight: var(--fw-bold);
 }
 
 .accountInfo {

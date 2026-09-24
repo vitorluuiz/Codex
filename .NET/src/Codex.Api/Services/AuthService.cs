@@ -48,7 +48,8 @@ public class AuthService(
     private bool VerifyPassword(User user, string hash, string providedPassword)
         => passwordHasher.VerifyHashedPassword(user, hash, providedPassword) != PasswordVerificationResult.Failed;
 
-    private AuthResponse IssueUserSession(User user, bool rememberMe)
+    /// <summary>Publico porque o login social (OAuthService) emite exatamente a mesma sessao ao fim do fluxo.</summary>
+    public AuthResponse IssueUserSession(User user, bool rememberMe)
     {
         var lifetime = rememberMe
             ? TimeSpan.FromDays(configuration.GetValue("CodexApi:UserSessionRememberMeLifetimeDays", 30))

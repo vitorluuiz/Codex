@@ -129,6 +129,8 @@ cp .env.example .env
 | `NEXT_PUBLIC_REALTIME_URL` | `web` (build arg) | exige rebuild da imagem se mudar |
 | `SESSION_COOKIE_NAME` | `web`, `realtime` | precisa bater nos dois lados |
 | `REALTIME_ALLOWED_ORIGINS` | `realtime` | CORS do handshake do WebSocket |
+| `OAUTH_REDIRECT_BASE_URL` | `api` | origem do **Next** (`http://localhost:3000` em dev), não a da API — é para lá que o provedor devolve o browser |
+| `OAUTH_{GOOGLE,MICROSOFT,GITHUB}_CLIENT_ID` / `_SECRET` | `api` | opcionais e independentes: vazio desliga só aquele provedor (`501 OAUTH_PROVIDER_NOT_CONFIGURED`) |
 
 **Pegadinha do `REDIS_PASSWORD`:** o serviço `redis` usa a senha de duas
 formas — como argumento do `command:` (`--requirepass "${REDIS_PASSWORD}"`,

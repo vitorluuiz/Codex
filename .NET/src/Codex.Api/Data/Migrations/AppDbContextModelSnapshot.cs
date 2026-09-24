@@ -440,6 +440,43 @@ namespace Codex.Api.Data.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("Codex.Api.Domain.Entities.UserIdentity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("ProviderUserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Provider", "ProviderUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_identities_provider_subject_unique");
+
+                    b.ToTable("user_identities", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
                 {
                     b.Property<int>("Id")
@@ -578,6 +615,17 @@ namespace Codex.Api.Data.Migrations
                     b.Navigation("RoomQueuePhase");
                 });
 
+            modelBuilder.Entity("Codex.Api.Domain.Entities.UserIdentity", b =>
+                {
+                    b.HasOne("Codex.Api.Domain.Entities.User", "User")
+                        .WithMany("Identities")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Codex.Api.Domain.Entities.Match", b =>
                 {
                     b.Navigation("Submissions");
@@ -616,6 +664,8 @@ namespace Codex.Api.Data.Migrations
 
             modelBuilder.Entity("Codex.Api.Domain.Entities.User", b =>
                 {
+                    b.Navigation("Identities");
+
                     b.Navigation("LedRooms");
 
                     b.Navigation("PhaseSets");

@@ -215,8 +215,11 @@ Registrado aqui para não ser esquecido, mas não é a próxima coisa a fazer:
   `durationLabel`, `avgScore`) já são calculados no `UserProfileService` para a
   linha do histórico — a rota de relatório deveria ler do mesmo lugar, não
   recalcular.
-- **OAuth (`POST /auth/oauth/{provider}/authorize`)** — precisa decisão de produto
-  (quais provedores: Google/Microsoft/GitHub) antes de qualquer código.
+- ~~**OAuth (`POST /auth/oauth/{provider}/authorize`)**~~ — saiu desta lista: os três
+  provedores entraram (`api-oauth-log.md`). O que ficou de fora de propósito é a tela de
+  gerenciamento de vínculos no perfil — hoje dá para conectar um provedor, não para ver nem
+  desconectar os que já estão. Enquanto ela não existe, quem entrou por provedor e nunca
+  cadastrou senha depende do provedor para sempre.
 - **Cache HTTP** (`phase-sets` 60 s, `marketing/landing` 300 s) — deixou de ser
   hipotético: a rota que ele cachearia existe agora. Continua fora porque nenhuma
   rota do projeto tem cabeçalho de cache, e fazer só esta criaria um padrão de um

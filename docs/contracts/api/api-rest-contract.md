@@ -131,10 +131,39 @@ nele no servidor.
 ```json
 { "redirectTo": "/perfil" }
 ```
-→ `{ "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?…" }`
+→ `{ "authorizeUrl": "https://accounts.google.com/o/oauth2/v2/auth?…", "state": "…" }`
 
-O callback do provedor bate no backend, que redireciona para o Next já com o
-cookie de sessão setado.
+`redirectTo` só aceita caminho interno; qualquer outra coisa (`//host`,
+`https://host`) vira `/perfil` em silêncio. Provedor sem credenciais nesta
+instalação → `501 OAUTH_PROVIDER_NOT_CONFIGURED`.
+
+O `state` volta junto porque quem o guarda é o Next, num cookie de dez minutos.
+É o que amarra o fluxo a um browser: sem essa conferência, alguém poderia iniciar
+um login e induzir outra pessoa a completá-lo, deixando-a logada numa conta que
+não é dela.
+
+### `POST /auth/oauth/{provider}/callback`
+
+```json
+{ "code": "…", "state": "…" }
+```
+→ `{ "token": "…", "expiresIn": 43200, "user": { … }, "redirectTo": "/perfil" }`
+
+**O callback do provedor não bate no backend.** O `redirect_uri` registrado nos
+três provedores é `{origem do Next}/auth/callback/{provider}`, porque o redirect
+é uma navegação de browser e nunca traria o `x-service-token` que a API exige de
+toda rota. O Next confere o `state` contra o cookie, chama esta rota pelo
+servidor e grava o cookie de sessão — o mesmo caminho do login por senha.
+
+| HTTP | `code` | Quando |
+|---|---|---|
+| 400 | `OAUTH_STATE_INVALID` | `state` adulterado, expirado, ou de outro provedor |
+| 409 | `OAUTH_EMAIL_NOT_VERIFIED` | o provedor não confirma um email verificado (email privado no GitHub, conta Microsoft sem email) |
+| 502 | `OAUTH_EXCHANGE_FAILED` | o provedor recusou a troca do código ou não devolveu o perfil |
+
+Conta com o mesmo email e senha já cadastrada é **vinculada**, não duplicada,
+desde que o provedor afirme que o email é verificado. Conta criada por aqui nasce
+sem senha, e `POST /auth/login` já recusa senha para ela.
 
 ### `POST /auth/logout`
 → `204`. Invalida o token.
@@ -166,20 +195,26 @@ front.
       "playedAtLabel": "28 jul 2026 · 14:32",
       "participantCount": 24,
       "avgScore": 640,
+      "maxScore": 800,
       "accuracyRate": 78,
-      "durationLabel": "32 min"
+      "durationLabel": "32 min",
+      "phaseAccuracy": [92, 81, 70, 65, 88, 74, 60, 95]
     }
   ]
 }
 ```
 
-Duas decisões que valem a pena registrar:
+Três decisões que valem a pena registrar:
 
 1. **`playedAtLabel` e `durationLabel` vêm prontos**, como `updatedLabel` em
    `/phase-sets`. O front não carrega biblioteca de datas.
 2. **A linha do histórico já traz os números do relatório resumido**
    (`accuracyRate`, `durationLabel`). A lista e o diálogo "Ver relatório" leem do
    mesmo objeto — abrir o diálogo não custa uma segunda ida ao servidor.
+3. **`phaseAccuracy` é o acerto médio da turma em cada fase, 0..100, na ordem em
+   que foram jogadas** — alimenta o mini-gráfico de barras do card do histórico.
+   `maxScore` é a maior pontuação possível da partida, para o card mostrar
+   `avgScore / maxScore`.
 
 Num perfil de outra pessoa, `email` pode vir vazio: o front só o exibe, não
 decide nada com ele.
@@ -254,11 +289,16 @@ esqueceu.
     "leaderName": "Marina Duarte",
     "setTitle": "Frações & Funções Básicas",
     "phaseCount": 8,
+    "currentPhase": 3,
     "participantCount": 3,
     "createdAtLabel": "28 jul 2026 · 14:32"
   }
 ]
 ```
+
+`currentPhase` só vem para `role: "leader"` e `status: "running"` — mesma regra de
+`setTitle`/`phaseCount`. É o que o histórico do perfil mostra em "fase 3" para uma sala
+ainda em andamento; `null` nos demais casos.
 
 Decisões que esta rota carrega:
 
@@ -315,6 +355,15 @@ front para esconder dado de líder.
 ```
 → `Room` atualizado. Publica `room.settings` no WebSocket.
 
+### `DELETE /rooms/{code}` — líder
+Encerra a sala inteira — o "Encerrar sala" do histórico do perfil, para quando o
+líder quer fechá-la sem entrar (diferente de `POST /matches/{matchId}/finish`, que
+encerra só a partida em curso e mostra o pódio a quem está dentro). Publica
+`room.closed` no WebSocket, tirando todo mundo para fora, e some da lista de
+`GET /rooms/active`.
+
+→ `204`.
+
 ### `POST /rooms/{code}/participants/{id}/approve` — líder
 ### `POST /rooms/{code}/participants/{id}/reject` — líder
 ### `DELETE /rooms/{code}/participants/{id}` — líder
@@ -342,6 +391,68 @@ biblioteca da comunidade não cabe no cliente.
 
 `updatedLabel` vem pronto do servidor (já relativo e localizado) para o front não
 precisar de biblioteca de datas.
+
+### `GET /phase-sets/library`
+
+Alimenta a tela "Conjuntos de desafios". Devolve os conjuntos do autor e os da
+comunidade na **mesma** resposta: as duas abas trocam a cada clique, e refazer a
+busca a cada troca faria a grade piscar sem nenhuma informação nova ter chegado.
+
+É rota separada de `GET /phase-sets` pelo motivo oposto: aquela abre o seletor no
+meio de uma aula e não pode esperar as agregações de acerto médio e duração que
+só o card da biblioteca lê.
+
+```json
+{
+  "sets": [
+    {
+      "id": "s1",
+      "title": "Frações & Funções Básicas",
+      "phaseCount": 8,
+      "source": "owned",
+      "updatedLabel": "editado há 2 dias",
+      "authorName": null,
+      "phaseKindCounts": { "quiz": 5, "fill": 3 },
+      "accuracyRate": 78,
+      "durationLabel": "32 min",
+      "subject": "Matemática",
+      "folder": "Matemática 2º ano",
+      "useCount": 12,
+      "coverUrl": null
+    },
+    {
+      "id": "p1",
+      "title": "Big-O sem sofrimento",
+      "phaseCount": 10,
+      "source": "community",
+      "updatedLabel": "1.840 usos",
+      "authorName": "Comunidade Codex",
+      "phaseKindCounts": { "code": 6, "quiz": 4 },
+      "accuracyRate": 64,
+      "durationLabel": "45 min",
+      "subject": "Programação",
+      "folder": null,
+      "useCount": 1840,
+      "coverUrl": null
+    }
+  ],
+  "subjects": ["Matemática", "Programação", "Estatística"],
+  "folders": ["Matemática 2º ano", "Programação", "Provas"],
+  "coverUrl": null
+}
+```
+
+`sets` já vem ordenada por recência — é essa ordem que a aba "Recentes" usa e é o
+primeiro conjunto `owned` que vira o destaque do topo. `updatedLabel` vem pronto
+(relativo e localizado) pelo mesmo motivo de `GET /phase-sets`.
+
+`subjects` e `folders` são as listas dos filtros e não saem de `sets`: uma pasta
+recém-esvaziada tem que continuar clicável, senão o filtro some justamente quando
+a pessoa quer voltar para ela. `folder` é sempre `null` em `source: "community"`.
+
+`accuracyRate` é `null` enquanto nenhuma partida usou o conjunto — a tela escreve
+"sem partidas" em vez de `0%`. Busca, tipo, disciplina, pasta e ordenação são
+aplicados no cliente sobre esta resposta.
 
 ### `GET /phase-sets/{setId}/draft` — autor
 
@@ -839,11 +950,12 @@ Salas e participantes convidados expiram. Configure TTL em `rooms.expiresAt`
 | Tela | Rotas |
 |---|---|
 | Landing | nenhuma (conteúdo local) |
-| Auth | `POST /auth/login`, `POST /auth/signup`, `POST /auth/oauth/{provider}/authorize` |
+| Auth | `POST /auth/login`, `POST /auth/signup`, `POST /auth/oauth/{provider}/authorize`, `POST /auth/oauth/{provider}/callback` |
 | Entrar em Sala | `GET /session`, `GET /rooms/active`, `GET /rooms/{code}/availability`, `POST /rooms/{code}/participants` |
 | Lobby (jogador) | `GET /session`, `GET /rooms/{code}`, `GET /rooms/{code}/participants?status=approved` |
 | Lobby (líder) | as acima + `?status=pending`, `GET /rooms/{code}/queue`, `GET /phase-sets`, todas as de `/queue/*`, `PATCH /rooms/{code}`, aprovar/recusar/remover, `POST /rooms/{code}/match` |
 | Desafios (aluno) | `GET /rooms/{code}/match`, `GET /matches/{id}/current-phase`, `GET /matches/{id}/scoreboard/me`, `POST …/submissions`, `POST …/run`, `POST …/ready`, `GET …/comparison`, `GET /matches/{id}/podium` |
 | Desafios (líder) | `GET /matches/{id}/current-phase`, `GET …/stats`, `advance`, `pause`, `restart`, `finish`, `return-to-lobby`, `DELETE …/participants/{id}` |
-| Perfil | `GET /users/{id}/profile`, `GET /rooms/active` (só o próprio), `PATCH /users/me`, `POST /rooms`, `POST /matches/{id}/report/export`, `POST /auth/logout` |
+| Perfil | `GET /users/{id}/profile`, `GET /rooms/active` (só o próprio), `PATCH /users/me`, `POST /rooms`, `DELETE /rooms/{code}` (encerrar sala), `POST /matches/{id}/report/export`, `POST /auth/logout` |
+| Conjuntos de desafios | `GET /session`, `GET /phase-sets/library`, `POST /rooms`, `DELETE /phase-sets/{id}`, `POST /auth/logout` |
 | Editor de Conjunto | `GET /phase-sets/{id}/draft`, `POST /phase-sets`, `PUT /phase-sets/{id}/draft`, `POST /phase-sets/phases/generate` |

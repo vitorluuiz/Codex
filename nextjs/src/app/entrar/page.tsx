@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 interface PageProps {
-  searchParams: Promise<{ modo?: string }>;
+  searchParams: Promise<{ modo?: string; erro?: string }>;
 }
 
 /**
@@ -20,10 +20,15 @@ interface PageProps {
  * Toda a interação (troca de aba, validação, submit) vive em `<AuthPanel>`.
  */
 export default async function AuthPage({ searchParams }: PageProps) {
-  const [{ modo }, session] = await Promise.all([searchParams, getSession()]);
+  const [{ modo, erro }, session] = await Promise.all([searchParams, getSession()]);
   if (session.user) redirect('/perfil');
 
   const initialMode = modo === 'criar' ? 'signup' : 'login';
+
+  // O callback do provedor volta para cá com `?erro=oauth` em qualquer falha — cancelamento,
+  // state que não confere, provedor fora do ar. A pessoa não precisa saber qual foi.
+  const initialError =
+    erro === 'oauth' ? 'Não foi possível concluir o login com o provedor. Tente de novo.' : null;
 
   return (
     <main className={styles.page}>
@@ -49,7 +54,7 @@ export default async function AuthPage({ searchParams }: PageProps) {
 
       <div className={styles.formColumn}>
         <div className={styles.formShell}>
-          <AuthPanel initialMode={initialMode} />
+          <AuthPanel initialMode={initialMode} initialError={initialError} />
         </div>
       </div>
     </main>
