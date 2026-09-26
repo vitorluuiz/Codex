@@ -8,7 +8,7 @@ Este README é o guia para colocar o MVP de pé do zero, rodando cada serviço
 nativamente. Para subir tudo via Docker Compose, veja [`DOCKER.md`](DOCKER.md).
 Cada serviço tem o seu próprio README com as decisões de arquitetura
 ([`nextjs/README.md`](nextjs/README.md), [`realtime/README.md`](realtime/README.md));
-os contratos de API e de WebSocket estão em [`contracts/`](contracts/).
+os contratos consolidados do sistema estão em [`docs/contracts/`](docs/contracts/).
 
 ---
 
@@ -32,8 +32,8 @@ estão dentro do MVP.
 | Modo `self-paced` | responde `409 MODE_NOT_AVAILABLE`; só o modo guiado pelo líder existe |
 | Relatórios e CMS da landing | existem como modelo de dados, sem endpoint |
 
-O estado detalhado, rota por rota, está em
-[`contracts/api/api-implementation-status.md`](contracts/api/api-implementation-status.md).
+O contrato e rotas detalhadas estão em
+[`docs/contracts/api.md`](docs/contracts/api.md).
 
 ---
 
@@ -76,12 +76,11 @@ O realtime cai para um broker em memória, válido para **uma** instância só. 
 `NODE_ENV=production`, a ausência de `REDIS_URL` vira erro de inicialização.
 
 Sobre o MongoDB: guarda as **partidas encerradas**
-([`migracao-dados.md`](docs/contracts/postgresql/migracao-dados.md)). Sem
+([`mongodb.md`](docs/contracts/mongodb.md)). Sem
 `CodexApi:Documents:ConnectionString` a API sobe e o snapshot fica num store em
 memória — o Postgres continua sendo a fonte da verdade da partida, então nada na
 tela quebra, mas o histórico do líder some a cada restart. É assim que os testes
-rodam. Isso deixa de ser aceitável no passo 5 daquele documento, quando o
-documento passar a ser a única cópia.
+rodam.
 
 No Windows, a forma mais rápida de ter os três:
 
