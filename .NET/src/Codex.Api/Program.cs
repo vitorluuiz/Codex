@@ -35,6 +35,8 @@ builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddSingleton<LabelFormatter>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddCodexOAuth(builder.Configuration);
+builder.Services.AddSingleton<Codex.Api.Services.Redis.RedisLuaRunner>();
+builder.Services.AddScoped<Codex.Api.Services.Redis.IRoomRepository, Codex.Api.Services.Redis.RoomRedisRepository>();
 builder.Services.AddScoped<RoomAccessService>();
 builder.Services.AddScoped<RoomQueueService>();
 builder.Services.AddScoped<RoomService>();

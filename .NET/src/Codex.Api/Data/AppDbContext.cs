@@ -13,12 +13,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<UserIdentity> UserIdentities => Set<UserIdentity>();
-    public DbSet<Room> Rooms => Set<Room>();
-    public DbSet<Participant> Participants => Set<Participant>();
     public DbSet<PhaseSet> PhaseSets => Set<PhaseSet>();
     public DbSet<Phase> Phases => Set<Phase>();
-    public DbSet<RoomQueueSet> RoomQueueSets => Set<RoomQueueSet>();
-    public DbSet<RoomQueuePhase> RoomQueuePhases => Set<RoomQueuePhase>();
     public DbSet<Match> Matches => Set<Match>();
     public DbSet<Submission> Submissions => Set<Submission>();
 

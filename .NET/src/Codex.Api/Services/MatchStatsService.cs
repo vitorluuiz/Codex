@@ -3,6 +3,7 @@ using Codex.Api.Contracts.Matches;
 using Codex.Api.Data;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
+using Codex.Api.Services.Redis;
 using Microsoft.EntityFrameworkCore;
 
 namespace Codex.Api.Services;
@@ -21,7 +22,7 @@ namespace Codex.Api.Services;
 /// observavel (o aluno nao assina o canal do lider), o que so torna a divergencia mais facil de
 /// introduzir sem ninguem ver.
 /// </summary>
-public class MatchStatsService(AppDbContext db)
+public class MatchStatsService(AppDbContext db, IRoomRepository repo)
 {
     /// <summary>
     /// Acima disto o histograma vira baldes. "Se a turma for grande, agregue em ~15 baldes antes de
@@ -179,14 +180,13 @@ public class MatchStatsService(AppDbContext db)
     private async Task<IReadOnlyList<Participant>> ApprovedPlayersAsync(Match match, CancellationToken ct)
     {
         var finished = match.Status is MatchStatus.Finished;
+        var pDatas = await repo.GetParticipantsAsync(match.RoomId.ToString(), ct);
 
-        return await db.Participants
-            .AsNoTracking()
-            .Where(p => p.RoomId == match.RoomId
-                        && p.Status == ParticipantStatus.Approved
-                        && (finished || p.InResultsSince == null))
+        return pDatas
+            .Where(p => p.Status == "approved" && (finished || p.InResultsSinceMs == null))
+            .Select(p => p.ToEntity(match.RoomId.ToString()))
             .OrderBy(p => p.JoinedAt)
-            .ToListAsync(ct);
+            .ToList();
     }
 
     private async Task<IReadOnlyList<Submission>> PhaseSubmissionsAsync(Guid matchId, Guid phaseId, CancellationToken ct)
@@ -200,9 +200,11 @@ public class MatchStatsService(AppDbContext db)
     /// <c>NO_PLAYERS</c> do inicio da partida conta. Mesmo criterio de
     /// <see cref="ApprovedPlayersAsync"/>: aprovado e no lobby.
     /// </summary>
-    public Task<int> CountPlayersAsync(Guid roomId, CancellationToken ct)
-        => db.Participants.CountAsync(
-            p => p.RoomId == roomId && p.Status == ParticipantStatus.Approved && p.InResultsSince == null, ct);
+    public async Task<int> CountPlayersAsync(Guid roomId, CancellationToken ct)
+    {
+        var pDatas = await repo.GetParticipantsAsync(roomId.ToString(), ct);
+        return pDatas.Count(p => p.Status == "approved" && p.InResultsSinceMs == null);
+    }
 
     private static int Average(IEnumerable<int> values)
     {

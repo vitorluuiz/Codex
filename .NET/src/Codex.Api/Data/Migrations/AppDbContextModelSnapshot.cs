@@ -43,10 +43,8 @@ namespace Codex.Api.Data.Migrations
                     b.Property<DateTimeOffset?>("FinishedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Mode")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
+                    b.Property<int>("Mode")
+                        .HasColumnType("integer");
 
                     b.Property<int?>("PausedSecondsLeft")
                         .HasColumnType("integer");
@@ -57,16 +55,15 @@ namespace Codex.Api.Data.Migrations
                     b.Property<DateTimeOffset>("StartedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RoomId");
+                    b.HasIndex("RoomId", "Mode")
+                        .HasFilter("status != 'Finished'");
 
-                    b.ToTable("matches", (string)null);
+                    b.ToTable("Matches");
                 });
 
             modelBuilder.Entity("Codex.Api.Domain.Entities.Participant", b =>
@@ -211,8 +208,7 @@ namespace Codex.Api.Data.Migrations
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(6)
-                        .HasColumnType("character varying(6)");
+                        .HasColumnType("text");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -220,15 +216,17 @@ namespace Codex.Api.Data.Migrations
                     b.Property<DateTimeOffset?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("LeaderId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("LeaderUserId")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("Locked")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("MatchMode")
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
+                    b.Property<int?>("MatchMode")
+                        .HasColumnType("integer");
 
                     b.Property<int>("QueueRevision")
                         .HasColumnType("integer");
@@ -236,18 +234,18 @@ namespace Codex.Api.Data.Migrations
                     b.Property<bool>("RequireAccount")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
                     b.HasIndex("Code");
 
+                    b.HasIndex("LeaderId");
+
                     b.HasIndex("LeaderUserId");
 
-                    b.ToTable("rooms", (string)null);
+                    b.ToTable("Room");
                 });
 
             modelBuilder.Entity("Codex.Api.Domain.Entities.RoomQueuePhase", b =>
@@ -340,11 +338,11 @@ namespace Codex.Api.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("AiSuggestionsJson")
-                        .HasColumnType("jsonb");
+                        .HasColumnType("text");
 
                     b.Property<string>("AnswerJson")
                         .IsRequired()
-                        .HasColumnType("jsonb");
+                        .HasColumnType("text");
 
                     b.Property<bool?>("Correct")
                         .HasColumnType("boolean");
@@ -355,12 +353,13 @@ namespace Codex.Api.Data.Migrations
                     b.Property<string>("Explanation")
                         .HasColumnType("text");
 
-                    b.Property<string>("Grading")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
+                    b.Property<int>("Grading")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("MatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("MatchId1")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("ParticipantId")
@@ -379,9 +378,11 @@ namespace Codex.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("TestsPassedJson")
-                        .HasColumnType("jsonb");
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MatchId1");
 
                     b.HasIndex("ParticipantId");
 
@@ -390,9 +391,7 @@ namespace Codex.Api.Data.Migrations
                     b.HasIndex("MatchId", "RoomQueuePhaseId", "ParticipantId")
                         .IsUnique();
 
-                    b.HasIndex("MatchId", "RoomQueuePhaseId", "Score");
-
-                    b.ToTable("submissions", (string)null);
+                    b.ToTable("Submissions");
                 });
 
             modelBuilder.Entity("Codex.Api.Domain.Entities.User", b =>
@@ -498,13 +497,11 @@ namespace Codex.Api.Data.Migrations
 
             modelBuilder.Entity("Codex.Api.Domain.Entities.Match", b =>
                 {
-                    b.HasOne("Codex.Api.Domain.Entities.Room", "Room")
+                    b.HasOne("Codex.Api.Domain.Entities.Room", null)
                         .WithMany("Matches")
                         .HasForeignKey("RoomId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Room");
                 });
 
             modelBuilder.Entity("Codex.Api.Domain.Entities.Participant", b =>
@@ -550,9 +547,9 @@ namespace Codex.Api.Data.Migrations
             modelBuilder.Entity("Codex.Api.Domain.Entities.Room", b =>
                 {
                     b.HasOne("Codex.Api.Domain.Entities.User", "Leader")
-                        .WithMany("LedRooms")
-                        .HasForeignKey("LeaderUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .WithMany()
+                        .HasForeignKey("LeaderId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Leader");
@@ -591,28 +588,28 @@ namespace Codex.Api.Data.Migrations
             modelBuilder.Entity("Codex.Api.Domain.Entities.Submission", b =>
                 {
                     b.HasOne("Codex.Api.Domain.Entities.Match", "Match")
-                        .WithMany("Submissions")
+                        .WithMany()
                         .HasForeignKey("MatchId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Codex.Api.Domain.Entities.Participant", "Participant")
+                    b.HasOne("Codex.Api.Domain.Entities.Match", null)
+                        .WithMany("Submissions")
+                        .HasForeignKey("MatchId1");
+
+                    b.HasOne("Codex.Api.Domain.Entities.Participant", null)
                         .WithMany("Submissions")
                         .HasForeignKey("ParticipantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Codex.Api.Domain.Entities.RoomQueuePhase", "RoomQueuePhase")
+                    b.HasOne("Codex.Api.Domain.Entities.RoomQueuePhase", null)
                         .WithMany("Submissions")
                         .HasForeignKey("RoomQueuePhaseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Match");
-
-                    b.Navigation("Participant");
-
-                    b.Navigation("RoomQueuePhase");
                 });
 
             modelBuilder.Entity("Codex.Api.Domain.Entities.UserIdentity", b =>
@@ -665,8 +662,6 @@ namespace Codex.Api.Data.Migrations
             modelBuilder.Entity("Codex.Api.Domain.Entities.User", b =>
                 {
                     b.Navigation("Identities");
-
-                    b.Navigation("LedRooms");
 
                     b.Navigation("PhaseSets");
                 });

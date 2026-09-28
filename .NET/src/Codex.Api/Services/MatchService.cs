@@ -7,6 +7,7 @@ using Codex.Api.Data;
 using Codex.Api.Documents;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
+using Codex.Api.Services.Redis;
 using Microsoft.EntityFrameworkCore;
 
 namespace Codex.Api.Services;
@@ -34,7 +35,8 @@ public class MatchService(
     MatchAccessService matchAccess,
     MatchStatsService stats,
     MatchEventPublisher events,
-    MatchDocumentWriter documents)
+    MatchDocumentWriter documents,
+    IRoomRepository repo)
 {
     /// <summary>
     /// Quanto tempo a sala sobrevive ao fim da partida. "Configure TTL em <c>rooms.expiresAt</c>
@@ -63,22 +65,23 @@ public class MatchService(
     /// </summary>
     public async Task<MatchDto> StartAsync(string code, StartMatchRequest request, ClaimsPrincipal principal, CancellationToken ct)
     {
-        var room = await roomAccess.GetRoomAsLeaderAsync(code, principal, ct);
+        var roomData = await roomAccess.GetRoomAsLeaderAsync(code, principal, ct);
 
-        if (room.Status is not RoomStatus.Lobby)
+        if (roomData.Status != RoomRedisData.ToRedis(RoomStatus.Lobby))
         {
             throw new ApiException(StatusCodes.Status409Conflict, ErrorCodes.MatchAlreadyStarted, "Esta sala ja tem uma partida em andamento.");
         }
 
+        var roomId = Guid.Parse(roomData.Id);
         var mode = ParseMode(request.Mode);
-        var phases = await PhasesAsync(room.Id, ct);
+        var phases = await PhasesAsync(roomId, ct);
 
         if (phases.Count is 0)
         {
             throw new ApiException(StatusCodes.Status409Conflict, ErrorCodes.EmptyQueue, "Adicione ao menos uma fase a fila antes de comecar.");
         }
 
-        if (await stats.CountPlayersAsync(room.Id, ct) is 0)
+        if (await stats.CountPlayersAsync(roomId, ct) is 0)
         {
             throw new ApiException(StatusCodes.Status409Conflict, ErrorCodes.NoPlayers, "Aprove ao menos um participante antes de comecar.");
         }
@@ -94,7 +97,7 @@ public class MatchService(
         var now = DateTimeOffset.UtcNow;
         var match = new Match
         {
-            RoomId = room.Id,
+            RoomId = roomId,
             Mode = mode,
             Status = MatchStatus.Running,
             CurrentPhaseIndex = 0,
@@ -102,16 +105,17 @@ public class MatchService(
         };
         StartPhaseClock(match, phases[0], now);
         db.Matches.Add(match);
-
-        room.Status = RoomStatus.Running;
-        room.MatchMode = mode;
-
-        // Comecar uma partida e a prova mais forte que existe de que a sala nao foi abandonada:
-        // apaga o TTL que o fim da partida anterior marcou. Sem isto, uma sala que roda varias
-        // partidas continuaria com a data de morte da primeira.
-        room.ExpiresAt = null;
-
         await db.SaveChangesAsync(ct);
+
+        roomData = roomData with {
+            Status = RoomRedisData.ToRedis(RoomStatus.Running),
+            MatchMode = RoomRedisData.ToRedis(mode),
+            ExpiresAtMs = null,
+            QueueRevision = roomData.QueueRevision + 1
+        };
+        await repo.SaveRoomAsync(roomData.Id, roomData, ct);
+
+        var room = roomData.ToEntity();
 
         await events.MatchStartedAsync(room, match, ct);
         await events.PhaseStartedAsync(room, match, await BuildPhaseStateAsync(match, phases[0], null, phases.Count, ct), ct);
@@ -130,15 +134,16 @@ public class MatchService(
     /// </summary>
     public async Task<MatchDto> GetByRoomAsync(string code, ClaimsPrincipal principal, CancellationToken ct)
     {
-        var room = await roomAccess.GetRoomAsMemberAsync(code, principal, ct);
+        var roomData = await roomAccess.GetRoomAsMemberAsync(code, principal, ct);
+        var roomId = Guid.Parse(roomData.Id);
 
         var match = await db.Matches
-                        .Where(m => m.RoomId == room.Id)
+                        .Where(m => m.RoomId == roomId)
                         .OrderByDescending(m => m.StartedAt)
                         .FirstOrDefaultAsync(ct)
                     ?? throw MatchAccessService.MatchNotFound();
 
-        return ToDto(match, await CountPhasesAsync(room.Id, ct));
+        return ToDto(match, await CountPhasesAsync(roomId, ct));
     }
 
     /// <summary>
@@ -149,11 +154,11 @@ public class MatchService(
     /// </summary>
     public async Task<PhaseStateDto> GetCurrentPhaseAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
     {
-        var match = await matchAccess.GetMatchAsMemberAsync(matchId, principal, ct);
+        var (match, room) = await matchAccess.GetMatchAsMemberAsync(matchId, principal, ct);
         var phases = await PhasesAsync(match.RoomId, ct);
         var phase = PhaseAt(match, phases);
 
-        await CloseExpiredPhaseAsync(match, phase, ct);
+        await CloseExpiredPhaseAsync(match, room, phase, ct);
 
         return await BuildPhaseStateAsync(match, phase, principal.GetParticipantId(), phases.Count, ct);
     }
@@ -172,7 +177,7 @@ public class MatchService(
     /// </summary>
     public async Task AdvanceAsync(string matchId, AdvanceMatchRequest request, ClaimsPrincipal principal, CancellationToken ct)
     {
-        var match = await GetActiveMatchAsLeaderAsync(matchId, principal, ct);
+        var (match, room) = await GetActiveMatchAsLeaderAsync(matchId, principal, ct);
         var phases = await PhasesAsync(match.RoomId, ct);
 
         var direction = request.Direction;
@@ -206,11 +211,11 @@ public class MatchService(
         // levado para a fase nova pelo evento seguinte. A ordem inversa perderia a transicao.
         if (wasOpen)
         {
-            await events.PhaseEndedAsync(match.Room, closing.Id, ct);
+            await events.PhaseEndedAsync(room, closing.Id, ct);
         }
 
-        await events.PhaseStartedAsync(match.Room, match, await BuildPhaseStateAsync(match, next, null, phases.Count, ct), ct);
-        await events.ProgressAsync(match.Room, match, next, ct);
+        await events.PhaseStartedAsync(room, match, await BuildPhaseStateAsync(match, next, null, phases.Count, ct), ct);
+        await events.ProgressAsync(room, match, next, ct);
     }
 
     /// <summary>
@@ -222,7 +227,7 @@ public class MatchService(
     /// </summary>
     public async Task SetPausedAsync(string matchId, PauseMatchRequest request, ClaimsPrincipal principal, CancellationToken ct)
     {
-        var match = await GetActiveMatchAsLeaderAsync(matchId, principal, ct);
+        var (match, room) = await GetActiveMatchAsLeaderAsync(matchId, principal, ct);
         var phases = await PhasesAsync(match.RoomId, ct);
         var phase = PhaseAt(match, phases);
 
@@ -248,7 +253,7 @@ public class MatchService(
         }
 
         await db.SaveChangesAsync(ct);
-        await events.PhasePausedAsync(match.Room, match, request.Paused, ct);
+        await events.PhasePausedAsync(room, match, request.Paused, ct);
     }
 
     /// <summary>
@@ -263,7 +268,7 @@ public class MatchService(
     /// </summary>
     public async Task RestartPhaseAsync(string matchId, string phaseId, ClaimsPrincipal principal, CancellationToken ct)
     {
-        var match = await GetActiveMatchAsLeaderAsync(matchId, principal, ct);
+        var (match, room) = await GetActiveMatchAsLeaderAsync(matchId, principal, ct);
         var phases = await PhasesAsync(match.RoomId, ct);
         var phase = PhaseAt(match, phases);
 
@@ -282,8 +287,8 @@ public class MatchService(
 
         await db.SaveChangesAsync(ct);
 
-        await events.PhaseStartedAsync(match.Room, match, await BuildPhaseStateAsync(match, phase, null, phases.Count, ct), ct);
-        await events.ProgressAsync(match.Room, match, phase, ct);
+        await events.PhaseStartedAsync(room, match, await BuildPhaseStateAsync(match, phase, null, phases.Count, ct), ct);
+        await events.ProgressAsync(room, match, phase, ct);
     }
 
     /// <summary>
@@ -297,7 +302,10 @@ public class MatchService(
     /// durante toda a partida e dois cliques nao podem mover o TTL para a frente.
     /// </summary>
     public async Task<IReadOnlyList<PodiumEntryDto>> FinishAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
-        => await FinishCoreAsync(await matchAccess.GetMatchAsLeaderAsync(matchId, principal, ct), ct);
+    {
+        var (match, room) = await matchAccess.GetMatchAsLeaderAsync(matchId, principal, ct);
+        return await FinishCoreAsync(match, room, ct);
+    }
 
     /// <summary>
     /// O encerramento em si, sem checagem de quem chamou — porque agora ele tem <b>dois</b>
@@ -308,7 +316,7 @@ public class MatchService(
     /// precisa lembrar quem ainda nao voltou. Sem isso, uma aba esquecida no podio contaria como
     /// jogador na partida seguinte e a regra "todos enviaram" nunca fecharia uma fase.
     /// </summary>
-    private async Task<IReadOnlyList<PodiumEntryDto>> FinishCoreAsync(Match match, CancellationToken ct)
+    private async Task<IReadOnlyList<PodiumEntryDto>> FinishCoreAsync(Match match, Room room, CancellationToken ct)
     {
         var now = DateTimeOffset.UtcNow;
         var alreadyFinished = match.Status is MatchStatus.Finished;
@@ -329,15 +337,22 @@ public class MatchService(
             // (§11.1 do log), toda partida terminada matava a sala: o lider voltava ao lobby,
             // clicava em comecar outra e levava "esta sala ja tem uma partida em andamento", sem
             // caminho de volta em lugar nenhum da tela.
-            match.Room.ExpiresAt = now + RoomLifetimeAfterMatch;
-
-            var players = await db.Participants
-                .Where(p => p.RoomId == match.RoomId && p.Status == ParticipantStatus.Approved)
-                .ToListAsync(ct);
-
-            foreach (var player in players)
+            var roomData = await repo.GetRoomAsync(room.Id.ToString(), ct);
+            if (roomData != null)
             {
-                player.InResultsSince = now;
+                roomData = roomData with {
+                    ExpiresAtMs = RoomRedisData.ToMs(now + RoomLifetimeAfterMatch),
+                    QueueRevision = roomData.QueueRevision + 1
+                };
+                await repo.SaveRoomAsync(roomData.Id, roomData, ct);
+                room = roomData.ToEntity();
+            }
+
+            var pDatas = await repo.GetParticipantsAsync(room.Id.ToString(), ct);
+            foreach (var pData in pDatas.Where(p => p.Status == "approved"))
+            {
+                var updated = pData with { InResultsSinceMs = RoomRedisData.ToMs(now) };
+                await repo.UpdateParticipantAsync(room.Id.ToString(), updated, ct);
             }
 
             await db.SaveChangesAsync(ct);
@@ -363,7 +378,7 @@ public class MatchService(
         // podio nos dois casos — quem clicou quer ve-lo de qualquer forma.
         if (!alreadyFinished)
         {
-            await events.MatchFinishedAsync(match.Room, podium, ct);
+            await events.MatchFinishedAsync(room, podium, ct);
         }
 
         return podium;
@@ -380,14 +395,14 @@ public class MatchService(
     /// Roda depois de <see cref="ClosePhaseAsync"/> ter publicado <c>phase.ended</c>: os clientes
     /// recebem o fim da fase e, logo atras, o <c>match.finished</c> com o podio.
     /// </summary>
-    private async Task FinishIfLastPhaseAsync(Match match, CancellationToken ct)
+    private async Task FinishIfLastPhaseAsync(Match match, Room room, CancellationToken ct)
     {
         if (match.CurrentPhaseIndex + 1 < await CountPhasesAsync(match.RoomId, ct))
         {
             return;
         }
 
-        await FinishCoreAsync(match, ct);
+        await FinishCoreAsync(match, room, ct);
     }
 
     /// <summary>
@@ -407,19 +422,28 @@ public class MatchService(
     /// </summary>
     public async Task ReturnToLobbyAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
     {
-        var match = await matchAccess.GetMatchAsLeaderAsync(matchId, principal, ct);
+        var (match, room) = await matchAccess.GetMatchAsLeaderAsync(matchId, principal, ct);
         var now = DateTimeOffset.UtcNow;
 
         match.Status = MatchStatus.Finished;
         match.FinishedAt ??= now;
         match.CurrentPhaseEndedAt ??= now;
-
-        match.Room.Status = RoomStatus.Lobby;
-        match.Room.MatchMode = null;
-        match.Room.ExpiresAt = null;
-
         await db.SaveChangesAsync(ct);
-        await events.ReturnedToLobbyAsync(match.Room, ct);
+
+        var roomData = await repo.GetRoomAsync(room.Id.ToString(), ct);
+        if (roomData != null)
+        {
+            roomData = roomData with {
+                Status = RoomRedisData.ToRedis(RoomStatus.Lobby),
+                MatchMode = null,
+                ExpiresAtMs = null,
+                QueueRevision = roomData.QueueRevision + 1
+            };
+            await repo.SaveRoomAsync(roomData.Id, roomData, ct);
+            room = roomData.ToEntity();
+        }
+
+        await events.ReturnedToLobbyAsync(room, ct);
     }
 
     /// <summary>
@@ -432,27 +456,27 @@ public class MatchService(
     /// </summary>
     public async Task RemovePlayerAsync(string matchId, string participantId, ClaimsPrincipal principal, CancellationToken ct)
     {
-        var match = await matchAccess.GetMatchAsLeaderAsync(matchId, principal, ct);
+        var (match, room) = await matchAccess.GetMatchAsLeaderAsync(matchId, principal, ct);
 
         if (!Guid.TryParse(participantId, out var id))
         {
             throw ParticipantNotFound();
         }
 
-        var participant = await db.Participants.FirstOrDefaultAsync(p => p.Id == id && p.RoomId == match.RoomId, ct)
-                          ?? throw ParticipantNotFound();
+        var pData = await repo.GetParticipantAsync(room.Id.ToString(), id.ToString(), ct);
+        if (pData == null) throw ParticipantNotFound();
+
+        await repo.RemoveParticipantAsync(room.Id.ToString(), id.ToString(), pData.DisplayName.ToLowerInvariant(), ct);
 
         db.Submissions.RemoveRange(await db.Submissions.Where(s => s.ParticipantId == id).ToListAsync(ct));
-        db.Participants.Remove(participant);
-
         await db.SaveChangesAsync(ct);
 
-        await events.ParticipantRemovedAsync(match.Room, id, ct);
+        await events.ParticipantRemovedAsync(room, id, ct);
 
         var phases = await PhasesAsync(match.RoomId, ct);
         if (phases.Count > 0)
         {
-            await events.ProgressAsync(match.Room, match, PhaseAt(match, phases), ct);
+            await events.ProgressAsync(room, match, PhaseAt(match, phases), ct);
         }
     }
 
@@ -469,13 +493,16 @@ public class MatchService(
     /// </summary>
     public async Task<PhaseStatsDto> GetStatsAsync(string matchId, string phaseId, ClaimsPrincipal principal, CancellationToken ct)
     {
-        var match = await matchAccess.GetMatchAsLeaderAsync(matchId, principal, ct);
+        var (match, room) = await matchAccess.GetMatchAsLeaderAsync(matchId, principal, ct);
         return await stats.GetStatsAsync(match, await FindPhaseAsync(match, phaseId, ct), ct);
     }
 
     /// <summary><c>GET /matches/{id}/podium</c> — leitura de membro; o lider tambem ve.</summary>
     public async Task<IReadOnlyList<PodiumEntryDto>> GetPodiumAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
-        => await stats.GetPodiumAsync(await matchAccess.GetMatchAsMemberAsync(matchId, principal, ct), ct);
+    {
+        var (match, room) = await matchAccess.GetMatchAsMemberAsync(matchId, principal, ct);
+        return await stats.GetPodiumAsync(match, ct);
+    }
 
     /* ---------------------------------------------------------------------- */
     /* Compartilhado com SubmissionService                                     */
@@ -490,7 +517,7 @@ public class MatchService(
     /// <c>phase.ended</c>. Grava o instante <i>contratual</i> (o proprio <c>EndsAt</c>), e nao
     /// "agora": o fim da fase e quando o relogio virou, nao quando alguem reparou.
     /// </summary>
-    public async Task<bool> CloseExpiredPhaseAsync(Match match, RoomQueuePhase phase, CancellationToken ct)
+    public async Task<bool> CloseExpiredPhaseAsync(Match match, Room room, RoomQueuePhase phase, CancellationToken ct)
     {
         if (match.Status is not MatchStatus.Running || match.CurrentPhaseEndedAt is not null)
         {
@@ -504,7 +531,7 @@ public class MatchService(
 
         // Grava o instante contratual (o proprio EndsAt), e nao "agora": o fim da fase e quando o
         // relogio virou, nao quando alguem reparou.
-        await ClosePhaseAsync(match, phase, endsAt, ct);
+        await ClosePhaseAsync(match, room, phase, endsAt, ct);
 
         return true;
     }
@@ -521,13 +548,13 @@ public class MatchService(
     ///
     /// Quem chama ja garantiu que a fase ainda estava aberta.
     /// </summary>
-    public async Task ClosePhaseAsync(Match match, RoomQueuePhase phase, DateTimeOffset closedAt, CancellationToken ct)
+    public async Task ClosePhaseAsync(Match match, Room room, RoomQueuePhase phase, DateTimeOffset closedAt, CancellationToken ct)
     {
         match.CurrentPhaseEndedAt = closedAt;
         await db.SaveChangesAsync(ct);
 
-        await events.PhaseEndedAsync(match.Room, phase.Id, ct);
-        await FinishIfLastPhaseAsync(match, ct);
+        await events.PhaseEndedAsync(room, phase.Id, ct);
+        await FinishIfLastPhaseAsync(match, room, ct);
     }
 
     /// <summary>
@@ -553,8 +580,11 @@ public class MatchService(
            || (phase.OrderIndex == match.CurrentPhaseIndex && IsCurrentPhaseClosed(match, now));
 
     /// <summary>As fases da fila da sala, na ordem em que a partida as executa.</summary>
-    public Task<List<RoomQueuePhase>> PhasesAsync(Guid roomId, CancellationToken ct)
-        => db.RoomQueuePhases.Where(p => p.RoomId == roomId).OrderBy(p => p.OrderIndex).ToListAsync(ct);
+    public async Task<List<RoomQueuePhase>> PhasesAsync(Guid roomId, CancellationToken ct)
+    {
+        var pDatas = await repo.GetQueuePhasesAsync(roomId.ToString(), ct);
+        return pDatas.Select(p => p.ToEntity(roomId.ToString())).OrderBy(p => p.OrderIndex).ToList();
+    }
 
     /// <summary>
     /// A fase que a partida esta executando.
@@ -594,7 +624,7 @@ public class MatchService(
             : null;
 
         return new PhaseStateDto(
-            PhaseProjection.ToPhase(phase, includeAnswers: closed),
+            PhaseProjection.ToPhase(phase.ToRedisData(), includeAnswers: closed),
             match.CurrentPhaseIndex + 1,
             totalPhases,
             SecondsLeft(match, now),
@@ -630,14 +660,16 @@ public class MatchService(
             throw PhaseNotFound();
         }
 
-        // Filtrado por RoomId como todas as buscas de fase da fila: o id e global, entao sem isto o
-        // lider de uma sala leria estatistica da fase de outra.
-        return await db.RoomQueuePhases.FirstOrDefaultAsync(p => p.Id == id && p.RoomId == match.RoomId, ct)
-               ?? throw PhaseNotFound();
+        var pData = await repo.GetQueuePhaseAsync(match.RoomId.ToString(), phaseId, ct);
+        if (pData == null) throw PhaseNotFound();
+        return pData.ToEntity(match.RoomId.ToString());
     }
 
-    public Task<int> CountPhasesAsync(Guid roomId, CancellationToken ct)
-        => db.RoomQueuePhases.CountAsync(p => p.RoomId == roomId, ct);
+    public async Task<int> CountPhasesAsync(Guid roomId, CancellationToken ct)
+    {
+        var pDatas = await repo.GetQueuePhasesAsync(roomId.ToString(), ct);
+        return pDatas.Count;
+    }
 
     public static MatchDto ToDto(Match match, int totalPhases) => new(
         match.Id,
@@ -664,16 +696,16 @@ public class MatchService(
     }
 
     /// <summary>Controles do lider numa partida ja encerrada nao tem o que controlar.</summary>
-    private async Task<Match> GetActiveMatchAsLeaderAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
+    private async Task<(Match Match, Room Room)> GetActiveMatchAsLeaderAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
     {
-        var match = await matchAccess.GetMatchAsLeaderAsync(matchId, principal, ct);
+        var (match, room) = await matchAccess.GetMatchAsLeaderAsync(matchId, principal, ct);
 
         if (match.Status is MatchStatus.Finished)
         {
             throw new ApiException(StatusCodes.Status409Conflict, ErrorCodes.PhaseClosed, "Esta partida ja foi encerrada.");
         }
 
-        return match;
+        return (match, room);
     }
 
     /// <summary>

@@ -1,73 +1,51 @@
-using Codex.Api.Contracts.Matches;
 using Codex.Api.Data;
-using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
+using Codex.Api.Domain;
 using Codex.Api.Services;
+using Codex.Api.Services.Redis;
 using Microsoft.EntityFrameworkCore;
 
 namespace Codex.Api.Documents;
 
-/// <summary>
-/// Monta o snapshot de uma partida encerrada e o entrega ao <see cref="IMatchDocumentStore"/>.
-///
-/// <b>Passo 3 da secao 8.2 da migracao-dados:</b> aqui quem le ainda e o Postgres. O realtime so
-/// vira o produtor do payload no passo 7, e o store recebe o mesmo par de documentos nos dois
-/// casos — e por isso que trocar o produtor nao mexe em mais nada.
-///
-/// <b>Idempotente.</b> Montar duas vezes da o mesmo resultado: nada aqui gera id novo, le relogio
-/// ou depende de ordem de chegada. As chaves (<c>matchId</c>, <c>participantId</c>) ja existem e
-/// sao estaveis, entao o upsert do store pode ser refeito a vontade.
-/// </summary>
-public sealed class MatchDocumentWriter(AppDbContext db, IMatchDocumentStore store, ILogger<MatchDocumentWriter> logger)
+public class MatchDocumentWriter(
+    AppDbContext db,
+    IRoomRepository repo,
+    IMatchDocumentStore store,
+    ILogger<MatchDocumentWriter> logger)
 {
-    /// <summary>
-    /// <b>Falha nao derruba o encerramento — por enquanto.</b> Enquanto o Postgres continuar
-    /// guardando a partida (ate o passo 5), perder o documento e perder uma copia, e transformar
-    /// isso num 500 tiraria o podio da turma por causa de um banco secundario fora do ar. A partir
-    /// do passo 5 a relacao inverte: o documento passa a ser a unica copia, e esta excecao tem que
-    /// deixar de ser engolida.
-    /// </summary>
     public async Task CommitAsync(Match match, CancellationToken ct)
     {
         try
         {
             var (document, participants) = await BuildAsync(match, ct);
             await store.CommitAsync(document, participants, ct);
+            logger.LogInformation("Snapshot salvo para a partida {MatchId}.", match.Id);
         }
-        catch (Exception exception)
+        catch (Exception ex)
         {
-            logger.LogError(exception, "Falha ao gravar o documento da partida {MatchId}.", match.Id);
+            logger.LogError(ex, "Falha ao gravar snapshot em disco para a partida {MatchId}.", match.Id);
         }
     }
 
-    /// <summary>
-    /// Separado de <see cref="CommitAsync"/> para o teste de escrita dupla poder comparar o
-    /// snapshot com o que o Postgres calcula, sem passar pelo store.
-    /// </summary>
     public async Task<(MatchDocument Document, IReadOnlyList<MatchParticipantDocument> Participants)> BuildAsync(
         Match match,
         CancellationToken ct)
     {
-        var queueSets = await db.RoomQueueSets
-            .AsNoTracking()
-            .Where(s => s.RoomId == match.RoomId)
-            .OrderBy(s => s.OrderIndex)
-            .ToListAsync(ct);
+        var room = await repo.GetRoomAsync(match.RoomId.ToString(), ct)
+            ?? throw new InvalidOperationException($"Sala {match.RoomId} não encontrada no Redis ao salvar documento.");
 
-        var queuePhases = await db.RoomQueuePhases
-            .AsNoTracking()
-            .Where(p => p.RoomId == match.RoomId)
-            .OrderBy(p => p.OrderIndex)
-            .ToListAsync(ct);
+        var queueSetsData = await repo.GetQueueSetsAsync(match.RoomId.ToString(), ct);
+        var queuePhasesData = await repo.GetQueuePhasesAsync(match.RoomId.ToString(), ct);
 
-        // O mesmo conjunto que MatchStatsService chama de jogadores de uma partida encerrada:
-        // aprovados da sala, em ordem de entrada. Quem foi removido no meio nao esta aqui — a
-        // linha dele e as submissoes dele ja foram apagadas por RemovePlayerAsync.
-        var players = await db.Participants
-            .AsNoTracking()
-            .Where(p => p.RoomId == match.RoomId && p.Status == ParticipantStatus.Approved)
+        var queueSets = queueSetsData.Select(s => RoomRedisMappers.ToEntity(s, room.Id)).OrderBy(s => s.OrderIndex).ToList();
+        var queuePhases = queuePhasesData.Select(p => RoomRedisMappers.ToEntity(p, room.Id)).OrderBy(p => p.OrderIndex).ToList();
+
+        var playersData = await repo.GetParticipantsAsync(match.RoomId.ToString(), ct);
+        var players = playersData
+            .Where(p => RoomRedisData.ParseParticipantStatus(p.Status) == ParticipantStatus.Approved)
+            .Select(p => RoomRedisMappers.ToEntity(p, room.Id))
             .OrderBy(p => p.JoinedAt)
-            .ToListAsync(ct);
+            .ToList();
 
         var submissions = await db.Submissions
             .AsNoTracking()
@@ -85,13 +63,11 @@ public sealed class MatchDocumentWriter(AppDbContext db, IMatchDocumentStore sto
         var document = new MatchDocument
         {
             Id = match.Id,
-            RoomCode = match.Room.Code,
+            RoomCode = room.Code,
             RoomId = match.RoomId,
-            LeaderUserId = match.Room.LeaderUserId,
+            LeaderUserId = Guid.Parse(room.LeaderUserId),
             Mode = match.Mode,
             StartedAt = match.StartedAt.UtcDateTime,
-            // Encerrada por construcao: este metodo so e chamado por FinishCoreAsync. O fallback
-            // existe para o snapshot nunca gravar um campo obrigatorio como default(DateTime).
             FinishedAt = (match.FinishedAt ?? match.StartedAt).UtcDateTime,
             PhaseSets = queueSets.Select(ToPhaseSetDocument).ToList(),
             Phases = phases,
@@ -122,7 +98,6 @@ public sealed class MatchDocumentWriter(AppDbContext db, IMatchDocumentStore sto
         PointsMultiplier = phase.PointsMultiplier,
         TimeSeconds = phase.TimeSeconds,
         MaxScore = PhaseGrading.MaxScore(phase),
-        // Copia, nao traducao: o mesmo record que o Postgres guardava como string.
         Content = PhaseContent.Parse(phase.ContentJson),
     };
 
@@ -140,8 +115,6 @@ public sealed class MatchDocumentWriter(AppDbContext db, IMatchDocumentStore sto
 
         return new MatchParticipantDocument
         {
-            // O id do participante e o id do documento: uma pessoa, uma linha por partida — o que
-            // sobrou, neste nivel, do indice unico (MatchId, PhaseId, ParticipantId) do Postgres.
             Id = player.Id,
             MatchId = match.Id,
             ParticipantId = player.Id,
@@ -158,12 +131,6 @@ public sealed class MatchDocumentWriter(AppDbContext db, IMatchDocumentStore sto
         };
     }
 
-    /// <summary>
-    /// Passa por <see cref="SubmissionProjection"/> em vez de reler as colunas cruas: os tres
-    /// campos do corretor de IA (<c>explanation</c>, <c>aiSuggestions</c>, <c>testsPassed</c>) sao
-    /// <c>jsonb</c> que ninguem escreve ainda, e a projecao ja e o unico lugar que sabe desserializa-los
-    /// com a politica certa — JSON corrompido degrada aquela submissao em vez de derrubar o commit.
-    /// </summary>
     private static MatchSubmissionDocument ToSubmissionDocument(Submission submission, MatchPhaseDocument phase)
     {
         var dto = SubmissionProjection.ToDto(submission);
@@ -186,16 +153,6 @@ public sealed class MatchDocumentWriter(AppDbContext db, IMatchDocumentStore sto
         };
     }
 
-    /// <summary>
-    /// Os agregados, calculados <b>uma vez</b> a partir dos documentos de participante que acabaram
-    /// de ser montados — nunca de uma segunda consulta, e nunca recalculados depois. Sao uma copia
-    /// denormalizada, e a unica forma de ela nao virar uma segunda verdade e ter uma so origem.
-    ///
-    /// Duas definicoes herdadas de <c>MatchStatsService</c>, de proposito: a media e <b>por pessoa
-    /// aprovada</b> (com zero explicito para quem nao pontuou, senao seria "a media de quem
-    /// respondeu"), e a taxa de acerto e sobre o que foi <b>corrigido</b>, nao sobre o que foi
-    /// enviado — uma resposta de <c>text</c> sem corretor nao conta como erro.
-    /// </summary>
     private static MatchStatsDocument BuildStats(
         IReadOnlyList<MatchPhaseDocument> phases,
         IReadOnlyList<MatchParticipantDocument> participants)
@@ -218,7 +175,6 @@ public sealed class MatchDocumentWriter(AppDbContext db, IMatchDocumentStore sto
         };
     }
 
-    /// <summary><c>null</c> quando nada foi corrigido naquela fase — o que e diferente de 0%.</summary>
     private static int? PhaseAccuracy(IEnumerable<MatchSubmissionDocument> rows)
     {
         var list = rows.Where(s => s.Grading is GradingStatus.Graded).ToList();
@@ -231,12 +187,6 @@ public sealed class MatchDocumentWriter(AppDbContext db, IMatchDocumentStore sto
         return list.Count is 0 ? null : Average(list.Select(s => s.Score!.Value));
     }
 
-    /// <summary>
-    /// <c>AwayFromZero</c>, como <c>MatchStatsService.Average</c> e <c>PhaseGrading.Score</c> — e
-    /// nao o arredondamento bancario que <c>UserProfileService</c> usa no historico. Os dois
-    /// convivem hoje e discordam por 1 ponto exatamente nos casos terminados em ,5; o documento tem
-    /// uma so grafia para o mesmo numero.
-    /// </summary>
     private static int Average(IEnumerable<int> values)
     {
         var list = values as IReadOnlyCollection<int> ?? [.. values];
@@ -246,3 +196,4 @@ public sealed class MatchDocumentWriter(AppDbContext db, IMatchDocumentStore sto
     private static int Percentage(int part, int total)
         => total is 0 ? 0 : (int)Math.Round(part * 100.0 / total, MidpointRounding.AwayFromZero);
 }
+

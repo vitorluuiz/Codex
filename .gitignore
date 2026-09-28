@@ -1,6 +1,9 @@
 # docker-compose secrets
 .env
 
+# temp files
+.temp/
+
 # design-sync (claude.ai/design)
 .ds-sync/
 ds-bundle/

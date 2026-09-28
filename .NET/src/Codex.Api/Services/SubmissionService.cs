@@ -44,13 +44,13 @@ public class SubmissionService(
         ClaimsPrincipal principal,
         CancellationToken ct)
     {
-        var (match, player) = await matchAccess.GetPlayerAsync(matchId, principal, ct);
+        var (match, room, player) = await matchAccess.GetPlayerAsync(matchId, principal, ct);
         var phases = await matches.PhasesAsync(match.RoomId, ct);
         var phase = MatchService.PhaseAt(match, phases);
 
         // Fecha a fase antes de decidir se aceita: sem isto, o primeiro envio depois do fim do
         // cronometro seria aceito por nao haver quem tivesse marcado o fim.
-        await matches.CloseExpiredPhaseAsync(match, phase, ct);
+        await matches.CloseExpiredPhaseAsync(match, room, phase, ct);
 
         var now = DateTimeOffset.UtcNow;
 
@@ -105,8 +105,8 @@ public class SubmissionService(
         db.Submissions.Add(submission);
         await db.SaveChangesAsync(ct);
 
-        await CloseIfEveryoneAnsweredAsync(match, phase, now, ct);
-        await events.ProgressAsync(match.Room, match, phase, ct);
+        await CloseIfEveryoneAnsweredAsync(match, room, phase, now, ct);
+        await events.ProgressAsync(room, match, phase, ct);
 
         return SubmissionProjection.ToDto(submission);
     }
@@ -124,7 +124,7 @@ public class SubmissionService(
     /// </summary>
     public async Task MarkReadyAsync(string matchId, string phaseId, ClaimsPrincipal principal, CancellationToken ct)
     {
-        var (match, player) = await matchAccess.GetPlayerAsync(matchId, principal, ct);
+        var (match, room, player) = await matchAccess.GetPlayerAsync(matchId, principal, ct);
         var phases = await matches.PhasesAsync(match.RoomId, ct);
         var phase = MatchService.PhaseAt(match, phases);
 
@@ -146,7 +146,7 @@ public class SubmissionService(
             await db.SaveChangesAsync(ct);
         }
 
-        await events.ProgressAsync(match.Room, match, phase, ct);
+        await events.ProgressAsync(room, match, phase, ct);
     }
 
     /// <summary>
@@ -162,11 +162,11 @@ public class SubmissionService(
         ClaimsPrincipal principal,
         CancellationToken ct)
     {
-        var (match, player) = await matchAccess.GetPlayerAsync(matchId, principal, ct);
+        var (match, room, player) = await matchAccess.GetPlayerAsync(matchId, principal, ct);
         var phase = await matches.FindPhaseAsync(match, phaseId, ct);
         var phases = await matches.PhasesAsync(match.RoomId, ct);
 
-        await matches.CloseExpiredPhaseAsync(match, MatchService.PhaseAt(match, phases), ct);
+        await matches.CloseExpiredPhaseAsync(match, room, MatchService.PhaseAt(match, phases), ct);
 
         if (!MatchService.IsPhaseClosed(match, phase, DateTimeOffset.UtcNow))
         {
@@ -179,7 +179,7 @@ public class SubmissionService(
     /// <summary><c>GET /matches/{matchId}/scoreboard/me</c>.</summary>
     public async Task<PlayerScoreboardDto> GetScoreboardAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
     {
-        var (match, player) = await matchAccess.GetPlayerAsync(matchId, principal, ct);
+        var (match, room, player) = await matchAccess.GetPlayerAsync(matchId, principal, ct);
         return await stats.GetScoreboardAsync(match, player, ct);
     }
 
@@ -191,7 +191,7 @@ public class SubmissionService(
     /// A comparacao e <c>&gt;=</c>, e nao <c>==</c>: se o lider remover alguem no meio da fase, o
     /// numero de aprovados cai e a igualdade nunca aconteceria.
     /// </summary>
-    private async Task CloseIfEveryoneAnsweredAsync(Match match, RoomQueuePhase phase, DateTimeOffset now, CancellationToken ct)
+    private async Task CloseIfEveryoneAnsweredAsync(Match match, Room room, RoomQueuePhase phase, DateTimeOffset now, CancellationToken ct)
     {
         if (match.CurrentPhaseEndedAt is not null)
         {
@@ -207,7 +207,7 @@ public class SubmissionService(
         // Fechamento pelo ponto unico do MatchService: e ele que decide tambem se a partida acabou
         // (esta era a ultima fase da fila). Publicar phase.ended aqui direto deixaria a turma na
         // comparacao da ultima fase, esperando um proximo passo que nao viria.
-        await matches.ClosePhaseAsync(match, phase, now, ct);
+        await matches.ClosePhaseAsync(match, room, phase, now, ct);
     }
 
     private static ApiException PhaseClosed()

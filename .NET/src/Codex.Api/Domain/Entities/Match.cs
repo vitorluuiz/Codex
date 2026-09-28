@@ -6,7 +6,6 @@ public class Match
     public Guid Id { get; init; } = Guid.CreateVersion7();
 
     public Guid RoomId { get; set; }
-    public Room Room { get; init; } = null!;
 
     public MatchMode Mode { get; set; }
     public MatchStatus Status { get; set; } = MatchStatus.Running;
