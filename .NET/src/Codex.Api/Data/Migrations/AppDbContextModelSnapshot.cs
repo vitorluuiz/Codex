@@ -43,8 +43,10 @@ namespace Codex.Api.Data.Migrations
                     b.Property<DateTimeOffset?>("FinishedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("Mode")
-                        .HasColumnType("integer");
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
                     b.Property<int?>("PausedSecondsLeft")
                         .HasColumnType("integer");
@@ -55,69 +57,16 @@ namespace Codex.Api.Data.Migrations
                     b.Property<DateTimeOffset>("StartedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoomId", "Mode")
-                        .HasFilter("status != 'Finished'");
-
-                    b.ToTable("Matches");
-                });
-
-            modelBuilder.Entity("Codex.Api.Domain.Entities.Participant", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AvatarIndex")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(80)
-                        .HasColumnType("character varying(80)");
-
-                    b.Property<string>("DisplayNameNormalized")
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("text")
-                        .HasComputedColumnSql("lower(\"DisplayName\")", true);
-
-                    b.Property<DateTimeOffset?>("InResultsSince")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset>("JoinedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("LoggedIn")
-                        .HasColumnType("boolean");
-
-                    b.Property<Guid>("RoomId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
-                    b.Property<Guid?>("UserId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("RoomId");
 
-                    b.HasIndex("RoomId", "DisplayNameNormalized")
-                        .IsUnique()
-                        .HasDatabaseName("ix_participants_room_display_name_unique")
-                        .HasFilter("\"Status\" <> 'Rejected'");
-
-                    b.HasIndex("RoomId", "Status", "JoinedAt");
-
-                    b.ToTable("participants", (string)null);
+                    b.ToTable("matches", (string)null);
                 });
 
             modelBuilder.Entity("Codex.Api.Domain.Entities.Phase", b =>
@@ -197,140 +146,6 @@ namespace Codex.Api.Data.Migrations
                     b.ToTable("phase_sets", (string)null);
                 });
 
-            modelBuilder.Entity("Codex.Api.Domain.Entities.Room", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Capacity")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset?>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("LeaderId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("LeaderUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("Locked")
-                        .HasColumnType("boolean");
-
-                    b.Property<int?>("MatchMode")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("QueueRevision")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("RequireAccount")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Code");
-
-                    b.HasIndex("LeaderId");
-
-                    b.HasIndex("LeaderUserId");
-
-                    b.ToTable("Room");
-                });
-
-            modelBuilder.Entity("Codex.Api.Domain.Entities.RoomQueuePhase", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("BasePoints")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ContentJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("Kind")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("character varying(160)");
-
-                    b.Property<int>("OrderIndex")
-                        .HasColumnType("integer");
-
-                    b.Property<decimal>("PointsMultiplier")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("numeric(5,2)");
-
-                    b.Property<Guid>("RoomId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("RoomQueueSetId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SourcePhaseId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("TimeSeconds")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoomQueueSetId");
-
-                    b.HasIndex("RoomId", "OrderIndex");
-
-                    b.ToTable("room_queue_phases", (string)null);
-                });
-
-            modelBuilder.Entity("Codex.Api.Domain.Entities.RoomQueueSet", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Color")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<int>("OrderIndex")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("RoomId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SourcePhaseSetId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("character varying(160)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoomId", "OrderIndex");
-
-                    b.ToTable("room_queue_sets", (string)null);
-                });
-
             modelBuilder.Entity("Codex.Api.Domain.Entities.Submission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -338,11 +153,11 @@ namespace Codex.Api.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("AiSuggestionsJson")
-                        .HasColumnType("text");
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("AnswerJson")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("jsonb");
 
                     b.Property<bool?>("Correct")
                         .HasColumnType("boolean");
@@ -353,13 +168,12 @@ namespace Codex.Api.Data.Migrations
                     b.Property<string>("Explanation")
                         .HasColumnType("text");
 
-                    b.Property<int>("Grading")
-                        .HasColumnType("integer");
+                    b.Property<string>("Grading")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
                     b.Property<Guid>("MatchId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("MatchId1")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("ParticipantId")
@@ -378,20 +192,16 @@ namespace Codex.Api.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("TestsPassedJson")
-                        .HasColumnType("text");
+                        .HasColumnType("jsonb");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("MatchId1");
-
-                    b.HasIndex("ParticipantId");
-
-                    b.HasIndex("RoomQueuePhaseId");
 
                     b.HasIndex("MatchId", "RoomQueuePhaseId", "ParticipantId")
                         .IsUnique();
 
-                    b.ToTable("Submissions");
+                    b.HasIndex("MatchId", "RoomQueuePhaseId", "Score");
+
+                    b.ToTable("submissions", (string)null);
                 });
 
             modelBuilder.Entity("Codex.Api.Domain.Entities.User", b =>
@@ -495,33 +305,6 @@ namespace Codex.Api.Data.Migrations
                     b.ToTable("DataProtectionKeys");
                 });
 
-            modelBuilder.Entity("Codex.Api.Domain.Entities.Match", b =>
-                {
-                    b.HasOne("Codex.Api.Domain.Entities.Room", null)
-                        .WithMany("Matches")
-                        .HasForeignKey("RoomId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Codex.Api.Domain.Entities.Participant", b =>
-                {
-                    b.HasOne("Codex.Api.Domain.Entities.Room", "Room")
-                        .WithMany("Participants")
-                        .HasForeignKey("RoomId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Codex.Api.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Room");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Codex.Api.Domain.Entities.Phase", b =>
                 {
                     b.HasOne("Codex.Api.Domain.Entities.PhaseSet", "PhaseSet")
@@ -544,68 +327,11 @@ namespace Codex.Api.Data.Migrations
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("Codex.Api.Domain.Entities.Room", b =>
-                {
-                    b.HasOne("Codex.Api.Domain.Entities.User", "Leader")
-                        .WithMany()
-                        .HasForeignKey("LeaderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Leader");
-                });
-
-            modelBuilder.Entity("Codex.Api.Domain.Entities.RoomQueuePhase", b =>
-                {
-                    b.HasOne("Codex.Api.Domain.Entities.Room", "Room")
-                        .WithMany("QueuePhases")
-                        .HasForeignKey("RoomId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Codex.Api.Domain.Entities.RoomQueueSet", "RoomQueueSet")
-                        .WithMany("Phases")
-                        .HasForeignKey("RoomQueueSetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Room");
-
-                    b.Navigation("RoomQueueSet");
-                });
-
-            modelBuilder.Entity("Codex.Api.Domain.Entities.RoomQueueSet", b =>
-                {
-                    b.HasOne("Codex.Api.Domain.Entities.Room", "Room")
-                        .WithMany("QueueSets")
-                        .HasForeignKey("RoomId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Room");
-                });
-
             modelBuilder.Entity("Codex.Api.Domain.Entities.Submission", b =>
                 {
                     b.HasOne("Codex.Api.Domain.Entities.Match", "Match")
-                        .WithMany()
+                        .WithMany("Submissions")
                         .HasForeignKey("MatchId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("Codex.Api.Domain.Entities.Match", null)
-                        .WithMany("Submissions")
-                        .HasForeignKey("MatchId1");
-
-                    b.HasOne("Codex.Api.Domain.Entities.Participant", null)
-                        .WithMany("Submissions")
-                        .HasForeignKey("ParticipantId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Codex.Api.Domain.Entities.RoomQueuePhase", null)
-                        .WithMany("Submissions")
-                        .HasForeignKey("RoomQueuePhaseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -628,33 +354,7 @@ namespace Codex.Api.Data.Migrations
                     b.Navigation("Submissions");
                 });
 
-            modelBuilder.Entity("Codex.Api.Domain.Entities.Participant", b =>
-                {
-                    b.Navigation("Submissions");
-                });
-
             modelBuilder.Entity("Codex.Api.Domain.Entities.PhaseSet", b =>
-                {
-                    b.Navigation("Phases");
-                });
-
-            modelBuilder.Entity("Codex.Api.Domain.Entities.Room", b =>
-                {
-                    b.Navigation("Matches");
-
-                    b.Navigation("Participants");
-
-                    b.Navigation("QueuePhases");
-
-                    b.Navigation("QueueSets");
-                });
-
-            modelBuilder.Entity("Codex.Api.Domain.Entities.RoomQueuePhase", b =>
-                {
-                    b.Navigation("Submissions");
-                });
-
-            modelBuilder.Entity("Codex.Api.Domain.Entities.RoomQueueSet", b =>
                 {
                     b.Navigation("Phases");
                 });

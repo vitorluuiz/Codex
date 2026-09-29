@@ -8,13 +8,20 @@ public class SubmissionConfiguration : IEntityTypeConfiguration<Submission>
 {
     public void Configure(EntityTypeBuilder<Submission> builder)
     {
-        builder.HasKey(s => s.Id);
-        
+        builder.ToTable("submissions");
+
+        builder.Property(s => s.Grading).HasConversion<string>().HasMaxLength(16);
+        builder.Property(s => s.AnswerJson).HasColumnType("jsonb").IsRequired();
+        builder.Property(s => s.AiSuggestionsJson).HasColumnType("jsonb");
+        builder.Property(s => s.TestsPassedJson).HasColumnType("jsonb");
+
         builder.HasOne(s => s.Match)
-            .WithMany()
+            .WithMany(m => m.Submissions)
             .HasForeignKey(s => s.MatchId)
-            .OnDelete(DeleteBehavior.Restrict);
-            
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Indices
         builder.HasIndex(s => new { s.MatchId, s.RoomQueuePhaseId, s.ParticipantId }).IsUnique();
+        builder.HasIndex(s => new { s.MatchId, s.RoomQueuePhaseId, s.Score });
     }
 }

@@ -8,9 +8,11 @@ public class MatchConfiguration : IEntityTypeConfiguration<Match>
 {
     public void Configure(EntityTypeBuilder<Match> builder)
     {
-        builder.HasKey(m => m.Id);
-        
-        builder.HasIndex(m => new { m.RoomId, m.Mode })
-            .HasFilter("status != 'Finished'");
+        builder.ToTable("matches");
+
+        builder.Property(m => m.Mode).HasConversion<string>().HasMaxLength(16);
+        builder.Property(m => m.Status).HasConversion<string>().HasMaxLength(16);
+
+        builder.HasIndex(m => m.RoomId);
     }
 }
