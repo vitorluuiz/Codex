@@ -18,11 +18,11 @@ namespace Codex.Api.Services;
 /// proprio.
 /// </summary>
 public class SubmissionService(
-    AppDbContext db,
     MatchAccessService matchAccess,
     MatchService matches,
     MatchStatsService stats,
-    MatchEventPublisher events)
+    MatchEventPublisher events,
+    Codex.Api.Services.Redis.IMatchRepository matchRepo)
 {
     /// <summary>
     /// <c>POST /matches/{matchId}/phases/{phaseId}/submissions</c>.
@@ -70,8 +70,8 @@ public class SubmissionService(
         // Isto e checagem em codigo <i>alem</i> do indice unico do banco: ela devolve o 409 do
         // contrato, enquanto a constraint devolveria um 500. O indice continua sendo a garantia de
         // verdade — ele e quem decide a corrida entre dois cliques simultaneos.
-        if (await db.Submissions.AnyAsync(
-                s => s.MatchId == match.Id && s.RoomQueuePhaseId == phase.Id && s.ParticipantId == player.Id, ct))
+        var subs = await matchRepo.GetSubmissionsAsync(match.Id.ToString(), phase.Id.ToString(), ct);
+        if (subs.Any(s => s.ParticipantId == player.Id))
         {
             throw new ApiException(StatusCodes.Status409Conflict, ErrorCodes.PhaseAlreadySubmitted, "Voce ja respondeu esta fase.");
         }
@@ -102,8 +102,7 @@ public class SubmissionService(
             Score = outcome.Score,
         };
 
-        db.Submissions.Add(submission);
-        await db.SaveChangesAsync(ct);
+        await matchRepo.PutSubmissionAsync(submission, ct);
 
         await CloseIfEveryoneAnsweredAsync(match, room, phase, now, ct);
         await events.ProgressAsync(room, match, phase, ct);
@@ -133,8 +132,8 @@ public class SubmissionService(
             throw new ApiException(StatusCodes.Status404NotFound, ErrorCodes.PhaseNotFound, "Fase nao encontrada nesta partida.");
         }
 
-        var submission = await db.Submissions.FirstOrDefaultAsync(
-                             s => s.MatchId == match.Id && s.RoomQueuePhaseId == phase.Id && s.ParticipantId == player.Id, ct)
+        var subs = await matchRepo.GetSubmissionsAsync(match.Id.ToString(), phase.Id.ToString(), ct);
+        var submission = subs.FirstOrDefault(s => s.ParticipantId == player.Id)
                          ?? throw new ApiException(
                              StatusCodes.Status400BadRequest,
                              ErrorCodes.ValidationError,
@@ -143,7 +142,7 @@ public class SubmissionService(
         if (submission.ReadyAt is null)
         {
             submission.ReadyAt = DateTimeOffset.UtcNow;
-            await db.SaveChangesAsync(ct);
+            await matchRepo.PutSubmissionAsync(submission, ct);
         }
 
         await events.ProgressAsync(room, match, phase, ct);
@@ -198,7 +197,7 @@ public class SubmissionService(
             return;
         }
 
-        var submitted = await db.Submissions.CountAsync(s => s.MatchId == match.Id && s.RoomQueuePhaseId == phase.Id, ct);
+        var submitted = (await matchRepo.GetPhaseAggregatesAsync(match.Id.ToString(), phase.Id.ToString(), ct)).Submitted;
         if (submitted < await stats.CountPlayersAsync(match.RoomId, ct))
         {
             return;

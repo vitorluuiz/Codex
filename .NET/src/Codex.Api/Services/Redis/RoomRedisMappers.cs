@@ -18,7 +18,8 @@ public static class RoomRedisMappers
         LeaderUserId = Guid.Parse(data.LeaderUserId),
         CreatedAt = RoomRedisData.ToDateTimeOffset(data.CreatedAtMs),
         ExpiresAt = RoomRedisData.ToDateTimeOffset(data.ExpiresAtMs),
-        QueueRevision = data.QueueRevision
+        QueueRevision = data.QueueRevision,
+        CurrentMatchId = data.CurrentMatchId != null ? Guid.Parse(data.CurrentMatchId) : null
     };
 
     public static Participant ToEntity(this RoomRedisData.ParticipantData data, string roomId) => new Participant
@@ -71,4 +72,36 @@ public static class RoomRedisMappers
         entity.OrderIndex,
         entity.ContentJson
     );
+
+    public static Match ToEntity(this MatchRedisData.MatchHashData data, string matchId) => new Match
+    {
+        Id = Guid.Parse(matchId),
+        RoomId = Guid.Parse(data.RoomId),
+        Mode = Enum.Parse<MatchMode>(data.Mode, ignoreCase: true),
+        Status = Enum.Parse<MatchStatus>(data.Status, ignoreCase: true),
+        CurrentPhaseIndex = data.CurrentPhaseIndex,
+        StartedAt = DateTimeOffset.FromUnixTimeMilliseconds(data.StartedAtMs),
+        CurrentPhaseStartedAt = data.CurrentPhaseStartedAtMs.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(data.CurrentPhaseStartedAtMs.Value) : null,
+        CurrentPhaseEndsAt = data.CurrentPhaseEndsAtMs.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(data.CurrentPhaseEndsAtMs.Value) : null,
+        CurrentPhaseEndedAt = data.CurrentPhaseEndedAtMs.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(data.CurrentPhaseEndedAtMs.Value) : null,
+        PausedSecondsLeft = data.PausedSecondsLeft
+    };
+
+    public static Submission ToEntity(this MatchRedisData.SubmissionHashData data) => new Submission
+    {
+        Id = Guid.Parse(data.Id),
+        MatchId = Guid.Parse(data.MatchId),
+        RoomQueuePhaseId = Guid.Parse(data.RoomQueuePhaseId),
+        ParticipantId = Guid.Parse(data.ParticipantId),
+        AnswerJson = data.AnswerJson,
+        SubmittedAt = DateTimeOffset.FromUnixTimeMilliseconds(data.SubmittedAtMs),
+        ElapsedSeconds = data.ElapsedSeconds,
+        ReadyAt = data.ReadyAtMs.HasValue ? DateTimeOffset.FromUnixTimeMilliseconds(data.ReadyAtMs.Value) : null,
+        Grading = Enum.Parse<GradingStatus>(data.Grading, ignoreCase: true),
+        Correct = data.Correct,
+        Score = data.Score,
+        Explanation = data.Explanation,
+        AiSuggestionsJson = data.AiSuggestionsJson,
+        TestsPassedJson = data.TestsPassedJson
+    };
 }

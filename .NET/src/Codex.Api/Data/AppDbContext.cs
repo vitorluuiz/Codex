@@ -15,8 +15,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<UserIdentity> UserIdentities => Set<UserIdentity>();
     public DbSet<PhaseSet> PhaseSets => Set<PhaseSet>();
     public DbSet<Phase> Phases => Set<Phase>();
-    public DbSet<Match> Matches => Set<Match>();
-    public DbSet<Submission> Submissions => Set<Submission>();
+
 
     public DbSet<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey> DataProtectionKeys => Set<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey>();
 

@@ -20,7 +20,7 @@ namespace Codex.Api.Services;
 /// uma que so a partida faz: <see cref="GetPlayerAsync"/> — "quem chamou <i>joga</i> esta partida?".
 /// O lider nao joga.
 /// </summary>
-public class MatchAccessService(AppDbContext db, IRoomRepository repo)
+public class MatchAccessService(IRoomRepository repo, Codex.Api.Services.Redis.IMatchRepository matchRepo)
 {
     /// <summary>
     /// A partida e a sala, se quem chamou for o lider da sala <b>ou</b> alguem que esta nela.
@@ -102,7 +102,7 @@ public class MatchAccessService(AppDbContext db, IRoomRepository repo)
             throw MatchNotFound();
         }
 
-        return await db.Matches.FirstOrDefaultAsync(m => m.Id == id, ct)
+        return await matchRepo.GetMatchAsync(id.ToString(), ct)
                ?? throw MatchNotFound();
     }
 

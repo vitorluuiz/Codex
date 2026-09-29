@@ -66,16 +66,38 @@ public static class RedisKeys
     /// </summary>
     public static string QueuePhase(string roomId, string phaseId) => $"room:{roomId}:qphase:{phaseId}";
 
-    // ── Indices de usuario ─────────────────────────────────────────────────────────────────────
+    // ── Índices de usuário ─────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// <c>user:{userId}:led</c> → SET de roomIds liderados pelo usuario.
+    /// <c>user:{userId}:led</c> → SET de roomIds liderados pelo usuário.
     /// Sustenta <c>GET /rooms/active</c> sem varrer todas as salas.
     /// </summary>
     public static string UserLed(string userId) => $"user:{userId}:led";
 
     /// <summary>
-    /// <c>user:{userId}:joined</c> → SET de roomIds em que o usuario entrou como participante.
+    /// <c>user:{userId}:joined</c> → SET de roomIds em que o usuário entrou como participante.
     /// </summary>
     public static string UserJoined(string userId) => $"user:{userId}:joined";
+
+    // ── Partida ────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// <c>match:{matchId}</c> → HASH com estado de execução da partida.
+    /// </summary>
+    public static string Match(string matchId) => $"match:{matchId}";
+
+    /// <summary>
+    /// <c>match:{matchId}:subs</c> → HASH de submissões da partida: `{queuePhaseId}:{participantId}` → JSON
+    /// </summary>
+    public static string MatchSubs(string matchId) => $"match:{matchId}:subs";
+
+    /// <summary>
+    /// <c>match:{matchId}:agg:{queuePhaseId}</c> → HASH com contadores da fase
+    /// </summary>
+    public static string MatchAgg(string matchId, string queuePhaseId) => $"match:{matchId}:agg:{queuePhaseId}";
+
+    /// <summary>
+    /// <c>commit:pending</c> → SET com IDs de partidas finalizadas aguardando confirmação no MongoDB.
+    /// </summary>
+    public static string CommitPending() => "commit:pending";
 }

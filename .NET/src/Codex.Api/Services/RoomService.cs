@@ -31,7 +31,7 @@ public class RoomService(
     public async Task<RoomDto> CreateAsync(CreateRoomRequest request, ClaimsPrincipal principal, CancellationToken ct)
     {
         var userIdStr = principal.GetUserId()?.ToString() ?? throw AccountRequired();
-        var userId = principal.GetUserId().Value;
+        var userId = principal.GetUserId() ?? throw AccountRequired();
         var leader = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct) ?? throw AccountRequired();
 
         PhaseSet? phaseSet = null;

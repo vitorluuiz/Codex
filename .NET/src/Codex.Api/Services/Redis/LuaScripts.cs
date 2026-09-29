@@ -62,12 +62,41 @@ public static class LuaScripts
         """;
 
     public const string SubmissionPut = """
-        -- stub
+        -- Retorna 1=ok, 0=ja_existe
+        local field = @phaseId .. ':' .. @participantId
+        local added = redis.call('HSETNX', @subs, field, @json)
+        if tonumber(added) == 0 then return 0 end
+        
+        redis.call('HINCRBY', @agg, 'submitted', 1)
+        if tonumber(@graded) == 1 then
+            redis.call('HINCRBY', @agg, 'graded', 1)
+        end
+        if tonumber(@correct) == 1 then
+            redis.call('HINCRBY', @agg, 'correct', 1)
+        end
+        if tonumber(@score) ~= 0 then
+            redis.call('HINCRBY', @agg, 'scoreSum', tonumber(@score))
+        end
         return 1
         """;
 
     public const string PhaseRestart = """
-        -- stub
+        local cursor = '0'
+        local prefix = @phaseId .. ':'
+        repeat
+            local res = redis.call('HSCAN', @subs, cursor, 'MATCH', prefix .. '*')
+            cursor = res[1]
+            local items = res[2]
+            if #items > 0 then
+                local fields = {}
+                for i = 1, #items, 2 do
+                    table.insert(fields, items[i])
+                end
+                redis.call('HDEL', @subs, unpack(fields))
+            end
+        until cursor == '0'
+        
+        redis.call('DEL', @agg)
         return 1
         """;
 }
@@ -82,6 +111,8 @@ public class RedisLuaRunner
     private LoadedLuaScript? _participantJoin;
     private LoadedLuaScript? _participantReject;
     private LoadedLuaScript? _participantRemove;
+    private LoadedLuaScript? _submissionPut;
+    private LoadedLuaScript? _phaseRestart;
 
     private async Task<LoadedLuaScript> GetOrLoadAsync(
         string source,
@@ -208,6 +239,52 @@ public class RedisLuaRunner
             names = (RedisKey)RedisKeys.RoomNames(roomId),
             id = participantId,
             lower = lowerDisplayName
+        });
+        return result == 1;
+    }
+
+    public async Task<bool> SubmissionPutAsync(
+        IDatabase db,
+        IServer server,
+        string matchId,
+        string queuePhaseId,
+        string participantId,
+        string submissionJson,
+        bool isGraded,
+        bool isCorrect,
+        int score,
+        CancellationToken ct)
+    {
+        var script = await GetOrLoadAsync(
+            LuaScripts.SubmissionPut, server,
+            () => _submissionPut, s => _submissionPut = s, ct);
+        var result = (int)await script.EvaluateAsync(db, new {
+            subs = (RedisKey)RedisKeys.MatchSubs(matchId),
+            agg = (RedisKey)RedisKeys.MatchAgg(matchId, queuePhaseId),
+            phaseId = queuePhaseId,
+            participantId = participantId,
+            json = submissionJson,
+            graded = isGraded ? 1 : 0,
+            correct = isCorrect ? 1 : 0,
+            score = score
+        });
+        return result == 1;
+    }
+
+    public async Task<bool> PhaseRestartAsync(
+        IDatabase db,
+        IServer server,
+        string matchId,
+        string queuePhaseId,
+        CancellationToken ct)
+    {
+        var script = await GetOrLoadAsync(
+            LuaScripts.PhaseRestart, server,
+            () => _phaseRestart, s => _phaseRestart = s, ct);
+        var result = (int)await script.EvaluateAsync(db, new {
+            subs = (RedisKey)RedisKeys.MatchSubs(matchId),
+            agg = (RedisKey)RedisKeys.MatchAgg(matchId, queuePhaseId),
+            phaseId = queuePhaseId
         });
         return result == 1;
     }

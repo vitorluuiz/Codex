@@ -37,6 +37,7 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddCodexOAuth(builder.Configuration);
 builder.Services.AddSingleton<Codex.Api.Services.Redis.RedisLuaRunner>();
 builder.Services.AddScoped<Codex.Api.Services.Redis.IRoomRepository, Codex.Api.Services.Redis.RoomRedisRepository>();
+builder.Services.AddScoped<Codex.Api.Services.Redis.IMatchRepository, Codex.Api.Services.Redis.MatchRedisRepository>();
 builder.Services.AddScoped<RoomAccessService>();
 builder.Services.AddScoped<RoomQueueService>();
 builder.Services.AddScoped<RoomService>();

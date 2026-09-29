@@ -94,7 +94,8 @@ public static class RoomRedisData
         string LeaderName,
         long CreatedAtMs,
         long? ExpiresAtMs,
-        int QueueRevision);
+        int QueueRevision,
+        string? CurrentMatchId = null);
 
     /// <summary>
     /// Dados de um participante — gravado no HASH <c>room:{roomId}:parts</c> como JSON.

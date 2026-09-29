@@ -30,13 +30,13 @@ namespace Codex.Api.Services;
 /// match-implementation-model.md).
 /// </summary>
 public class MatchService(
-    AppDbContext db,
     RoomAccessService roomAccess,
     MatchAccessService matchAccess,
     MatchStatsService stats,
     MatchEventPublisher events,
     MatchDocumentWriter documents,
-    IRoomRepository repo)
+    IRoomRepository repo,
+    IMatchRepository matchRepo)
 {
     /// <summary>
     /// Quanto tempo a sala sobrevive ao fim da partida. "Configure TTL em <c>rooms.expiresAt</c>
@@ -104,14 +104,14 @@ public class MatchService(
             StartedAt = now,
         };
         StartPhaseClock(match, phases[0], now);
-        db.Matches.Add(match);
-        await db.SaveChangesAsync(ct);
+        await matchRepo.SetMatchAsync(match, ct);
 
         roomData = roomData with {
             Status = RoomRedisData.ToRedis(RoomStatus.Running),
             MatchMode = RoomRedisData.ToRedis(mode),
             ExpiresAtMs = null,
-            QueueRevision = roomData.QueueRevision + 1
+            QueueRevision = roomData.QueueRevision + 1,
+            CurrentMatchId = match.Id.ToString()
         };
         await repo.SaveRoomAsync(roomData.Id, roomData, ct);
 
@@ -137,10 +137,12 @@ public class MatchService(
         var roomData = await roomAccess.GetRoomAsMemberAsync(code, principal, ct);
         var roomId = Guid.Parse(roomData.Id);
 
-        var match = await db.Matches
-                        .Where(m => m.RoomId == roomId)
-                        .OrderByDescending(m => m.StartedAt)
-                        .FirstOrDefaultAsync(ct)
+        if (roomData.CurrentMatchId is null)
+        {
+            throw MatchAccessService.MatchNotFound();
+        }
+
+        var match = await matchRepo.GetMatchAsync(roomData.CurrentMatchId, ct)
                     ?? throw MatchAccessService.MatchNotFound();
 
         return ToDto(match, await CountPhasesAsync(roomId, ct));
@@ -205,7 +207,7 @@ public class MatchService(
         StartPhaseClock(match, next, now);
         match.Status = MatchStatus.Running;
 
-        await db.SaveChangesAsync(ct);
+        await matchRepo.SetMatchAsync(match, ct);
 
         // phase.ended antes de phase.started: quem estava esperando sai da tela de espera e ja e
         // levado para a fase nova pelo evento seguinte. A ordem inversa perderia a transicao.
@@ -252,7 +254,7 @@ public class MatchService(
             match.Status = MatchStatus.Running;
         }
 
-        await db.SaveChangesAsync(ct);
+        await matchRepo.SetMatchAsync(match, ct);
         await events.PhasePausedAsync(room, match, request.Paused, ct);
     }
 
@@ -277,15 +279,12 @@ public class MatchService(
             throw new ApiException(StatusCodes.Status409Conflict, ErrorCodes.PhaseClosed, "So a fase corrente pode ser reiniciada.");
         }
 
-        var submissions = await db.Submissions
-            .Where(s => s.MatchId == match.Id && s.RoomQueuePhaseId == phase.Id)
-            .ToListAsync(ct);
-        db.Submissions.RemoveRange(submissions);
+        await matchRepo.RestartPhaseAsync(match.Id.ToString(), phase.Id.ToString(), ct);
 
         StartPhaseClock(match, phase, DateTimeOffset.UtcNow);
         match.Status = MatchStatus.Running;
 
-        await db.SaveChangesAsync(ct);
+        await matchRepo.SetMatchAsync(match, ct);
 
         await events.PhaseStartedAsync(room, match, await BuildPhaseStateAsync(match, phase, null, phases.Count, ct), ct);
         await events.ProgressAsync(room, match, phase, ct);
@@ -355,7 +354,7 @@ public class MatchService(
                 await repo.UpdateParticipantAsync(room.Id.ToString(), updated, ct);
             }
 
-            await db.SaveChangesAsync(ct);
+            await matchRepo.SetMatchAsync(match, ct);
 
             // O snapshot da partida no banco de documentos, logo depois de o Postgres ter fechado.
             //
@@ -428,7 +427,7 @@ public class MatchService(
         match.Status = MatchStatus.Finished;
         match.FinishedAt ??= now;
         match.CurrentPhaseEndedAt ??= now;
-        await db.SaveChangesAsync(ct);
+        await matchRepo.SetMatchAsync(match, ct);
 
         var roomData = await repo.GetRoomAsync(room.Id.ToString(), ct);
         if (roomData != null)
@@ -437,7 +436,8 @@ public class MatchService(
                 Status = RoomRedisData.ToRedis(RoomStatus.Lobby),
                 MatchMode = null,
                 ExpiresAtMs = null,
-                QueueRevision = roomData.QueueRevision + 1
+                QueueRevision = roomData.QueueRevision + 1,
+                CurrentMatchId = null
             };
             await repo.SaveRoomAsync(roomData.Id, roomData, ct);
             room = roomData.ToEntity();
@@ -468,8 +468,7 @@ public class MatchService(
 
         await repo.RemoveParticipantAsync(room.Id.ToString(), id.ToString(), pData.DisplayName.ToLowerInvariant(), ct);
 
-        db.Submissions.RemoveRange(await db.Submissions.Where(s => s.ParticipantId == id).ToListAsync(ct));
-        await db.SaveChangesAsync(ct);
+        // The submissions are kept in Redis. They will be ignored during calculations because the participant is rejected.
 
         await events.ParticipantRemovedAsync(room, id, ct);
 
@@ -551,7 +550,7 @@ public class MatchService(
     public async Task ClosePhaseAsync(Match match, Room room, RoomQueuePhase phase, DateTimeOffset closedAt, CancellationToken ct)
     {
         match.CurrentPhaseEndedAt = closedAt;
-        await db.SaveChangesAsync(ct);
+        await matchRepo.SetMatchAsync(match, ct);
 
         await events.PhaseEndedAsync(room, phase.Id, ct);
         await FinishIfLastPhaseAsync(match, room, ct);
@@ -619,8 +618,8 @@ public class MatchService(
         var closed = IsCurrentPhaseClosed(match, now);
 
         var mine = participantId is { } id
-            ? await db.Submissions.AsNoTracking()
-                .FirstOrDefaultAsync(s => s.MatchId == match.Id && s.RoomQueuePhaseId == phase.Id && s.ParticipantId == id, ct)
+            ? (await matchRepo.GetSubmissionsAsync(match.Id.ToString(), phase.Id.ToString(), ct))
+                .FirstOrDefault(s => s.ParticipantId == id)
             : null;
 
         return new PhaseStateDto(
@@ -629,7 +628,7 @@ public class MatchService(
             totalPhases,
             SecondsLeft(match, now),
             match.Status is MatchStatus.Paused,
-            await db.Submissions.CountAsync(s => s.MatchId == match.Id && s.RoomQueuePhaseId == phase.Id, ct),
+            (await matchRepo.GetPhaseAggregatesAsync(match.Id.ToString(), phase.Id.ToString(), ct)).Submitted,
             await stats.CountPlayersAsync(match.RoomId, ct),
             mine is null ? null : SubmissionProjection.ToDto(mine));
     }

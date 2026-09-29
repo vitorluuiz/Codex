@@ -8,10 +8,10 @@ using Microsoft.EntityFrameworkCore;
 namespace Codex.Api.Documents;
 
 public class MatchDocumentWriter(
-    AppDbContext db,
     IRoomRepository repo,
     IMatchDocumentStore store,
-    ILogger<MatchDocumentWriter> logger)
+    ILogger<MatchDocumentWriter> logger,
+    Codex.Api.Services.Redis.IMatchRepository matchRepo)
 {
     public async Task CommitAsync(Match match, CancellationToken ct)
     {
@@ -25,6 +25,14 @@ public class MatchDocumentWriter(
         {
             logger.LogError(ex, "Falha ao gravar snapshot em disco para a partida {MatchId}.", match.Id);
         }
+    }
+
+    private static Guid CombineGuids(Guid a, Guid b)
+    {
+        var aBytes = a.ToByteArray();
+        var bBytes = b.ToByteArray();
+        for (int i = 0; i < 16; i++) aBytes[i] ^= bBytes[i];
+        return new Guid(aBytes);
     }
 
     public async Task<(MatchDocument Document, IReadOnlyList<MatchParticipantDocument> Participants)> BuildAsync(
@@ -47,10 +55,11 @@ public class MatchDocumentWriter(
             .OrderBy(p => p.JoinedAt)
             .ToList();
 
-        var submissions = await db.Submissions
-            .AsNoTracking()
-            .Where(s => s.MatchId == match.Id)
-            .ToListAsync(ct);
+        var submissions = new List<Submission>();
+        foreach (var ph in queuePhases)
+        {
+            submissions.AddRange(await matchRepo.GetSubmissionsAsync(match.Id.ToString(), ph.Id.ToString(), ct));
+        }
 
         var phases = queuePhases.Select(ToPhaseDocument).ToList();
         var phaseById = phases.ToDictionary(p => p.PhaseId);
@@ -115,7 +124,7 @@ public class MatchDocumentWriter(
 
         return new MatchParticipantDocument
         {
-            Id = player.Id,
+            Id = CombineGuids(match.Id, player.Id),
             MatchId = match.Id,
             ParticipantId = player.Id,
             UserId = player.UserId,
@@ -196,4 +205,5 @@ public class MatchDocumentWriter(
     private static int Percentage(int part, int total)
         => total is 0 ? 0 : (int)Math.Round(part * 100.0 / total, MidpointRounding.AwayFromZero);
 }
+
 

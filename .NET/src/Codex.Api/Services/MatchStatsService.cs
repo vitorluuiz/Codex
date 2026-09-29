@@ -22,7 +22,7 @@ namespace Codex.Api.Services;
 /// observavel (o aluno nao assina o canal do lider), o que so torna a divergencia mais facil de
 /// introduzir sem ninguem ver.
 /// </summary>
-public class MatchStatsService(AppDbContext db, IRoomRepository repo)
+public class MatchStatsService(IRoomRepository repo, Codex.Api.Services.Redis.IMatchRepository matchRepo)
 {
     /// <summary>
     /// Acima disto o histograma vira baldes. "Se a turma for grande, agregue em ~15 baldes antes de
@@ -114,12 +114,16 @@ public class MatchStatsService(AppDbContext db, IRoomRepository repo)
         var players = await ApprovedPlayersAsync(match, ct);
         var totals = await MatchTotalsAsync(match, players, ct);
 
-        var elapsed = await db.Submissions
-            .AsNoTracking()
-            .Where(s => s.MatchId == match.Id)
+        var phasesData = await repo.GetQueuePhasesAsync(match.RoomId.ToString(), ct);
+        var allSubs = new List<Submission>();
+        foreach (var ph in phasesData)
+        {
+            allSubs.AddRange(await matchRepo.GetSubmissionsAsync(match.Id.ToString(), ph.Id, ct));
+        }
+
+        var elapsed = allSubs
             .GroupBy(s => s.ParticipantId)
-            .Select(g => new { ParticipantId = g.Key, Total = g.Sum(s => s.ElapsedSeconds) })
-            .ToDictionaryAsync(x => x.ParticipantId, x => x.Total, ct);
+            .ToDictionary(g => g.Key, g => g.Sum(s => s.ElapsedSeconds));
 
         return
         [
@@ -147,12 +151,17 @@ public class MatchStatsService(AppDbContext db, IRoomRepository repo)
         IReadOnlyList<Participant> players,
         CancellationToken ct)
     {
-        var scored = await db.Submissions
-            .AsNoTracking()
-            .Where(s => s.MatchId == match.Id && s.Score != null)
+        var phasesData = await repo.GetQueuePhasesAsync(match.RoomId.ToString(), ct);
+        var allSubs = new List<Submission>();
+        foreach (var ph in phasesData)
+        {
+            allSubs.AddRange(await matchRepo.GetSubmissionsAsync(match.Id.ToString(), ph.Id, ct));
+        }
+
+        var scored = allSubs
+            .Where(s => s.Score != null)
             .GroupBy(s => s.ParticipantId)
-            .Select(g => new { ParticipantId = g.Key, Total = g.Sum(s => s.Score!.Value) })
-            .ToDictionaryAsync(x => x.ParticipantId, x => x.Total, ct);
+            .ToDictionary(g => g.Key, g => g.Sum(s => s.Score!.Value));
 
         return players.ToDictionary(p => p.Id, p => scored.GetValueOrDefault(p.Id));
     }
@@ -190,10 +199,7 @@ public class MatchStatsService(AppDbContext db, IRoomRepository repo)
     }
 
     private async Task<IReadOnlyList<Submission>> PhaseSubmissionsAsync(Guid matchId, Guid phaseId, CancellationToken ct)
-        => await db.Submissions
-            .AsNoTracking()
-            .Where(s => s.MatchId == matchId && s.RoomQueuePhaseId == phaseId)
-            .ToListAsync(ct);
+        => await matchRepo.GetSubmissionsAsync(matchId.ToString(), phaseId.ToString(), ct);
 
     /// <summary>
     /// Quantos jogadores a sala tem — o <c>totalPlayers</c> de todo evento de progresso, e o que o

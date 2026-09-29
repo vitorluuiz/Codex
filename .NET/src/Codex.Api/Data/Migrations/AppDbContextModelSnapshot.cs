@@ -22,53 +22,6 @@ namespace Codex.Api.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Codex.Api.Domain.Entities.Match", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("CurrentPhaseEndedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset?>("CurrentPhaseEndsAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("CurrentPhaseIndex")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset?>("CurrentPhaseStartedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset?>("FinishedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Mode")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<int?>("PausedSecondsLeft")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("RoomId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("StartedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoomId");
-
-                    b.ToTable("matches", (string)null);
-                });
-
             modelBuilder.Entity("Codex.Api.Domain.Entities.Phase", b =>
                 {
                     b.Property<Guid>("Id")
@@ -144,64 +97,6 @@ namespace Codex.Api.Data.Migrations
                     b.HasIndex("Visibility", "Title");
 
                     b.ToTable("phase_sets", (string)null);
-                });
-
-            modelBuilder.Entity("Codex.Api.Domain.Entities.Submission", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AiSuggestionsJson")
-                        .HasColumnType("jsonb");
-
-                    b.Property<string>("AnswerJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<bool?>("Correct")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("ElapsedSeconds")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Explanation")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Grading")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<Guid>("MatchId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ParticipantId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("ReadyAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("RoomQueuePhaseId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int?>("Score")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("SubmittedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("TestsPassedJson")
-                        .HasColumnType("jsonb");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MatchId", "RoomQueuePhaseId", "ParticipantId")
-                        .IsUnique();
-
-                    b.HasIndex("MatchId", "RoomQueuePhaseId", "Score");
-
-                    b.ToTable("submissions", (string)null);
                 });
 
             modelBuilder.Entity("Codex.Api.Domain.Entities.User", b =>
@@ -327,17 +222,6 @@ namespace Codex.Api.Data.Migrations
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("Codex.Api.Domain.Entities.Submission", b =>
-                {
-                    b.HasOne("Codex.Api.Domain.Entities.Match", "Match")
-                        .WithMany("Submissions")
-                        .HasForeignKey("MatchId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Match");
-                });
-
             modelBuilder.Entity("Codex.Api.Domain.Entities.UserIdentity", b =>
                 {
                     b.HasOne("Codex.Api.Domain.Entities.User", "User")
@@ -347,11 +231,6 @@ namespace Codex.Api.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Codex.Api.Domain.Entities.Match", b =>
-                {
-                    b.Navigation("Submissions");
                 });
 
             modelBuilder.Entity("Codex.Api.Domain.Entities.PhaseSet", b =>
