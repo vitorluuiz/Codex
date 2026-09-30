@@ -503,6 +503,7 @@ export interface LeaderMatchSummary {
   playedAtLabel: string;
   participantCount: number;
   avgScore: number;
+  maxAvgScore: number;
   /** Maior pontuação possível na partida — o card mostra `avgScore / maxScore`. */
   maxScore: number;
   /** 0..100. */
@@ -514,6 +515,7 @@ export interface LeaderMatchSummary {
    * Alimenta o mini-gráfico de barras do card do histórico.
    */
   phaseAccuracy: number[];
+  phaseAvgScore: number[];
 }
 
 /** Payload de `GET /users/{id}/profile`. */

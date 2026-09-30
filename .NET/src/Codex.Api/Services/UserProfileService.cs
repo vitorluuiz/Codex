@@ -175,9 +175,15 @@ public class UserProfileService(AppDbContext db, LabelFormatter labels, IMatchDo
                 // Media por pessoa, nao por resposta: e o mesmo numero que
                 // GET /matches/{id}/scoreboard/me chama de avgScore, e a tela mostra "pts".
                 match.Stats.AvgScore,
+                MaxAvgScore: (int)match.Stats.MaxScore / match.Phases.Count(),
+                match.Stats.MaxScore,
                 // Sobre o que foi corrigido, nao sobre o que foi enviado: uma resposta de IA ainda
                 // pendente nao conta como erro.
                 match.Stats.AccuracyRate,
+                // Array com Accuracy de cada phase
+                match.Stats.PhaseAccuracy,
+                // Array com AvgScore de cada phase
+                match.Stats.PhaseAvgScore,
                 LabelFormatter.DurationLabel(match.FinishedAt - match.StartedAt)))
             .ToList();
     }

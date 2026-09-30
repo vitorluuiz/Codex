@@ -133,13 +133,14 @@
   border-radius: var(--radius-l);
   border: 1.5px solid var(--border-subtle);
   background: var(--surface-card);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
   text-align: left;
   width: 100%;
   transition: all var(--dur-fast) var(--ease-out);
+}
+
+.resultInfos {
+  display: flex;
+  flex-direction: column;
 }
 
 .resultAdded {

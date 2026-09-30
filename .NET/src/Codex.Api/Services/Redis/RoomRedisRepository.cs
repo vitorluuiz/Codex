@@ -73,6 +73,34 @@ public class RoomRedisRepository(IRealtimeConnection connection, RedisLuaRunner 
         return t1.Result;
     }
 
+    public async Task DeleteRoomAsync(string roomId, string code, string leaderUserId, IReadOnlyList<string> queueSetIds, IReadOnlyList<string> queuePhaseIds, CancellationToken ct)
+    {
+        var db = await GetDbAsync(ct);
+        var batch = db.CreateBatch();
+
+        // Chaves estruturais da sala
+        _ = batch.KeyDeleteAsync(RedisKeys.Room(roomId));
+        _ = batch.KeyDeleteAsync(RedisKeys.Code(code));
+        _ = batch.KeyDeleteAsync(RedisKeys.RoomNames(roomId));
+        _ = batch.KeyDeleteAsync(RedisKeys.RoomParts(roomId));
+        _ = batch.KeyDeleteAsync(RedisKeys.RoomPartsIdx(roomId));
+
+        // Fila de conjuntos
+        _ = batch.KeyDeleteAsync(RedisKeys.QueueSets(roomId));
+        foreach (var setId in queueSetIds)
+            _ = batch.KeyDeleteAsync(RedisKeys.QueueSet(roomId, setId));
+
+        // Fila de fases
+        _ = batch.KeyDeleteAsync(RedisKeys.QueuePhases(roomId));
+        foreach (var phaseId in queuePhaseIds)
+            _ = batch.KeyDeleteAsync(RedisKeys.QueuePhase(roomId, phaseId));
+
+        // Indice de lideranca do usuario
+        _ = batch.SetRemoveAsync(RedisKeys.UserLed(leaderUserId), roomId);
+
+        batch.Execute();
+    }
+
     // ── Participantes ──────────────────────────────────────────────────────────────────────────
 
     public async Task<ParticipantJoinResult> JoinParticipantAsync(string roomId, int capacity, RoomRedisData.ParticipantData data, CancellationToken ct)

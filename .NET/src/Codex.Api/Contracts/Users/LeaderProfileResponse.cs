@@ -24,5 +24,9 @@ public record LeaderMatchSummaryDto(
     string PlayedAtLabel,
     int ParticipantCount,
     int AvgScore,
+    int MaxAvgScore,
+    int MaxScore,
     int AccuracyRate,
+    IReadOnlyList<int?> PhaseAccuracy,
+    IReadOnlyList<int?> PhaseAvgScore,
     string DurationLabel);

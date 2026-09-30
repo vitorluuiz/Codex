@@ -41,6 +41,7 @@ interface ProfileViewProps {
 export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: ProfileViewProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  console.log(profile)
 
   const [user, setUser] = useState(profile.user);
   const [profileMode, setProfileMode] = useState<ProfileMode>('leader');
@@ -76,143 +77,143 @@ export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: Profile
 
   return (
     <div className={cx(styles.layout, !isOwnProfile && styles.layoutSolo)}>
-      {isOwnProfile && (
-        <AppSidebar
-          user={user}
-          audienceLabel={audienceLabel}
-          active="perfil"
-          onSignOut={() => startTransition(() => void logoutAction())}
-          profileMode={profileMode}
-          onProfileModeChange={setProfileMode}
-        />
-      )}
-
-      <main className={styles.content}>
-        <header className={styles.header}>
-          <div className={styles.identity}>
-            <Avatar index={user.avatarIndex} size="xl" name={user.name} />
-            <div>
-              <div className={styles.nameRow}>
-                <h1 className={styles.name}>{user.name}</h1>
-                <Tag tone="blue">{audienceLabel}</Tag>
-              </div>
-              <p className={styles.email}>{user.email}</p>
-            </div>
-          </div>
-
           {isOwnProfile && (
-            <div className={styles.headerActions}>
-              <Button variant="secondary" onClick={() => setEditOpen(true)}>
-                Editar perfil
-              </Button>
-              {profileMode === 'leader' ? (
-                <Button onClick={() => openRoom()}>Criar sala</Button>
-              ) : (
-                <>
-                  {joinedRoom && (
-                    <Button variant="secondary" onClick={() => router.push(roomPath(joinedRoom))}>
-                      Retornar à sala
-                    </Button>
-                  )}
-                  <Button onClick={() => router.push('/sala')}>Entrar em uma sala</Button>
-                </>
-              )}
-            </div>
+            <AppSidebar
+              user={user}
+              audienceLabel={audienceLabel}
+              active="perfil"
+              onSignOut={() => startTransition(() => void logoutAction())}
+              profileMode={profileMode}
+              onProfileModeChange={setProfileMode}
+            />
           )}
-        </header>
 
-        {profileMode === 'leader' ? (
-          <>
-            <SetsSection
-              sets={profile.sets}
-              onCreate={() => router.push('/conjunto/novo')}
-              onEdit={(setId) => router.push(`/conjunto/${setId}`)}
-              onStart={(setId) => openRoom(setId)}
+          <main className={styles.content}>
+            <header className={styles.header}>
+              <div className={styles.identity}>
+                <Avatar index={user.avatarIndex} size="xl" name={user.name} />
+                <div>
+                  <div className={styles.nameRow}>
+                    <h1 className={styles.name}>{user.name}</h1>
+                    <Tag tone="blue">{audienceLabel}</Tag>
+                  </div>
+                  <p className={styles.email}>{user.email}</p>
+                </div>
+              </div>
+
+              {isOwnProfile && (
+                <div className={styles.headerActions}>
+                  <Button variant="secondary" onClick={() => setEditOpen(true)}>
+                    Editar perfil
+                  </Button>
+                  {profileMode === 'leader' ? (
+                    <Button onClick={() => openRoom()}>Criar sala</Button>
+                  ) : (
+                    <>
+                      {joinedRoom && (
+                        <Button variant="secondary" onClick={() => router.push(roomPath(joinedRoom))}>
+                          Retornar à sala
+                        </Button>
+                      )}
+                      <Button onClick={() => router.push('/sala')}>Entrar em uma sala</Button>
+                    </>
+                  )}
+                </div>
+              )}
+            </header>
+
+            {profileMode === 'leader' ? (
+              <>
+                <SetsSection
+                  sets={profile.sets}
+                  onCreate={() => router.push('/conjunto/novo')}
+                  onEdit={(setId) => router.push(`/conjunto/${setId}`)}
+                  onStart={(setId) => openRoom(setId)}
+                />
+                <MatchHistorySection
+                  matches={profile.matches}
+                  activeRooms={ledRooms}
+                  participantsLabel={participantsLabel}
+                  onDownload={downloadReport}
+                  onCloseRoom={closeRoom}
+                />
+              </>
+            ) : (
+              <ParticipantProfileSection data={MOCK_PARTICIPANT_PROFILE} />
+            )}
+          </main>
+
+          {editOpen && (
+            <EditProfileDialog
+              name={user.name}
+              email={user.email}
+              onClose={() => setEditOpen(false)}
+              onSaved={(saved) => {
+                setUser(saved);
+                setEditOpen(false);
+              }}
             />
-            <MatchHistorySection
-              matches={profile.matches}
-              activeRooms={ledRooms}
-              participantsLabel={participantsLabel}
-              onDownload={downloadReport}
-              onCloseRoom={closeRoom}
-            />
-          </>
-        ) : (
-          <ParticipantProfileSection data={MOCK_PARTICIPANT_PROFILE} />
-        )}
-      </main>
+          )}
 
-      {editOpen && (
-        <EditProfileDialog
-          name={user.name}
-          email={user.email}
-          onClose={() => setEditOpen(false)}
-          onSaved={(saved) => {
-            setUser(saved);
-            setEditOpen(false);
-          }}
-        />
-      )}
-
-      {toast && (
-        <ToastViewport>
-          <Toast
-            tone="success"
-            title="Relatório solicitado"
-            message={toast}
-            onClose={() => setToast(null)}
-          />
-        </ToastViewport>
-      )}
-    </div>
+          {toast && (
+            <ToastViewport>
+              <Toast
+                tone="success"
+                title="Relatório solicitado"
+                message={toast}
+                onClose={() => setToast(null)}
+              />
+            </ToastViewport>
+          )}
+        </div>
   );
 }
 
-/* -------------------------------------------------------------------------- */
+      /* -------------------------------------------------------------------------- */
 
-function EditProfileDialog({
-  name: initialName,
-  email: initialEmail,
-  onClose,
-  onSaved,
+      function EditProfileDialog({
+        name: initialName,
+      email: initialEmail,
+      onClose,
+      onSaved,
 }: {
-  name: string;
-  email: string;
+        name: string;
+      email: string;
   onClose: () => void;
   onSaved: (user: LeaderProfile['user']) => void;
 }) {
   const [name, setName] = useState(initialName);
-  const [email, setEmail] = useState(initialEmail);
-  const [pending, startTransition] = useTransition();
+      const [email, setEmail] = useState(initialEmail);
+      const [pending, startTransition] = useTransition();
 
-  const invalid = !name.trim() || !email.trim();
+      const invalid = !name.trim() || !email.trim();
 
-  function save() {
+      function save() {
     if (invalid) return;
     startTransition(async () => {
-      onSaved(await updateProfileAction({ name: name.trim(), email: email.trim() }));
+        onSaved(await updateProfileAction({ name: name.trim(), email: email.trim() }));
     });
   }
 
-  return (
-    <Dialog open title="Editar perfil" onClose={onClose}>
-      <div className={styles.dialogFields}>
-        <Input label="Nome" value={name} onChange={(event) => setName(event.target.value)} />
-        <Input
-          label="Email"
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-        />
-        <div className={styles.dialogActions}>
-          <Button variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button onClick={save} disabled={invalid || pending}>
-            Salvar
-          </Button>
+      return (
+      <Dialog open title="Editar perfil" onClose={onClose}>
+        <div className={styles.dialogFields}>
+          <Input label="Nome" value={name} onChange={(event) => setName(event.target.value)} />
+          <Input
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+          <div className={styles.dialogActions}>
+            <Button variant="secondary" onClick={onClose}>
+              Cancelar
+            </Button>
+            <Button onClick={save} disabled={invalid || pending}>
+              Salvar
+            </Button>
+          </div>
         </div>
-      </div>
-    </Dialog>
-  );
+      </Dialog>
+      );
 }
