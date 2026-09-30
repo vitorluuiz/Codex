@@ -1,6 +1,7 @@
 using Codex.Api.Contracts.Phases;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
+using Codex.Api.Services.Redis;
 
 namespace Codex.Api.Services;
 
@@ -70,20 +71,20 @@ public static class PhaseProjection
     /// um aluno com a fase aberta, ele esta no DevTools. Como e um parametro obrigatorio, ninguem
     /// deriva uma fase sem responder essa pergunta.
     /// </param>
-    public static PhaseDto ToPhase(RoomQueuePhase phase, bool includeAnswers)
+    public static PhaseDto ToPhase(RoomRedisData.QueuePhaseData phase, bool includeAnswers)
     {
         var content = PhaseContent.Parse(phase.ContentJson);
 
         var dto = new PhaseDto(
-            phase.Id,
-            phase.RoomQueueSetId,
-            phase.Kind,
+            Guid.Parse(phase.Id),
+            Guid.Parse(phase.QueueSetId),
+            Enum.Parse<PhaseKind>(phase.Kind, ignoreCase: true),
             phase.Name,
             phase.BasePoints,
             phase.PointsMultiplier,
             phase.TimeSeconds);
 
-        return phase.Kind switch
+        return Enum.Parse<PhaseKind>(phase.Kind, ignoreCase: true) switch
         {
             PhaseKind.Quiz => ToQuiz(dto, content, includeAnswers),
             PhaseKind.Fill => ToFill(dto, content, includeAnswers),
