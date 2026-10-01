@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 
 import { cx } from '@/lib/cx';
 import { fontBody, fontDisplay, fontMono } from './fonts';
+import { NavigationTracker } from '@/components/nav/NavigationTracker';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
@@ -23,7 +24,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className={cx(fontDisplay.variable, fontBody.variable, fontMono.variable)}>
-      <body>{children}</body>
+      <body>
+        <NavigationTracker />
+        {children}
+      </body>
     </html>
   );
 }

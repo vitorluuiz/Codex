@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { JoinRoomFlow } from '@/components/join/JoinRoomFlow';
 import { LeftRoomNotice } from '@/components/room/LeftRoomNotice';
 import { ResumeRoomPanel } from '@/components/room/ResumeRoomPanel';
+import { SalaBackButton } from '@/components/room/SalaBackButton';
 import { getActiveRooms } from '@/lib/api/rooms';
 import { getSession } from '@/lib/api/session';
 import styles from './page.module.css';
@@ -33,20 +34,24 @@ export default async function JoinRoomPage({ searchParams }: PageProps) {
   const [{ codigo, saida }, session] = await Promise.all([searchParams, getSession()]);
   const initialCode = codigo?.replace(/\D/g, '').slice(0, 6) ?? '';
   const activeRooms = initialCode ? [] : await getActiveRooms();
+  const fallbackUrl = session.user ? '/perfil' : '/';
 
   return (
     <main className={styles.page}>
-      <div className={styles.card}>
-        <Link href="/" className={styles.brand}>
-          Codex
-        </Link>
-        <LeftRoomNotice reason={saida} />
-        <ResumeRoomPanel rooms={activeRooms} />
-        <JoinRoomFlow
-          initialCode={initialCode}
-          suggestedName={session.user?.name ?? ''}
-          isAuthenticated={Boolean(session.user)}
-        />
+      <div className={styles.container}>
+        <SalaBackButton fallbackUrl={fallbackUrl} />
+        <div className={styles.card}>
+          <Link href="/" className={styles.brand}>
+            Codex
+          </Link>
+          <LeftRoomNotice reason={saida} />
+          <ResumeRoomPanel rooms={activeRooms} />
+          <JoinRoomFlow
+            initialCode={initialCode}
+            suggestedName={session.user?.name ?? ''}
+            isAuthenticated={Boolean(session.user)}
+          />
+        </div>
       </div>
     </main>
   );

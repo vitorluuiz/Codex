@@ -80,6 +80,21 @@
   filter: brightness(0.92);
 }
 
+.link {
+  border: none;
+  background: none;
+  color: var(--text-link);
+}
+
+.link:hover {
+  color: var(--accent-primary-hover);
+  text-decoration: underline;
+}
+
+.link:not(:disabled):hover {
+  filter: brightness(0.92);
+}
+
 /* Modificadores de largura */
 .block {
   width: 100%;
