@@ -129,7 +129,9 @@ export function LeaderDashboard({
 
             {isLive && (
               <div className={styles.card}>
-                <p className={styles.cardLabel}>Prontos para a próxima fase</p>
+                <p className={styles.cardLabel}>
+                  {isLastPhase ? 'Prontos para o pódio' : 'Prontos para a próxima fase'}
+                </p>
                 <div className={styles.cardValue}>
                   {stats.readyCount}/{stats.totalPlayers}
                 </div>

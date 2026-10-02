@@ -302,20 +302,7 @@ function ChallengeContent({
     podiumFetchedRef.current = true;
     setPodium(message.podium);
     setMatchStatus('finished');
-
-    if (isLeader) {
-      setScreen('podium');
-    } else {
-      // O participante não deve ter a tela arrancada para o pódio enquanto estiver
-      // respondendo ou visualizando o feedback (individual ou coletivo) da última pergunta.
-      // Se estava na espera, segue para o feedback individual.
-      // Se não respondeu e o tempo esgotou, vai para o pódio.
-      goTo((current) => {
-        if (current === 'waiting') return 'individual';
-        if (current === 'challenge' && !answeringRef.current) return 'podium';
-        return current;
-      });
-    }
+    setScreen('podium');
   });
 
   useRealtimeEvent('match.returned-to-lobby', () => {

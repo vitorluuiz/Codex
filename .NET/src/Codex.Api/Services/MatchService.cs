@@ -386,16 +386,17 @@ public class MatchService(
     /// <summary>
     /// Encerra a partida quando a fase que acabou de fechar era a ultima da fila.
     ///
-    /// "Logo que as fases acabam, a partida deve ser encerrada": nao ha o que avancar depois da
-    /// ultima fase (<c>advance</c> responde <c>INVALID_DIRECTION</c>), entao deixar a partida
-    /// "correndo" numa fase fechada era um estado sem saida — a turma via a comparacao e ficava
-    /// esperando um proximo passo que so o lider poderia dar.
-    ///
-    /// Roda depois de <see cref="ClosePhaseAsync"/> ter publicado <c>phase.ended</c>: os clientes
-    /// recebem o fim da fase e, logo atras, o <c>match.finished</c> com o podio.
+    /// No modo ao vivo (Live), a partida NAO se encerra automaticamente ao fim da ultima fase:
+    /// os participantes aguardam e o lider decide quando encerrar e revelar o podio simultaneamente
+    /// atraves do botao de encerrar a partida.
     /// </summary>
     private async Task FinishIfLastPhaseAsync(Match match, Room room, CancellationToken ct)
     {
+        if (match.Mode == MatchMode.Live)
+        {
+            return;
+        }
+
         if (match.CurrentPhaseIndex + 1 < await CountPhasesAsync(match.RoomId, ct))
         {
             return;
