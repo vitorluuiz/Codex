@@ -46,6 +46,9 @@ public class MatchRedisRepository(IRealtimeConnection connection, RedisLuaRunner
 
     public async Task SetMatchAsync(Match match, CancellationToken ct)
     {
+        var db = await GetDbAsync(ct);
+        var key = RedisKeys.Match(match.Id.ToString());
+
         var hashFields = new List<HashEntry>
         {
             new("roomId", match.RoomId.ToString()),
@@ -55,18 +58,36 @@ public class MatchRedisRepository(IRealtimeConnection connection, RedisLuaRunner
             new("startedAtMs", match.StartedAt.ToUnixTimeMilliseconds().ToString())
         };
 
+        var fieldsToDelete = new List<RedisValue>();
+
         if (match.CurrentPhaseStartedAt.HasValue)
             hashFields.Add(new("currentPhaseStartedAtMs", match.CurrentPhaseStartedAt.Value.ToUnixTimeMilliseconds().ToString()));
+        else
+            fieldsToDelete.Add("currentPhaseStartedAtMs");
+
         if (match.CurrentPhaseEndsAt.HasValue)
             hashFields.Add(new("currentPhaseEndsAtMs", match.CurrentPhaseEndsAt.Value.ToUnixTimeMilliseconds().ToString()));
+        else
+            fieldsToDelete.Add("currentPhaseEndsAtMs");
+
         if (match.CurrentPhaseEndedAt.HasValue)
             hashFields.Add(new("currentPhaseEndedAtMs", match.CurrentPhaseEndedAt.Value.ToUnixTimeMilliseconds().ToString()));
+        else
+            fieldsToDelete.Add("currentPhaseEndedAtMs");
+
         if (match.PausedSecondsLeft.HasValue)
             hashFields.Add(new("pausedSecondsLeft", match.PausedSecondsLeft.Value.ToString()));
+        else
+            fieldsToDelete.Add("pausedSecondsLeft");
 
-        var key = RedisKeys.Match(match.Id.ToString());
-        await (await GetDbAsync(ct)).HashSetAsync(key, hashFields.ToArray());
-        await (await GetDbAsync(ct)).KeyExpireAsync(key, RedisKeys.RoomTtl);
+        var batch = db.CreateBatch();
+        var t1 = batch.HashSetAsync(key, hashFields.ToArray());
+        var t2 = fieldsToDelete.Count > 0
+            ? batch.HashDeleteAsync(key, fieldsToDelete.ToArray())
+            : Task.FromResult(0L);
+        var t3 = batch.KeyExpireAsync(key, RedisKeys.RoomTtl);
+        batch.Execute();
+        await Task.WhenAll(t1, t2, t3);
     }
 
     public async Task<bool> PutSubmissionAsync(Submission submission, CancellationToken ct)
@@ -102,6 +123,23 @@ public class MatchRedisRepository(IRealtimeConnection connection, RedisLuaRunner
             submission.Correct ?? false,
             submission.Score ?? 0,
             ct);
+    }
+
+    public async Task<bool> MarkSubmissionReadyAsync(string matchId, string queuePhaseId, string participantId, DateTimeOffset readyAt, CancellationToken ct)
+    {
+        var db = await GetDbAsync(ct);
+        var key = RedisKeys.MatchSubs(matchId);
+        var field = $"{queuePhaseId}:{participantId}";
+        var raw = await db.HashGetAsync(key, field);
+        if (raw.IsNullOrEmpty) return false;
+
+        var data = JsonSerializer.Deserialize<MatchRedisData.SubmissionHashData>((string)raw!)!;
+        if (data.ReadyAtMs.HasValue) return false;
+
+        var updated = data with { ReadyAtMs = readyAt.ToUnixTimeMilliseconds() };
+        var json = JsonSerializer.Serialize(updated);
+        await db.HashSetAsync(key, field, json);
+        return true;
     }
 
     public async Task<IReadOnlyList<Submission>> GetSubmissionsAsync(string matchId, string queuePhaseId, CancellationToken ct)

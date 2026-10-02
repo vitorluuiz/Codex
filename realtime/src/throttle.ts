@@ -60,6 +60,20 @@ export class Throttler<T> {
     return true;
   }
 
+  /** Envia imediatamente o que estiver pendente e limpa as chaves com este prefixo. */
+  flushPrefix(prefix: string): void {
+    for (const [key, slot] of this.slots) {
+      if (!key.startsWith(prefix)) continue;
+      clearTimeout(slot.timer);
+      this.slots.delete(key);
+      if (slot.pending !== null) {
+        const value = slot.pending;
+        slot.pending = null;
+        this.flush(value);
+      }
+    }
+  }
+
   /** Descarta o que estiver pendente para as chaves com este prefixo. */
   clearPrefix(prefix: string): void {
     for (const [key, slot] of this.slots) {

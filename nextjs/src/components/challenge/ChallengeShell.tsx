@@ -55,7 +55,10 @@ export interface ChallengeShellProps {
 }
 
 export function ChallengeShell(props: ChallengeShellProps) {
-  const list = [channels.match(props.roomCode)];
+  const list = [
+    channels.room(props.roomCode),
+    channels.match(props.roomCode),
+  ];
   if (props.isLeader) list.push(channels.leader(props.roomCode));
   if (props.participantId) list.push(channels.participant(props.participantId));
 
@@ -167,6 +170,8 @@ function ChallengeContent({
    * segunda busca quando o evento chega antes.
    */
   const showPodium = useCallback(() => {
+    setScreen('podium');
+
     if (podiumFetchedRef.current) return;
     podiumFetchedRef.current = true;
 
@@ -174,7 +179,6 @@ function ChallengeContent({
       try {
         setPodium(await loadPodiumAction(match.id));
         setMatchStatus('finished');
-        setScreen('podium');
       } catch {
         podiumFetchedRef.current = false;
       }
@@ -208,18 +212,21 @@ function ChallengeContent({
       submittedCount: message.submittedCount,
       totalPlayers: message.totalPlayers,
     }));
+    setStats((current) =>
+      current && current.phaseId === message.phaseId
+        ? {
+            ...current,
+            submittedCount: message.submittedCount,
+            totalPlayers: message.totalPlayers,
+            readyCount: message.readyCount,
+          }
+        : current,
+    );
   });
 
   /** A fase acabou: tira quem estava esperando e quem não chegou a responder. */
   const applyPhaseEnded = useCallback(() => {
     phaseEndedRef.current = true;
-
-    // Era a última da fila: o servidor encerra a partida junto com ela, e o pódio
-    // substitui todas as telas de fase.
-    if (isLastPhase) {
-      showPodium();
-      return;
-    }
 
     goTo((current) => {
       if (current === 'waiting') return 'individual';
@@ -230,7 +237,7 @@ function ChallengeContent({
       if (current === 'challenge' && !isLeader && !answeringRef.current) return 'timeup';
       return current;
     });
-  }, [isLeader, isLastPhase, goTo, showPodium]);
+  }, [isLeader, goTo]);
 
   // O servidor decide quando a fase termina (todos enviaram ou o tempo acabou).
   useRealtimeEvent('phase.ended', applyPhaseEnded);
@@ -275,6 +282,12 @@ function ChallengeContent({
 
   useRealtimeEvent('submission.graded', (message) => {
     setSubmission(message.submission);
+    if (message.submission.score != null) {
+      const addedScore = message.submission.score;
+      setScoreboard((current) =>
+        current ? { ...current, myScore: current.myScore + addedScore } : current,
+      );
+    }
     goTo((current) => (current === 'waiting' ? 'individual' : current));
   });
 
@@ -289,15 +302,29 @@ function ChallengeContent({
     podiumFetchedRef.current = true;
     setPodium(message.podium);
     setMatchStatus('finished');
-    setScreen('podium');
+
+    if (isLeader) {
+      setScreen('podium');
+    } else {
+      // O participante não deve ter a tela arrancada para o pódio enquanto estiver
+      // respondendo ou visualizando o feedback (individual ou coletivo) da última pergunta.
+      // Se estava na espera, segue para o feedback individual.
+      // Se não respondeu e o tempo esgotou, vai para o pódio.
+      goTo((current) => {
+        if (current === 'waiting') return 'individual';
+        if (current === 'challenge' && !answeringRef.current) return 'podium';
+        return current;
+      });
+    }
   });
 
   useRealtimeEvent('match.returned-to-lobby', () => {
     // Quem está no pódio decide sozinho quando sair dele ("Continuar jogando"): o
-    // líder voltar ao lobby não volta por ninguém. Nos outros casos o evento quer
-    // dizer "o professor encerrou isto aqui", e aí a tela do desafio não tem mais o
-    // que fazer — ficar nela deixaria a pessoa respondendo uma partida que acabou.
-    if (screen !== 'podium') {
+    // líder voltar ao lobby não volta por ninguém. Quem já está nos resultados da
+    // partida terminada (individual ou coletivo) também tem direito de ver sua
+    // pontuação e gabarito antes de sair. Nos outros casos o evento quer
+    // dizer "o professor encerrou isto aqui antes da hora".
+    if (screen !== 'podium' && matchStatus !== 'finished') {
       router.push(`/sala/${roomCode}/lobby`);
     }
   });
@@ -325,19 +352,19 @@ function ChallengeContent({
             return;
           }
 
+          if (result.submission.score != null) {
+            const addedScore = result.submission.score;
+            setScoreboard((current) =>
+              current ? { ...current, myScore: current.myScore + addedScore } : current,
+            );
+          }
+
           setSubmission(result.submission);
 
           // Quem envia por último fecha a fase — e, se era a última da fila, encerra a
           // partida. O servidor publica `phase.ended` e `match.finished` *antes* de
-          // responder a este POST, então quando chegamos aqui a tela já pode ter virado
-          // o pódio. Por isso a troca passa por `goTo`, que não sai dele: sem essa
-          // guarda, a linha abaixo apagava o pódio recém-chegado e a partida parecia
-          // não terminar nunca.
-          //
-          // Fora da última fase, o evento chega com a tela ainda em 'challenge' e o
-          // handler dele — que só resgata quem está em 'waiting' — não faz nada. Ir
-          // para 'waiting' aqui deixaria essa pessoa esperando por envios que já
-          // aconteceram, sem nenhum evento futuro para resgatá-la.
+          // responder a este POST. Como o match.finished preserva telas ativas de aluno,
+          // navegar para individual ou waiting respeita o fluxo de feedback.
           if (match.mode === 'self-paced' || phaseEndedRef.current) {
             // Sem turma para esperar: vai direto para o feedback.
             goTo('individual');
@@ -395,7 +422,7 @@ function ChallengeContent({
    */
   function backToLobby() {
     startTransition(async () => {
-      await (isLeader ? returnToLobbyAction(match.id) : returnToLobbyAsParticipantAction(roomCode));
+      await (isLeader ? returnToLobbyAction(match.id, roomCode) : returnToLobbyAsParticipantAction(roomCode));
       router.push(`/sala/${roomCode}/lobby`);
     });
   }
@@ -405,7 +432,7 @@ function ChallengeContent({
   const leaderControls: LeaderControls | null = isLeader
     ? {
         onRestartPhase: () => startTransition(() => void restartPhaseAction(match.id, phase.id)),
-        onBackToLobby: () => startTransition(() => void returnToLobbyAction(match.id)),
+        onBackToLobby: () => startTransition(() => void returnToLobbyAction(match.id, roomCode)),
         onFinishMatch: finishMatch,
       }
     : null;
@@ -506,7 +533,7 @@ function ChallengeContent({
       ) : (
         <PlayerStage
           phase={phase}
-          disabled={paused || submitting || matchStatus === 'finished'}
+          disabled={connection !== 'open' || paused || submitting || matchStatus === 'finished'}
           onSubmit={submit}
           matchId={match.id}
         />

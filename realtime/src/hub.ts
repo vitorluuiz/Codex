@@ -78,7 +78,7 @@ export class Hub {
       set.delete(subscriber);
       if (set.size === 0) {
         this.channels.delete(channel);
-        this.throttler.clearPrefix(`${channel}|`);
+        this.throttler.flushPrefix(`${channel}|`);
       }
     }
 
@@ -125,6 +125,12 @@ export class Hub {
         event: envelope.event.type,
       });
       return;
+    }
+
+    // Eventos terminais de fase ou partida: descarrega qualquer atualização pendente
+    // de contadores ou métricas antes de entregar o encerramento.
+    if (envelope.event.type === 'phase.ended' || envelope.event.type === 'match.finished') {
+      this.throttler.flushPrefix(`room:${channel.roomCode}:`);
     }
 
     // Sem assinante local: nao vale nem serializar. Acontece o tempo todo — a

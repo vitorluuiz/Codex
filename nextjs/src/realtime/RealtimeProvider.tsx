@@ -22,12 +22,15 @@ export type ConnectionState = 'connecting' | 'open' | 'reconnecting' | 'closed';
 
 type Listener = (message: ServerMessage) => void;
 
-interface RealtimeContextValue {
+export interface RealtimeContextValue {
+  roomCode: string;
   state: ConnectionState;
   /** Diferença entre o relógio do servidor e o local, em ms. */
   clockOffset: number;
   send: (message: ClientMessage) => void;
   subscribe: (listener: Listener) => () => void;
+  /** Registra canais adicionais necessários para componentes ativos. */
+  registerChannels: (channels: Channel[]) => () => void;
 }
 
 const RealtimeContext = createContext<RealtimeContextValue | null>(null);
@@ -57,27 +60,44 @@ async function fetchTicket(): Promise<string | null> {
   }
 }
 
-interface RealtimeProviderProps {
+export interface RealtimeProviderProps {
   roomCode: string;
-  channels: Channel[];
+  channels?: Channel[];
   children: ReactNode;
 }
 
-/**
- * Mantém um único socket por aba e reentrega as mensagens aos hooks.
- *
- * Reconexão: backoff exponencial com teto. Ao reabrir, o `hello` é reenviado e
- * o servidor responde com o estado corrente da fase, então não há necessidade
- * de replay de eventos perdidos.
- */
-export function RealtimeProvider({ roomCode, channels, children }: RealtimeProviderProps) {
+function NestedChannelRegistrar({
+  channels = [],
+  children,
+}: {
+  channels?: Channel[];
+  children: ReactNode;
+}) {
+  useRealtimeChannels(channels);
+  return <>{children}</>;
+}
+
+function RootRealtimeProvider({
+  roomCode,
+  initialChannels = [],
+  children,
+}: {
+  roomCode: string;
+  initialChannels?: Channel[];
+  children: ReactNode;
+}) {
   const [state, setState] = useState<ConnectionState>('connecting');
   const [clockOffset, setClockOffset] = useState(0);
 
   const socketRef = useRef<WebSocket | null>(null);
   const listenersRef = useRef(new Set<Listener>());
   const attemptRef = useRef(0);
-  const channelsKey = channels.join('|');
+  const readyRef = useRef(false);
+
+  // Canais desejados pelo conjunto de componentes ativos (com contagem de referências)
+  const channelCountsRef = useRef<Map<Channel, number>>(new Map());
+  // Canais cuja assinatura já foi confirmada / enviada ao servidor nesta conexão
+  const activeServerChannelsRef = useRef<Set<Channel>>(new Set());
 
   const send = useCallback((message: ClientMessage) => {
     const socket = socketRef.current;
@@ -93,6 +113,86 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
     };
   }, []);
 
+  const syncChannels = useCallback(() => {
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN || !readyRef.current) {
+      return;
+    }
+
+    const desired = new Set<Channel>();
+    for (const [ch, count] of channelCountsRef.current.entries()) {
+      if (count > 0) desired.add(ch);
+    }
+
+    const toSubscribe: Channel[] = [];
+    const toUnsubscribe: Channel[] = [];
+
+    for (const ch of desired) {
+      if (!activeServerChannelsRef.current.has(ch)) {
+        toSubscribe.push(ch);
+      }
+    }
+
+    for (const ch of activeServerChannelsRef.current) {
+      if (!desired.has(ch)) {
+        toUnsubscribe.push(ch);
+      }
+    }
+
+    if (toSubscribe.length > 0) {
+      socket.send(
+        JSON.stringify({
+          type: 'subscribe',
+          channels: toSubscribe,
+        } satisfies ClientMessage),
+      );
+      for (const ch of toSubscribe) {
+        activeServerChannelsRef.current.add(ch);
+      }
+    }
+
+    if (toUnsubscribe.length > 0) {
+      socket.send(
+        JSON.stringify({
+          type: 'unsubscribe',
+          channels: toUnsubscribe,
+        } satisfies ClientMessage),
+      );
+      for (const ch of toUnsubscribe) {
+        activeServerChannelsRef.current.delete(ch);
+      }
+    }
+  }, []);
+
+  const registerChannels = useCallback(
+    (channelsToRegister: Channel[]) => {
+      for (const ch of channelsToRegister) {
+        channelCountsRef.current.set(ch, (channelCountsRef.current.get(ch) ?? 0) + 1);
+      }
+      syncChannels();
+
+      return () => {
+        for (const ch of channelsToRegister) {
+          const count = channelCountsRef.current.get(ch) ?? 1;
+          if (count <= 1) {
+            channelCountsRef.current.delete(ch);
+          } else {
+            channelCountsRef.current.set(ch, count - 1);
+          }
+        }
+        syncChannels();
+      };
+    },
+    [syncChannels],
+  );
+
+  // Registra canais iniciais passados via prop
+  const initialChannelsKey = initialChannels.join('|');
+  useEffect(() => {
+    if (initialChannels.length === 0) return;
+    return registerChannels(initialChannels);
+  }, [registerChannels, initialChannelsKey]);
+
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_REALTIME_URL;
     if (!url) {
@@ -100,40 +200,21 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
       return;
     }
 
-    /**
-     * Encerramento desta execução do efeito. Precisa ser local, não um ref
-     * compartilhado: o cleanup roda enquanto o socket antigo ainda está
-     * fechando, e um ref seria zerado pela execução seguinte antes do `onclose`
-     * do socket velho chegar. Ele então se veria como queda espontânea, entraria
-     * no backoff e reabriria — dois sockets vivos alimentando o mesmo conjunto
-     * de listeners, ou seja, todo evento entregue duas vezes. Em StrictMode isso
-     * acontece em toda montagem.
-     */
     let disposed = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
     let pingTimer: ReturnType<typeof setInterval> | undefined;
 
-    /** Chegou a receber `ready` nesta tentativa? Decide se o ticket é preciso. */
     let ready = false;
-    /** Último `error` desta tentativa — nem toda falha se resolve com ticket. */
     let lastErrorCode: string | null = null;
-    /** Ligado quando um socket morre antes do `ready` por falta de sessão. */
     let needsTicket = false;
-    /**
-     * O servidor mandou `participant.removed`: esta sala acabou para esta
-     * pessoa. Sobrevive às tentativas porque o efeito não é remontado — quem
-     * navega para fora é a tela, e até isso acontecer o backoff já teria
-     * reaberto o socket pelo menos uma vez.
-     */
     let removed = false;
 
     async function connect() {
       setState(attemptRef.current === 0 ? 'connecting' : 'reconnecting');
       ready = false;
+      readyRef.current = false;
       lastErrorCode = null;
 
-      // Buscado antes de abrir o socket porque o `hello` é o primeiro quadro e
-      // não há como esperar por uma promessa no meio do `onopen`.
       const ticket = needsTicket ? await fetchTicket() : null;
       if (disposed) return;
 
@@ -159,12 +240,23 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
             roomCode,
           } satisfies ClientMessage),
         );
-        socket.send(
-          JSON.stringify({
-            type: 'subscribe',
-            channels: channelsKey.split('|') as Channel[],
-          } satisfies ClientMessage),
-        );
+
+        // Envia assinaturas para todos os canais desejados até este momento
+        const initialDesired: Channel[] = [];
+        for (const [ch, count] of channelCountsRef.current.entries()) {
+          if (count > 0) initialDesired.push(ch);
+        }
+        if (initialDesired.length > 0) {
+          socket.send(
+            JSON.stringify({
+              type: 'subscribe',
+              channels: initialDesired,
+            } satisfies ClientMessage),
+          );
+          activeServerChannelsRef.current = new Set(initialDesired);
+        } else {
+          activeServerChannelsRef.current.clear();
+        }
 
         pingTimer = setInterval(() => {
           socket.send(JSON.stringify({ type: 'ping', sentAt: Date.now() } satisfies ClientMessage));
@@ -182,12 +274,15 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
         }
 
         if (message.type === 'pong' || message.type === 'ready') {
-          // Estimativa simples de offset: assume latência simétrica.
           const roundTrip = message.type === 'pong' ? Date.now() - message.sentAt : 0;
           setClockOffset(message.serverTime + roundTrip / 2 - Date.now());
         }
 
-        if (message.type === 'ready') ready = true;
+        if (message.type === 'ready') {
+          ready = true;
+          readyRef.current = true;
+          syncChannels();
+        }
         if (message.type === 'error') lastErrorCode = message.code;
         if (message.type === 'participant.removed') removed = true;
 
@@ -195,6 +290,8 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
       };
 
       socket.onclose = () => {
+        readyRef.current = false;
+        activeServerChannelsRef.current.clear();
         if (pingTimer) clearInterval(pingTimer);
         if (disposed) return;
 
@@ -235,19 +332,41 @@ export function RealtimeProvider({ roomCode, channels, children }: RealtimeProvi
 
     return () => {
       disposed = true;
+      readyRef.current = false;
+      activeServerChannelsRef.current.clear();
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (pingTimer) clearInterval(pingTimer);
       socketRef.current?.close();
       socketRef.current = null;
     };
-  }, [roomCode, channelsKey]);
+  }, [roomCode]);
 
   const value = useMemo<RealtimeContextValue>(
-    () => ({ state, clockOffset, send, subscribe }),
-    [state, clockOffset, send, subscribe],
+    () => ({ roomCode, state, clockOffset, send, subscribe, registerChannels }),
+    [roomCode, state, clockOffset, send, subscribe, registerChannels],
   );
 
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
+}
+
+/**
+ * Mantém um único socket por sala e reentrega as mensagens aos hooks.
+ *
+ * Se já estiver dentro de um `RealtimeProvider` para a mesma sala (por exemplo,
+ * no layout de `/sala/[code]`), ele reutiliza a conexão aberta e apenas gerencia
+ * dinamicamente as assinaturas dos `channels` passados.
+ */
+export function RealtimeProvider({ roomCode, channels = [], children }: RealtimeProviderProps) {
+  const parent = useContext(RealtimeContext);
+  if (parent && parent.roomCode === roomCode) {
+    return <NestedChannelRegistrar channels={channels}>{children}</NestedChannelRegistrar>;
+  }
+
+  return (
+    <RootRealtimeProvider roomCode={roomCode} initialChannels={channels}>
+      {children}
+    </RootRealtimeProvider>
+  );
 }
 
 export function useRealtime(): RealtimeContextValue {
@@ -256,6 +375,17 @@ export function useRealtime(): RealtimeContextValue {
     throw new Error('useRealtime precisa estar dentro de <RealtimeProvider>.');
   }
   return context;
+}
+
+/** Assina canais dinamicamente na conexão WebSocket existente sem reiniciá-la. */
+export function useRealtimeChannels(channels: Channel[]) {
+  const { registerChannels } = useRealtime();
+  const channelsKey = channels.join('|');
+
+  useEffect(() => {
+    if (channels.length === 0) return;
+    return registerChannels(channels);
+  }, [registerChannels, channelsKey]);
 }
 
 /** Assina um tipo específico de evento do servidor. */

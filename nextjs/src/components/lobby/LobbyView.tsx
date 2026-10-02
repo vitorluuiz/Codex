@@ -127,6 +127,7 @@ function LobbyContent({
         // Recarrega em vez de montar o lobby com o que estava em memória: durante
         // a espera nenhum evento da sala chegou, então a lista de jogadores aqui
         // está parada no instante em que a pessoa pediu para entrar.
+        setApproved((list) => upsert(list, participant));
         router.refresh();
       } else if (participant.status === 'rejected') {
         setRejected(true);
@@ -154,6 +155,10 @@ function LobbyContent({
 
   useRealtimeEvent('match.started', () => {
     router.push(`/sala/${room.code}/partida`);
+  });
+
+  useRealtimeEvent('match.returned-to-lobby', () => {
+    router.refresh();
   });
 
   // Expulso pelo líder. Chega só pelo canal privado, e o serviço de WS fecha o

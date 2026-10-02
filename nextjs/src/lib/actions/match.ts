@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { ApiError, apiRequest } from '@/lib/api/client';
 import type {
   AnswerPayload,
@@ -51,6 +52,9 @@ export async function refreshPhaseStateAction(matchId: string): Promise<PhaseSta
  */
 export async function returnToLobbyAsParticipantAction(roomCode: string) {
   await apiRequest(`/rooms/${roomCode}/participants/me/return`, { method: 'POST' });
+  revalidateTag(`room:${roomCode}:participants`);
+  revalidateTag(`room:${roomCode}`);
+  revalidatePath(`/sala/${roomCode}/lobby`);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -147,8 +151,13 @@ export async function finishMatchAction(matchId: string): Promise<PodiumEntry[]>
 }
 
 /** `POST /matches/{matchId}/return-to-lobby` */
-export async function returnToLobbyAction(matchId: string) {
+export async function returnToLobbyAction(matchId: string, roomCode?: string) {
   await apiRequest(`/matches/${matchId}/return-to-lobby`, { method: 'POST' });
+  if (roomCode) {
+    revalidateTag(`room:${roomCode}:participants`);
+    revalidateTag(`room:${roomCode}`);
+    revalidatePath(`/sala/${roomCode}/lobby`);
+  }
 }
 
 /** `DELETE /matches/{matchId}/participants/{participantId}` */
