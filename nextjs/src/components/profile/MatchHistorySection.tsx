@@ -23,7 +23,7 @@ function accuracyColor(value: number): string {
   return 'var(--accent-danger)';
 }
 
-function PhaseSparkline({ values, remainingValuesCount }: { values: number[], remainingValuesCount?: number }) {
+function PhaseSparkline({ values, remainingValuesCount }: { values: number[], remainingValuesCount: number | null }) {
   const remainingValues = remainingValuesCount ? new Array(remainingValuesCount).fill(50) : [];
 
   return (
@@ -110,7 +110,7 @@ export function MatchHistorySection({
               </div>
 
               <div className={styles.rowLiveStatus}>
-                <PhaseSparkline values={[98, 78, 56, 10, 95, 70, 75, 20]} remainingValuesCount={3} />
+                {/* <PhaseSparkline values={[]} remainingValuesCount={room.phaseCount && room.currentPhase && (room.phaseCount - room.currentPhase)} /> */}
                 <div className={styles.liveInfos}>
                   <span className={`${styles.modeChip} ${styles.liveChip}`}>
                     <span className={styles.liveDot} />
@@ -146,12 +146,12 @@ export function MatchHistorySection({
                 </div>
               </div>
 
-              <PhaseSparkline values={[98, 78, 56, 10, 95]} />
+              <PhaseSparkline values={match.phaseAvgScore} remainingValuesCount={null} />
 
               <div className={styles.stat}>
                 <span className={`${styles.statValue} ${styles.statScore}`}>
                   {match.avgScore}
-                  <span className={styles.statMax}> / {match.maxScore? match.maxScore : 100}</span>
+                  <span className={styles.statMax}> / {match.maxAvgScore? match.maxAvgScore : 100}</span>
                 </span>
                 <span className={styles.statLabel}>
                   {match.participantCount} {participantsLabel}
@@ -171,6 +171,7 @@ export function MatchHistorySection({
                 <button
                   type="button"
                   className={styles.iconButton}
+                  disabled
                   onClick={() => onDownload(match)}
                   title="Baixar relatório"
                   aria-label={`Baixar relatório de ${match.setTitle}`}
@@ -197,7 +198,7 @@ export function MatchHistorySection({
               <ReportTile label={participantsLabel} value={String(report.participantCount)} />
               <ReportTile
                 label="Pontuação média"
-                value={`${report.avgScore} / ${report.maxScore}`}
+                value={`${report.avgScore} / ${report.maxAvgScore}`}
                 tone="score"
               />
               <ReportTile label="Taxa de acerto" value={`${report.accuracyRate}%`} tone="success" />

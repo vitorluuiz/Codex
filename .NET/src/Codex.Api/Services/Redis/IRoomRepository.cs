@@ -28,6 +28,12 @@ public interface IRoomRepository
     /// <summary>Renova o TTL de 24h para as chaves principais da sala.</summary>
     Task<bool> RenewTtlAsync(string roomId, CancellationToken ct);
 
+    /// <summary>
+    /// Remove todas as chaves da sala do Redis: dados da sala, reserva de codigo, participantes,
+    /// fila de conjuntos/fases e indice de lideranca do usuario.
+    /// </summary>
+    Task DeleteRoomAsync(string roomId, string code, string leaderUserId, IReadOnlyList<string> queueSetIds, IReadOnlyList<string> queuePhaseIds, CancellationToken ct);
+
     // ── Participantes ──────────────────────────────────────────────────────────────────────────
 
     /// <summary>

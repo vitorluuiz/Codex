@@ -161,6 +161,7 @@
 .account {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   padding: 0 var(--space-2);
   min-width: 0;
@@ -189,6 +190,8 @@
 
 .accountInfo {
   min-width: 0;
+  display: flex;
+  gap: 10px;
 }
 
 .accountName {

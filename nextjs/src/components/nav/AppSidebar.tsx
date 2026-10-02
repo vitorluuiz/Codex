@@ -30,7 +30,8 @@ interface NavEntry {
  */
 const LEADER_ENTRIES: NavEntry[] = [
   { key: 'perfil', label: 'Perfil', icon: <Icon.Person size={18} />, href: '/perfil' },
-  { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} />, href: '/conjuntos' },
+  { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} /> },
+  // { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} />, href: '/conjuntos' },
   { key: 'salas', label: 'Minhas salas', icon: <Icon.Templates size={18} /> },
   { key: 'turmas', label: 'Minhas turmas', icon: <Icon.Users size={18} /> },
   { key: 'relatorios', label: 'Relatórios', icon: <Icon.Reports size={18} /> },
@@ -151,10 +152,12 @@ export function AppSidebar({
               title="Trocar de perfil"
               onClick={() => setSwitcherOpen((open) => !open)}
             >
-              <Avatar index={user.avatarIndex} size="sm" name={user.name} />
               <div className={styles.accountInfo}>
-                <div className={styles.accountName}>{user.name}</div>
-                <div className={styles.accountRole}>{audienceLabel}</div>
+                <Avatar index={user.avatarIndex} size="sm" name={user.name} />
+                <div>
+                  <div className={styles.accountName}>{user.name}</div>
+                  <div className={styles.accountRole}>{audienceLabel}</div>
+                </div>
               </div>
               <Icon.ChevronDown size={16} className={styles.switcherChevron} />
             </button>

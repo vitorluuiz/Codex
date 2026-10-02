@@ -11,6 +11,7 @@ import { RealtimeProvider, useRealtimeEvent } from '@/realtime/RealtimeProvider'
 import { channels } from '@/realtime/protocol';
 import {
   approveParticipantAction,
+  closeRoomAction,
   rejectParticipantAction,
   removeParticipantAction,
   startMatchAction,
@@ -19,7 +20,7 @@ import {
 import type { RoomQueue } from '@/lib/api/rooms';
 import { cssVars } from '@/lib/cssVars';
 import { cx } from '@/lib/cx';
-import type { Participant, Room } from '@/lib/types';
+import type { ActiveRoom, Participant, Room } from '@/lib/types';
 import { PhaseQueuePanel } from './PhaseQueuePanel';
 import { PhaseSetsPanel } from './PhaseSetsPanel';
 import styles from './Lobby.module.css';
@@ -209,6 +210,13 @@ function LobbyContent({
     });
   }
 
+  function closeRoom(room: Room) {
+    startTransition(async () => {
+      await closeRoomAction(room.code);
+      router.back();
+    });
+  }
+
   const totalPhases = queue.phases.length;
   const startDisabled = totalPhases === 0 || approved.length === 0;
 
@@ -276,6 +284,14 @@ function LobbyContent({
                   />
                 </div>
                 <div className={styles.startActions}>
+                  <Tooltip label="Encerra a sala definitivamente.">
+                    <Button
+                      variant="danger"
+                      onClick={() => closeRoom(room)}
+                    >
+                      Fechar sala
+                    </Button>
+                  </Tooltip>
                   <Tooltip label="Cada participante avança pelas fases no próprio ritmo, quando quiser.">
                     <Button
                       variant="secondary"

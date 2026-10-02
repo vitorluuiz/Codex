@@ -177,6 +177,23 @@ public class RoomService(
         return ToDto(room);
     }
 
+    public async Task DeleteAsync(string code, ClaimsPrincipal principal, CancellationToken ct)
+    {
+        var room = await roomAccess.GetRoomAsLeaderAsync(code, principal, ct);
+
+        // Coleta os ids dos conjuntos e fases da fila para limpar as chaves individuais
+        var sets = await repo.GetQueueSetsAsync(room.Id, ct);
+        var phases = await repo.GetQueuePhasesAsync(room.Id, ct);
+
+        await repo.DeleteRoomAsync(
+            room.Id,
+            room.Code,
+            room.LeaderUserId,
+            sets.Select(s => s.Id).ToList(),
+            phases.Select(p => p.Id).ToList(),
+            ct);
+    }
+
     public async Task EnsureJoinableAsync(RoomRedisData.RoomData room, ClaimsPrincipal principal, CancellationToken ct)
     {
         if (room.Locked || room.Status == "finished") throw new ApiException(StatusCodes.Status423Locked, ErrorCodes.RoomLocked, "O apresentador travou a entrada.");

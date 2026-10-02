@@ -1,0 +1,17 @@
+Planejamento Futuro - Componente de Retorno (Back Button)
+=========================================================
+
+Componentes atuais:
+- SalaBackButton (nextjs/src/components/room/SalaBackButton.tsx)
+- NavigationTracker (nextjs/src/components/nav/NavigationTracker.tsx)
+
+Objetivo:
+Futuramente, este componente de retorno será refatorado e transformado em um 
+componente global e reutilizável no Design System (ex.: em @/components/ds/BackButton 
+ou @/components/nav/BackButton), funcionando em várias outras partes e fluxos do site.
+
+Melhorias planejadas para a versão global:
+1. Rastreamento genérico de histórico de navegação para qualquer fluxo que demande botão de voltar.
+2. Identificação automática de títulos/rótulos da página anterior para rotas dinâmicas.
+3. Fallbacks configuráveis por rota ou contexto.
+4. Suporte unificado no Design System para botões de voltar estilizados em cabeçalhos e painéis.
