@@ -297,10 +297,11 @@ function LobbyContent({
                       Fechar sala
                     </Button>
                   </Tooltip>
-                  <Tooltip label="Cada participante avança pelas fases no próprio ritmo, quando quiser.">
+                  <Tooltip label="Cada participante avança pelas fases no próprio ritmo, quando quiser. Desabilitado temporariamente.">
                     <Button
                       variant="secondary"
-                      disabled={startDisabled}
+                      // disabled={startDisabled} Verificação quando for corretamente implementado
+                      disabled
                       onClick={() => start('self-paced')}
                     >
                       Permitir início

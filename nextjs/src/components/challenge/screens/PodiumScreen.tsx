@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import { Avatar } from '@/components/avatar/Avatar';
-import { Button } from '@/components/ds';
+import { Button, Tooltip } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
 import { cssVars } from '@/lib/cssVars';
 import { cx } from '@/lib/cx';
@@ -94,9 +94,11 @@ export function PodiumScreen({ entries, onViewReport, onContinue }: PodiumScreen
       )}
 
       <div className={styles.actions}>
-        <Button size="lg" variant="secondary" onClick={onViewReport}>
-          Ver relatório
-        </Button>
+        <Tooltip openDirection='top' label='Os relatórios estão temporariamente indisponíveis'>
+          <Button disabled size="lg" variant="secondary" onClick={onViewReport}>
+            Ver relatório
+          </Button>
+        </Tooltip>
         <Button size="lg" onClick={onContinue}>
           Continuar jogando
         </Button>
