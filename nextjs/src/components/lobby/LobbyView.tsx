@@ -172,6 +172,12 @@ function LobbyContent({
     router.replace('/sala?saida=removido');
   });
 
+  useRealtimeEvent('room.closed', () => {
+    if (!isLeader) {
+      router.replace('/sala?saida=encerrada');
+    }
+  });
+
   /* --- ações -------------------------------------------------------------- */
 
   const copyCode = useCallback(() => {

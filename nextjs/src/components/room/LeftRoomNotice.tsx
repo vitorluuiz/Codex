@@ -13,7 +13,18 @@ import styles from './LeftRoomNotice.module.css';
  * são a mesma coisa: você não está mais lá, e voltar exige o código de novo.
  */
 export function LeftRoomNotice({ reason }: { reason: string | undefined }) {
-  if (reason !== 'removido') return null;
+  if (reason !== 'removido' && reason !== 'encerrada' && reason !== 'sala_encerrada') return null;
+
+  if (reason === 'encerrada' || reason === 'sala_encerrada') {
+    return (
+      <div className={styles.notice} role="status">
+        <span className={styles.title}>Sala encerrada</span>
+        <span className={styles.body}>
+          O líder encerrou a sala.
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.notice} role="status">

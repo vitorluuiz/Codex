@@ -284,7 +284,7 @@ function RootRealtimeProvider({
           syncChannels();
         }
         if (message.type === 'error') lastErrorCode = message.code;
-        if (message.type === 'participant.removed') removed = true;
+        if (message.type === 'participant.removed' || message.type === 'room.closed') removed = true;
 
         listenersRef.current.forEach((listener) => listener(message));
       };

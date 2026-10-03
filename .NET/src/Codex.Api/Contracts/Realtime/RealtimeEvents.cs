@@ -59,6 +59,11 @@ public record QueueUpdatedEvent(int Revision)
     public string Type => "queue.updated";
 }
 
+public record RoomClosedEvent
+{
+    public string Type => "room.closed";
+}
+
 /* -------------------------------------------------------------------------- */
 /* Partida                                                                     */
 /* -------------------------------------------------------------------------- */

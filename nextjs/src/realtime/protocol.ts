@@ -78,6 +78,7 @@ export type ServerMessage =
     }
   | { type: 'queue.updated'; revision: number }
   | { type: 'match.started'; matchId: string; mode: MatchMode }
+  | { type: 'room.closed' }
 
   /* --- partida ----------------------------------------------------------- */
   /**

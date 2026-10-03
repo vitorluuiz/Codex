@@ -185,6 +185,27 @@ public class RoomService(
         var sets = await repo.GetQueueSetsAsync(room.Id, ct);
         var phases = await repo.GetQueuePhasesAsync(room.Id, ct);
 
+        // Notifica todos os participantes da sala sobre o encerramento
+        await realtime.PublishAsync(
+            room.Code,
+            RealtimeChannels.Room(room.Code),
+            new RoomClosedEvent(),
+            ct);
+
+        // Também publica nos canais privados de cada participante (alcança inclusive quem ainda aguarda aprovação)
+        var participants = await repo.GetParticipantsAsync(room.Id, ct);
+        foreach (var p in participants)
+        {
+            if (Guid.TryParse(p.Id, out var pId))
+            {
+                await realtime.PublishAsync(
+                    room.Code,
+                    RealtimeChannels.Participant(pId),
+                    new RoomClosedEvent(),
+                    ct);
+            }
+        }
+
         await repo.DeleteRoomAsync(
             room.Id,
             room.Code,

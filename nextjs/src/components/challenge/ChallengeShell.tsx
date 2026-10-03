@@ -323,7 +323,13 @@ function ChallengeContent({
   });
 
   useRealtimeEvent('participant.removed', () => {
-    router.push('/sala');
+    router.replace('/sala?saida=removido');
+  });
+
+  useRealtimeEvent('room.closed', () => {
+    if (!isLeader) {
+      router.replace('/sala?saida=encerrada');
+    }
   });
 
   /* --- ações do aluno ----------------------------------------------------- */
