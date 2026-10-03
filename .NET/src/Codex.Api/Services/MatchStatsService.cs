@@ -44,6 +44,8 @@ public class MatchStatsService(IRoomRepository repo, Codex.Api.Services.Redis.IM
 
         var content = PhaseContent.Parse(phase.ContentJson);
         var byParticipant = submissions.ToDictionary(s => s.ParticipantId);
+        var closed = MatchService.IsCurrentPhaseClosed(match, DateTimeOffset.UtcNow);
+        var expiredCount = closed ? Math.Max(0, players.Count - submissions.Count) : 0;
 
         return new PhaseStatsDto(
             phase.Id,
@@ -61,8 +63,8 @@ public class MatchStatsService(IRoomRepository repo, Codex.Api.Services.Redis.IM
             totals.Count is 0 ? 0 : totals.Values.Max(),
             AnswerDistribution(phase, content, submissions),
             GradingDistribution(submissions, graded.Count, correctCount),
-            ResponseTimeBuckets(phase, submissions),
-            [.. players.Select(player => PlayerRow(player, byParticipant.GetValueOrDefault(player.Id)))]);
+            ResponseTimeBuckets(phase, submissions, expiredCount),
+            [.. players.Select(player => PlayerRow(player, byParticipant.GetValueOrDefault(player.Id), closed))]);
     }
 
     /// <summary>
@@ -269,7 +271,8 @@ public class MatchStatsService(IRoomRepository repo, Codex.Api.Services.Redis.IM
 
     private static IReadOnlyList<ResponseTimeBucketDto> ResponseTimeBuckets(
         RoomQueuePhase phase,
-        IReadOnlyList<Submission> submissions)
+        IReadOnlyList<Submission> submissions,
+        int expiredCount)
     {
         var labels = LabelFormatter.ResponseTimeBucketLabels(phase.TimeSeconds);
         var counts = new int[labels.Count];
@@ -279,14 +282,20 @@ public class MatchStatsService(IRoomRepository repo, Codex.Api.Services.Redis.IM
             counts[LabelFormatter.ResponseTimeBucketIndex(submission.ElapsedSeconds, phase.TimeSeconds)]++;
         }
 
-        return [.. labels.Select((label, index) => new ResponseTimeBucketDto(label, counts[index]))];
+        var buckets = labels.Select((label, index) => new ResponseTimeBucketDto(label, counts[index])).ToList();
+        buckets.Add(new ResponseTimeBucketDto("Tempo esgotado", expiredCount));
+        return buckets;
     }
 
-    private static LeaderPlayerRowDto PlayerRow(Participant player, Submission? submission) => new(
+    private static LeaderPlayerRowDto PlayerRow(Participant player, Submission? submission, bool phaseClosed) => new(
         player.Id,
         player.DisplayName,
         player.AvatarIndex,
-        submission is null ? LeaderPlayerRowDto.Pending : LeaderPlayerRowDto.Submitted,
+        submission is not null
+            ? LeaderPlayerRowDto.Submitted
+            : phaseClosed
+                ? LeaderPlayerRowDto.Expired
+                : LeaderPlayerRowDto.Pending,
         submission?.ElapsedSeconds,
         submission?.Correct);
 

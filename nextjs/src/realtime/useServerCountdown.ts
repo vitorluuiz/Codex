@@ -23,7 +23,7 @@ export function useServerCountdown(endsAt: number | null, paused: boolean): numb
 
     function tick() {
       const remainingMs = endsAt! - (Date.now() + clockOffset);
-      setSecondsLeft(Math.max(0, Math.round(remainingMs / 1000)));
+      setSecondsLeft(Math.max(0, Math.ceil(remainingMs / 1000)));
     }
 
     tick();

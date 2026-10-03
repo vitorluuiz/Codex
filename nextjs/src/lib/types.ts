@@ -429,7 +429,7 @@ export interface LeaderPlayerRow {
   participantId: string;
   name: string;
   avatarIndex: AvatarIndex;
-  status: 'submitted' | 'pending';
+  status: 'submitted' | 'pending' | 'expired';
   elapsedSeconds: number | null;
   correct: boolean | null;
 }

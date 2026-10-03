@@ -180,9 +180,20 @@
   transition: height var(--dur-slow) var(--ease-out);
 }
 
+.columnBarExpired {
+  background: var(--amber-500);
+}
+
 .columnLabel {
   font-size: var(--text-caption);
   color: var(--text-secondary);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.columnLabelExpired {
+  color: var(--amber-600);
+  font-weight: var(--fw-semibold);
 }
 
 /* --- Tabela --------------------------------------------------------------- */
@@ -267,6 +278,11 @@
 .statusSubmitted {
   background: var(--tone-green-surface);
   color: var(--green-600);
+}
+
+.statusExpired {
+  background: var(--tone-amber-surface);
+  color: var(--amber-600);
 }
 
 .timeCell {

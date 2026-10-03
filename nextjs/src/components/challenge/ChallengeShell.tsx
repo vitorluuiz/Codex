@@ -261,6 +261,10 @@ function ChallengeContent({
     if (secondsLeft !== 0 || paused || phaseEndedRef.current || timeUpPokedRef.current) return;
     if (matchStatus === 'finished') return;
 
+    if (!isLeader && screen === 'challenge' && !answeringRef.current) {
+      applyPhaseEnded();
+    }
+
     timeUpPokedRef.current = true;
     startTransition(async () => {
       try {
@@ -272,13 +276,15 @@ function ChallengeContent({
         // entre o tique e a resposta.
         if (state.secondsLeft === 0 && !state.paused) {
           applyPhaseEnded();
+        } else if (state.secondsLeft > 0 && !state.paused) {
+          timeUpPokedRef.current = false;
         }
       } catch {
         // Falhou o cutucão: o líder ainda pode avançar a fase pela tela dele.
         timeUpPokedRef.current = false;
       }
     });
-  }, [secondsLeft, paused, matchStatus, match.id, applyPhaseEnded]);
+  }, [secondsLeft, paused, matchStatus, match.id, applyPhaseEnded, isLeader, screen]);
 
   useRealtimeEvent('submission.graded', (message) => {
     setSubmission(message.submission);
@@ -506,6 +512,7 @@ function ChallengeContent({
           stats={stats}
           matchMode={match.mode}
           paused={paused}
+          isTimeUp={secondsLeft === 0 || phaseEndedRef.current}
           isFirstPhase={phaseState.phaseNumber <= 1}
           isLastPhase={isLastPhase}
           onTogglePause={() => startTransition(() => void setPausedAction(match.id, !paused))}
@@ -520,7 +527,7 @@ function ChallengeContent({
       ) : (
         <PlayerStage
           phase={phase}
-          disabled={connection !== 'open' || paused || submitting || matchStatus === 'finished'}
+          disabled={connection !== 'open' || paused || submitting || matchStatus === 'finished' || secondsLeft === 0}
           onSubmit={submit}
           matchId={match.id}
         />

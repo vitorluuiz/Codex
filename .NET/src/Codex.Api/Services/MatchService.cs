@@ -524,7 +524,7 @@ public class MatchService(
             return false;
         }
 
-        if (match.CurrentPhaseEndsAt is not { } endsAt || endsAt > DateTimeOffset.UtcNow)
+        if (match.CurrentPhaseEndsAt is not { } endsAt || endsAt > DateTimeOffset.UtcNow.AddMilliseconds(250))
         {
             return false;
         }
@@ -554,6 +554,7 @@ public class MatchService(
         await matchRepo.SetMatchAsync(match, ct);
 
         await events.PhaseEndedAsync(room, phase.Id, ct);
+        await events.ProgressAsync(room, match, phase, ct);
         await FinishIfLastPhaseAsync(match, room, ct);
     }
 
