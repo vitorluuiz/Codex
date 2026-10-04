@@ -230,7 +230,7 @@ function LobbyContent({
   function closeRoom(room: Room) {
     startTransition(async () => {
       await closeRoomAction(room.code);
-      router.back();
+      router.replace('/perfil');
     });
   }
 
