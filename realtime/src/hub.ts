@@ -78,7 +78,7 @@ export class Hub {
       set.delete(subscriber);
       if (set.size === 0) {
         this.channels.delete(channel);
-        this.throttler.clearPrefix(`${channel}|`);
+        this.throttler.flushPrefix(`${channel}|`);
       }
     }
 
@@ -127,6 +127,12 @@ export class Hub {
       return;
     }
 
+    // Eventos terminais de fase ou partida: descarrega qualquer atualização pendente
+    // de contadores ou métricas antes de entregar o encerramento.
+    if (envelope.event.type === 'phase.ended' || envelope.event.type === 'match.finished') {
+      this.throttler.flushPrefix(`room:${channel.roomCode}:`);
+    }
+
     // Sem assinante local: nao vale nem serializar. Acontece o tempo todo — a
     // instancia assina a sala inteira, mas pode nao ter ninguem no `:leader`.
     if (!this.channels.has(channel.raw)) return;
@@ -144,12 +150,14 @@ export class Hub {
     const payload = JSON.stringify(delivery.event);
     for (const subscriber of set) subscriber.sendRaw(payload);
 
-    // §10: "Ao expulsar alguem, feche o socket dele alem de publicar
-    // participant.removed. So mandar o evento deixa a conexao viva recebendo
-    // eventos da sala."
-    if (delivery.event.type === 'participant.removed') {
+    // §10: Ao expulsar alguém ou encerrar a sala, fecha o socket além de publicar o evento.
+    // Só mandar o evento deixaria a conexão viva recebendo eventos.
+    if (delivery.event.type === 'participant.removed' || delivery.event.type === 'room.closed') {
       for (const subscriber of [...set]) {
-        subscriber.close(CLOSE_CODES.policyViolation, 'removed_by_leader');
+        subscriber.close(
+          CLOSE_CODES.policyViolation,
+          delivery.event.type === 'room.closed' ? 'room_closed' : 'removed_by_leader',
+        );
       }
     }
   }

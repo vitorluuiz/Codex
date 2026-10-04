@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import { StateMessage } from '@/components/feedback/StateMessage';
 import { LobbyView } from '@/components/lobby/LobbyView';
 import { ApiNotConfiguredError } from '@/lib/api/client';
+import { checkRoomCodeAction } from '@/lib/actions/room';
 import {
   getApprovedParticipants,
   getPendingParticipants,
@@ -59,6 +60,10 @@ export default async function LobbyPage({ params }: PageProps) {
     // deixaria a pessoa achando que digitou errado um código que ela nem
     // digitou.
     if (session.participantId !== null && session.roomCode === code) {
+      const availability = await checkRoomCodeAction(code);
+      if (!availability.ok && availability.reason === 'not_found') {
+        redirect('/sala?saida=encerrada');
+      }
       redirect('/sala?saida=removido');
     }
     notFound();
@@ -81,6 +86,10 @@ export default async function LobbyPage({ params }: PageProps) {
     !isLeader &&
     session.participantId !== null &&
     !approved.some((participant) => participant.id === session.participantId);
+
+  if (room.status === 'running' && !awaitingApproval) {
+    redirect(`/sala/${code}/partida`);
+  }
 
   return (
     <LobbyView

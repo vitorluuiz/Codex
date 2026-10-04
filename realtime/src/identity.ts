@@ -88,13 +88,13 @@ export class IdentityResolver {
    * `roomCode` nulo resolve so a identidade (usado antes do upgrade, quando a
    * sala ainda nao foi informada); com sala, a resposta traz tambem o papel.
    */
-  async resolve(credential: Credential, roomCode: string | null): Promise<ResolveResult> {
+  async resolve(credential: Credential, roomCode: string | null, forceFresh = false): Promise<ResolveResult> {
     // Ticket e de uso unico e vale 30 s: cachear seria guardar o direito de
     // reusar exatamente o que o ticket existe para impedir.
-    const cacheable = credential.kind === 'session' && this.config.roleCacheTtlMs > 0;
-    const key = cacheable ? this.cacheKey(credential, roomCode) : null;
+    const cacheable = !forceFresh && credential.kind === 'session' && this.config.roleCacheTtlMs > 0;
+    const key = this.config.roleCacheTtlMs > 0 && credential.kind === 'session' ? this.cacheKey(credential, roomCode) : null;
 
-    if (key !== null) {
+    if (key !== null && !forceFresh) {
       const hit = this.cache.get(key);
       if (hit !== undefined && hit.expiresAt > Date.now()) return hit.result;
       if (hit !== undefined) this.cache.delete(key);
@@ -102,11 +102,15 @@ export class IdentityResolver {
 
     const result = await this.call(credential, roomCode);
 
-    // Falha de infraestrutura nao entra no cache: seria transformar um Redis/API
-    // fora do ar por 200 ms em um segundo de recusa.
-    if (key !== null && (result.ok || result.reason !== 'unavailable')) {
+    // Falha de infraestrutura nao entra no cache.
+    // Participante com status 'pending' não deve ser cacheado, pois pode ser aprovado a qualquer segundo
+    // e o cache impediria a assinatura imediata de canais da sala.
+    const isPending = result.ok && result.identity.participantStatus === 'pending';
+    if (key !== null && !isPending && (result.ok || result.reason !== 'unavailable')) {
       this.cache.set(key, { expiresAt: Date.now() + this.config.roleCacheTtlMs, result });
       this.sweep();
+    } else if (key !== null && isPending) {
+      this.cache.delete(key);
     }
 
     return result;

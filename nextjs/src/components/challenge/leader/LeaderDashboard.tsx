@@ -16,6 +16,7 @@ interface LeaderDashboardProps {
   stats: PhaseStats | null;
   matchMode: MatchMode;
   paused: boolean;
+  isTimeUp?: boolean;
   isFirstPhase: boolean;
   isLastPhase: boolean;
   onTogglePause: () => void;
@@ -36,6 +37,7 @@ export function LeaderDashboard({
   stats,
   matchMode,
   paused,
+  isTimeUp = false,
   isFirstPhase,
   isLastPhase,
   onTogglePause,
@@ -129,7 +131,9 @@ export function LeaderDashboard({
 
             {isLive && (
               <div className={styles.card}>
-                <p className={styles.cardLabel}>Prontos para a próxima fase</p>
+                <p className={styles.cardLabel}>
+                  {isLastPhase ? 'Prontos para o pódio' : 'Prontos para a próxima fase'}
+                </p>
                 <div className={styles.cardValue}>
                   {stats.readyCount}/{stats.totalPlayers}
                 </div>
@@ -176,24 +180,52 @@ export function LeaderDashboard({
                 <section className={styles.panel}>
                   <h2 className={styles.panelTitle}>Tempo de resposta por faixa</h2>
                   <div className={styles.columns}>
-                    {stats.responseTimeBuckets.map((bucket) => (
-                      <div key={bucket.label} className={styles.column}>
-                        <span className={styles.columnCount}>{bucket.count}</span>
-                        <div
-                          className={styles.columnBar}
-                          style={cssVars({
-                            '--bar-height': `${Math.max(
-                              8,
-                              percent(
-                                bucket.count,
-                                maxOf(stats.responseTimeBuckets.map((item) => item.count)),
-                              ),
-                            )}%`,
-                          })}
-                        />
-                        <span className={styles.columnLabel}>{bucket.label}</span>
-                      </div>
-                    ))}
+                    {(() => {
+                      const hasExpiredBucket = stats.responseTimeBuckets.some(
+                        (b) => b.label === 'Tempo esgotado',
+                      );
+                      const responseTimeBuckets = hasExpiredBucket
+                        ? stats.responseTimeBuckets
+                        : [
+                            ...stats.responseTimeBuckets,
+                            {
+                              label: 'Tempo esgotado',
+                              count: isTimeUp
+                                ? Math.max(0, stats.totalPlayers - stats.submittedCount)
+                                : 0,
+                            },
+                          ];
+                      const maxBucketCount = maxOf(responseTimeBuckets.map((item) => item.count));
+
+                      return responseTimeBuckets.map((bucket) => {
+                        const isExpiredBucket = bucket.label === 'Tempo esgotado';
+                        return (
+                          <div key={bucket.label} className={styles.column}>
+                            <span className={styles.columnCount}>{bucket.count}</span>
+                            <div
+                              className={cx(
+                                styles.columnBar,
+                                isExpiredBucket && styles.columnBarExpired,
+                              )}
+                              style={cssVars({
+                                '--bar-height': `${Math.max(
+                                  8,
+                                  percent(bucket.count, maxBucketCount),
+                                )}%`,
+                              })}
+                            />
+                            <span
+                              className={cx(
+                                styles.columnLabel,
+                                isExpiredBucket && styles.columnLabelExpired,
+                              )}
+                            >
+                              {bucket.label}
+                            </span>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </section>
               </div>
@@ -216,44 +248,55 @@ export function LeaderDashboard({
                       </tr>
                     </thead>
                     <tbody>
-                      {stats.players.map((player) => (
-                        <tr
-                          key={player.participantId}
-                          className={styles.row}
-                          onClick={(event) =>
-                            setSelected({ player, anchor: anchorFrom(event.currentTarget) })
-                          }
-                        >
-                          <td>
-                            <span className={styles.playerCell}>
-                              <Avatar index={player.avatarIndex} size="xs" plain name={player.name} />
-                              {player.name}
-                            </span>
-                          </td>
-                          <td>
-                            <span
+                      {stats.players.map((player) => {
+                        const isExpired =
+                          player.status === 'expired' ||
+                          (player.status === 'pending' && isTimeUp);
+
+                        return (
+                          <tr
+                            key={player.participantId}
+                            className={styles.row}
+                            onClick={(event) =>
+                              setSelected({ player, anchor: anchorFrom(event.currentTarget) })
+                            }
+                          >
+                            <td>
+                              <span className={styles.playerCell}>
+                                <Avatar index={player.avatarIndex} size="xs" plain name={player.name} />
+                                {player.name}
+                              </span>
+                            </td>
+                            <td>
+                              <span
+                                className={cx(
+                                  styles.statusChip,
+                                  player.status === 'submitted' && styles.statusSubmitted,
+                                  isExpired && styles.statusExpired,
+                                )}
+                              >
+                                {player.status === 'submitted'
+                                  ? 'Enviado'
+                                  : isExpired
+                                    ? 'Tempo esgotado'
+                                    : 'Pendente'}
+                              </span>
+                            </td>
+                            <td className={styles.timeCell}>
+                              {player.elapsedSeconds !== null ? `${player.elapsedSeconds}s` : '—'}
+                            </td>
+                            <td
                               className={cx(
-                                styles.statusChip,
-                                player.status === 'submitted' && styles.statusSubmitted,
+                                styles.resultCell,
+                                player.correct === true && styles.resultCorrect,
+                                player.correct === false && styles.resultIncorrect,
                               )}
                             >
-                              {player.status === 'submitted' ? 'Enviado' : 'Pendente'}
-                            </span>
-                          </td>
-                          <td className={styles.timeCell}>
-                            {player.elapsedSeconds !== null ? `${player.elapsedSeconds}s` : '—'}
-                          </td>
-                          <td
-                            className={cx(
-                              styles.resultCell,
-                              player.correct === true && styles.resultCorrect,
-                              player.correct === false && styles.resultIncorrect,
-                            )}
-                          >
-                            {resultLabel(player.correct)}
-                          </td>
-                        </tr>
-                      ))}
+                              {resultLabel(player.correct)}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -309,14 +352,27 @@ export function LeaderDashboard({
               <div>
                 <div className={styles.popoverName}>{selected.player.name}</div>
                 <div className={styles.popoverMeta}>
-                  <span
-                    className={cx(
-                      styles.statusChip,
-                      selected.player.status === 'submitted' && styles.statusSubmitted,
-                    )}
-                  >
-                    {selected.player.status === 'submitted' ? 'Enviado' : 'Pendente'}
-                  </span>
+                  {(() => {
+                    const isSelectedExpired =
+                      selected.player.status === 'expired' ||
+                      (selected.player.status === 'pending' && isTimeUp);
+
+                    return (
+                      <span
+                        className={cx(
+                          styles.statusChip,
+                          selected.player.status === 'submitted' && styles.statusSubmitted,
+                          isSelectedExpired && styles.statusExpired,
+                        )}
+                      >
+                        {selected.player.status === 'submitted'
+                          ? 'Enviado'
+                          : isSelectedExpired
+                            ? 'Tempo esgotado'
+                            : 'Pendente'}
+                      </span>
+                    );
+                  })()}
                   <span className={styles.popoverMetaText}>
                     {selected.player.elapsedSeconds !== null
                       ? `${selected.player.elapsedSeconds}s`

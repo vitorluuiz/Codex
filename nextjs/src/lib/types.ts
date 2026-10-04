@@ -359,6 +359,8 @@ export interface PhaseState {
   totalPlayers: number;
   /** Submissão da própria pessoa, se já tiver enviado. */
   mySubmission: Submission | null;
+  /** Instante absoluto (ms) em que a fase passa a aceitar respostas (fim da intro). */
+  startsAt?: number | null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -429,7 +431,7 @@ export interface LeaderPlayerRow {
   participantId: string;
   name: string;
   avatarIndex: AvatarIndex;
-  status: 'submitted' | 'pending';
+  status: 'submitted' | 'pending' | 'expired';
   elapsedSeconds: number | null;
   correct: boolean | null;
 }

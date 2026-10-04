@@ -85,14 +85,14 @@
   align-items: flex-end;
   gap: 4px;
   width: 300px;
-  height: 30px;
+  height: 45px;
   flex: 0.9;
 }
 
 .sparklineBar {
   flex: 1;
   border-radius: 3px;
-  min-height: 4px;
+  min-height: 8px;
 }
 
 .sparklineBarRemaining{

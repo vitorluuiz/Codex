@@ -81,6 +81,11 @@ public class SubmissionService(
             throw PhaseClosed();
         }
 
+        if (match.CurrentPhaseStartedAt is { } notYetStarted && now < notYetStarted)
+        {
+            throw new ApiException(StatusCodes.Status409Conflict, ErrorCodes.PhaseNotStarted, "A fase ainda esta na contagem regressiva inicial.");
+        }
+
         var answer = PhaseGrading.Validate(phase, request.Answer);
 
         var startedAt = match.CurrentPhaseStartedAt ?? now;
@@ -104,8 +109,8 @@ public class SubmissionService(
 
         await matchRepo.PutSubmissionAsync(submission, ct);
 
-        await CloseIfEveryoneAnsweredAsync(match, room, phase, now, ct);
         await events.ProgressAsync(room, match, phase, ct);
+        await CloseIfEveryoneAnsweredAsync(match, room, phase, now, ct);
 
         return SubmissionProjection.ToDto(submission);
     }
@@ -142,7 +147,7 @@ public class SubmissionService(
         if (submission.ReadyAt is null)
         {
             submission.ReadyAt = DateTimeOffset.UtcNow;
-            await matchRepo.PutSubmissionAsync(submission, ct);
+            await matchRepo.MarkSubmissionReadyAsync(match.Id.ToString(), phase.Id.ToString(), player.Id.ToString(), submission.ReadyAt.Value, ct);
         }
 
         await events.ProgressAsync(room, match, phase, ct);

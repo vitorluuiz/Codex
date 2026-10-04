@@ -5,7 +5,7 @@
 
 .bubble {
   position: absolute;
-  top: 120%;
+  /* top: 120%; Trocado por duas classes distintas */
   left: 50%;
   transform: translateX(-50%);
   background: var(--ink-900);
@@ -20,4 +20,12 @@
   box-shadow: var(--shadow-m);
   pointer-events: none;
   z-index: 30;
+}
+
+.bubbleDescending {
+  top: 120%;
+}
+
+.bubbleAscending {
+  bottom: 120%;
 }

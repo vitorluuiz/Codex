@@ -107,6 +107,7 @@ const EVENTS_BY_KIND: Record<ChannelKind, ReadonlySet<string>> = {
     'room.settings',
     'queue.updated',
     'match.started',
+    'room.closed',
   ]),
   match: new Set([
     'phase.started',
@@ -121,7 +122,7 @@ const EVENTS_BY_KIND: Record<ChannelKind, ReadonlySet<string>> = {
   // nao pode assinar `room:{code}` enquanto esta pendente, entao este e o unico
   // canal por onde "voce foi aceito" chega — e o dado e dela mesma, entao nao ha
   // vazamento em carregar o participante inteiro.
-  participant: new Set(['submission.graded', 'participant.removed', 'participant.updated']),
+  participant: new Set(['submission.graded', 'participant.removed', 'participant.updated', 'room.closed']),
 };
 
 export function isEventAllowedOnChannel(kind: ChannelKind, eventType: string): boolean {

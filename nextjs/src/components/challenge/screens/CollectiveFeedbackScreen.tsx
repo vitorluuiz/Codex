@@ -74,18 +74,22 @@ export function CollectiveFeedbackScreen({
         </p>
 
         <div className={styles.footerActions}>
-          {isLastPhase ? (
-            <Button size="lg" onClick={onViewPodium}>
-              Ver pódio da turma
-            </Button>
-          ) : waitsForLeader ? (
+          {waitsForLeader ? (
             readyMarked ? (
-              <span className={styles.waitingNote}>Aguardando o professor avançar a turma…</span>
+              <span className={styles.waitingNote}>
+                {isLastPhase
+                  ? 'Aguardando o professor mostrar o pódio…'
+                  : 'Aguardando o professor avançar a turma…'}
+              </span>
             ) : (
               <Button size="lg" onClick={onMarkReady}>
                 Pronto
               </Button>
             )
+          ) : isLastPhase ? (
+            <Button size="lg" onClick={onViewPodium}>
+              Ver pódio da turma
+            </Button>
           ) : (
             <Button size="lg" onClick={onNextPhase}>
               Próxima fase

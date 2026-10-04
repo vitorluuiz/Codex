@@ -32,14 +32,14 @@ function PhaseSparkline({ values, remainingValuesCount }: { values: number[], re
         <div
           key={index}
           className={styles.sparklineBar}
-          style={{ height: `${Math.max(value, 8)}%`, background: accuracyColor(value) }}
+          style={{ height: `${Math.min(value, 100)}%`, background: accuracyColor(value) }}
         />
       ))}
       {remainingValues.map((value, index) => (
         <div
           key={index}
           className={cx(styles.sparklineBar, styles.sparklineBarRemaining)}
-          style={{ height: `${Math.max(value, 8)}%` }}
+          style={{ height: `${Math.min(value, 100)}%` }}
         />
       ))}
     </div>
@@ -151,7 +151,7 @@ export function MatchHistorySection({
               <div className={styles.stat}>
                 <span className={`${styles.statValue} ${styles.statScore}`}>
                   {match.avgScore}
-                  <span className={styles.statMax}> / {match.maxAvgScore? match.maxAvgScore : 100}</span>
+                  <span className={styles.statMax}> / {match.maxAvgScore ? match.maxAvgScore : 100}</span>
                 </span>
                 <span className={styles.statLabel}>
                   {match.participantCount} {participantsLabel}

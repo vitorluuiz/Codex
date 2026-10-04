@@ -386,16 +386,17 @@ public class MatchService(
     /// <summary>
     /// Encerra a partida quando a fase que acabou de fechar era a ultima da fila.
     ///
-    /// "Logo que as fases acabam, a partida deve ser encerrada": nao ha o que avancar depois da
-    /// ultima fase (<c>advance</c> responde <c>INVALID_DIRECTION</c>), entao deixar a partida
-    /// "correndo" numa fase fechada era um estado sem saida — a turma via a comparacao e ficava
-    /// esperando um proximo passo que so o lider poderia dar.
-    ///
-    /// Roda depois de <see cref="ClosePhaseAsync"/> ter publicado <c>phase.ended</c>: os clientes
-    /// recebem o fim da fase e, logo atras, o <c>match.finished</c> com o podio.
+    /// No modo ao vivo (Live), a partida NAO se encerra automaticamente ao fim da ultima fase:
+    /// os participantes aguardam e o lider decide quando encerrar e revelar o podio simultaneamente
+    /// atraves do botao de encerrar a partida.
     /// </summary>
     private async Task FinishIfLastPhaseAsync(Match match, Room room, CancellationToken ct)
     {
+        if (match.Mode == MatchMode.Live)
+        {
+            return;
+        }
+
         if (match.CurrentPhaseIndex + 1 < await CountPhasesAsync(match.RoomId, ct))
         {
             return;
@@ -523,7 +524,7 @@ public class MatchService(
             return false;
         }
 
-        if (match.CurrentPhaseEndsAt is not { } endsAt || endsAt > DateTimeOffset.UtcNow)
+        if (match.CurrentPhaseEndsAt is not { } endsAt || endsAt > DateTimeOffset.UtcNow.AddMilliseconds(250))
         {
             return false;
         }
@@ -553,6 +554,7 @@ public class MatchService(
         await matchRepo.SetMatchAsync(match, ct);
 
         await events.PhaseEndedAsync(room, phase.Id, ct);
+        await events.ProgressAsync(room, match, phase, ct);
         await FinishIfLastPhaseAsync(match, room, ct);
     }
 
@@ -630,8 +632,11 @@ public class MatchService(
             match.Status is MatchStatus.Paused,
             (await matchRepo.GetPhaseAggregatesAsync(match.Id.ToString(), phase.Id.ToString(), ct)).Submitted,
             await stats.CountPlayersAsync(match.RoomId, ct),
-            mine is null ? null : SubmissionProjection.ToDto(mine));
+            mine is null ? null : SubmissionProjection.ToDto(mine),
+            match.CurrentPhaseStartedAt?.ToUnixTimeMilliseconds());
     }
+
+    public const int IntroDurationSeconds = 5;
 
     /// <summary>
     /// Quantos segundos faltam. Arredonda para cima para que uma fase de 45 s abra mostrando "45" e
@@ -647,6 +652,12 @@ public class MatchService(
         if (match.CurrentPhaseEndsAt is not { } endsAt)
         {
             return 0;
+        }
+
+        // Se ainda está na introdução animada, o cronômetro do desafio ainda não começou a correr
+        if (match.CurrentPhaseStartedAt is { } startedAt && now < startedAt)
+        {
+            return (int)Math.Max(0, Math.Ceiling((endsAt - startedAt).TotalSeconds));
         }
 
         return (int)Math.Max(0, Math.Ceiling((endsAt - now).TotalSeconds));
@@ -685,11 +696,12 @@ public class MatchService(
     /// Zera o cronometro para a fase indicada. O <c>CurrentPhaseEndedAt</c> volta a nulo aqui, e nao
     /// em cada chamador, porque "comecar uma fase" e "ela nao esta fechada" sao a mesma afirmacao —
     /// separa-las e como o codigo esqueceria de reabrir a fase num reinicio.
+    /// Inclui a janela de introducao/aquecimento sincronizada de 5 segundos.
     /// </summary>
     private static void StartPhaseClock(Match match, RoomQueuePhase phase, DateTimeOffset now)
     {
-        match.CurrentPhaseStartedAt = now;
-        match.CurrentPhaseEndsAt = now.AddSeconds(phase.TimeSeconds);
+        match.CurrentPhaseStartedAt = now.AddSeconds(IntroDurationSeconds);
+        match.CurrentPhaseEndsAt = match.CurrentPhaseStartedAt.Value.AddSeconds(phase.TimeSeconds);
         match.CurrentPhaseEndedAt = null;
         match.PausedSecondsLeft = null;
     }
