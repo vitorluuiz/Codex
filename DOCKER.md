@@ -12,7 +12,7 @@ Docker (processos nativos), veja o [`README.md`](README.md).
 docker-compose.yml
 ├── postgres/Dockerfile   FROM postgres:16-alpine   (+ init/ opcional)
 ├── redis/Dockerfile      FROM redis:7-alpine       (+ redis.conf)
-├── (mongo)               image mongo:8.0, sem Dockerfile proprio
+├── mongo/Dockerfile      FROM mongo:8.0            (+ init/ opcional)
 ├── .NET/Dockerfile       build .NET 10 SDK → runtime ASP.NET 10 alpine
 ├── realtime/Dockerfile   build Node 20 → runtime Node 20 alpine
 └── nextjs/Dockerfile     build Node 20 → runtime standalone Next.js
@@ -91,7 +91,7 @@ schema num banco de produção automaticamente no boot de um container é
 arriscado — dois replicas subindo ao mesmo tempo podem disputar a mesma
 migration. Migrations continuam manuais, veja [Migrations](#migrations-do-ef-core).
 
-### `postgres/Dockerfile` e `redis/Dockerfile`
+### `postgres/Dockerfile`, `redis/Dockerfile` e `mongo/Dockerfile`
 
 Wrappers finos sobre as imagens oficiais — existem principalmente para dar a
 cada serviço seu próprio Dockerfile versionado (em vez de referenciar a
@@ -105,6 +105,9 @@ imagem oficial direto no compose) e para ter um lugar óbvio de estender:
   (`maxmemory 256mb`, `allkeys-lru`). A senha **não** fica no `.conf` — é
   injetada em runtime via `--requirepass` no `command:` do compose, lida de
   `REDIS_PASSWORD`.
+- `mongo/init/*.js` roda em `/docker-entrypoint-initdb.d/` **só na primeira
+  inicialização** (volume de dados vazio). Ponto de extensão para scripts
+  iniciais do MongoDB, índices ou coleções pré-configuradas.
 
 ---
 

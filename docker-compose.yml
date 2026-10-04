@@ -41,7 +41,7 @@ services:
   # Guarda `matches` e `match_participants`; os indices sao criados pela propria API na
   # primeira operacao (CreateMany e idempotente), entao nao ha migration nem passo manual.
   mongo:
-    image: mongo:8.0
+    build: ./mongo
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
