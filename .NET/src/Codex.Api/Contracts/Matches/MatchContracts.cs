@@ -40,7 +40,8 @@ public record PhaseStateDto(
     bool Paused,
     int SubmittedCount,
     int TotalPlayers,
-    SubmissionDto? MySubmission);
+    SubmissionDto? MySubmission,
+    long? StartsAt = null);
 
 /// <summary>
 /// Corpo de <c>POST /matches/{id}/advance</c>. <c>direction</c> segue string pelo mesmo motivo de

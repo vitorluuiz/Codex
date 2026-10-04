@@ -90,6 +90,7 @@ export type ServerMessage =
       type: 'phase.started';
       phaseNumber: number;
       totalPhases: number;
+      startsAt?: number | null;
       endsAt: number | null;
       state: PhaseState;
     }

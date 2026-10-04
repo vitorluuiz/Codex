@@ -36,6 +36,7 @@ import { LeaderDashboard } from './leader/LeaderDashboard';
 import { challengeModuleFor } from './registry';
 import { CollectiveFeedbackScreen } from './screens/CollectiveFeedbackScreen';
 import { IndividualFeedbackScreen } from './screens/IndividualFeedbackScreen';
+import { PhaseIntroScreen } from './screens/PhaseIntroScreen';
 import { PodiumScreen } from './screens/PodiumScreen';
 import { TimeUpScreen } from './screens/TimeUpScreen';
 import { WaitingScreen } from './screens/WaitingScreen';
@@ -94,6 +95,7 @@ function ChallengeContent({
   /* --- estado vindo do servidor ------------------------------------------ */
 
   const [phaseState, setPhaseState] = useState<PhaseState>(initialPhaseState);
+  const [startsAt, setStartsAt] = useState<number | null>(initialPhaseState.startsAt ?? null);
   const [endsAt, setEndsAt] = useState<number | null>(
     !initialPhaseState.paused && initialPhaseState.secondsLeft > 0
       ? Date.now() + initialPhaseState.secondsLeft * 1000
@@ -109,7 +111,11 @@ function ChallengeContent({
     // Partida encerrada abre no pódio — inclusive depois de um F5, que antes
     // redirecionava para o lobby e fazia o resultado sumir.
     if (initialPodium) return 'podium';
-    return initialPhaseState.mySubmission ? 'waiting' : 'challenge';
+    if (initialPhaseState.mySubmission) return 'waiting';
+    if (initialPhaseState.startsAt && initialPhaseState.startsAt > Date.now()) {
+      return 'intro';
+    }
+    return 'challenge';
   });
   const [submission, setSubmission] = useState<Submission | null>(initialPhaseState.mySubmission);
   const [comparison, setComparison] = useState<PhaseComparison | null>(null);
@@ -199,6 +205,8 @@ function ChallengeContent({
 
   useRealtimeEvent('phase.started', (message) => {
     currentPhaseIdRef.current = message.state.phase.id;
+    const phaseStartsAt = message.startsAt ?? message.state.startsAt ?? null;
+    setStartsAt(phaseStartsAt);
     setPhaseState(message.state);
     setEndsAt(
       message.endsAt ??
@@ -206,7 +214,8 @@ function ChallengeContent({
           ? Date.now() + message.state.secondsLeft * 1000
           : null),
     );
-    setScreen((current) => (current === 'podium' ? current : 'challenge'));
+    const isIntroActive = phaseStartsAt !== null && phaseStartsAt > Date.now();
+    setScreen((current) => (current === 'podium' ? current : (isIntroActive ? 'intro' : 'challenge')));
     setSubmission(message.state.mySubmission);
     setComparison(null);
     setReadyMarked(false);
@@ -517,6 +526,18 @@ function ChallengeContent({
         submission={submission}
         totalScore={scoreboard?.myScore ?? 0}
         onContinue={openComparison}
+      />
+    );
+  }
+
+  if (screen === 'intro') {
+    return (
+      <PhaseIntroScreen
+        phase={phase}
+        phaseNumber={phaseState.phaseNumber}
+        totalPhases={phaseState.totalPhases}
+        startsAt={startsAt}
+        onComplete={() => goTo('challenge')}
       />
     );
   }

@@ -31,7 +31,7 @@ public class MatchEventPublisher(MatchStatsService stats, IRealtimeEventPublishe
         => realtime.PublishAsync(
             room.Code,
             RealtimeChannels.Match(room.Code),
-            new PhaseStartedEvent(state.PhaseNumber, state.TotalPhases, EpochMs(match.CurrentPhaseEndsAt), state),
+            new PhaseStartedEvent(state.PhaseNumber, state.TotalPhases, EpochMs(match.CurrentPhaseStartedAt), EpochMs(match.CurrentPhaseEndsAt), state),
             ct);
 
     /// <summary>Ao pausar, <c>endsAt</c> vai <c>null</c>; ao retomar, o instante novo ja deslocado.</summary>

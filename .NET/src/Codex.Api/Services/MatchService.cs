@@ -632,8 +632,11 @@ public class MatchService(
             match.Status is MatchStatus.Paused,
             (await matchRepo.GetPhaseAggregatesAsync(match.Id.ToString(), phase.Id.ToString(), ct)).Submitted,
             await stats.CountPlayersAsync(match.RoomId, ct),
-            mine is null ? null : SubmissionProjection.ToDto(mine));
+            mine is null ? null : SubmissionProjection.ToDto(mine),
+            match.CurrentPhaseStartedAt?.ToUnixTimeMilliseconds());
     }
+
+    public const int IntroDurationSeconds = 5;
 
     /// <summary>
     /// Quantos segundos faltam. Arredonda para cima para que uma fase de 45 s abra mostrando "45" e
@@ -649,6 +652,12 @@ public class MatchService(
         if (match.CurrentPhaseEndsAt is not { } endsAt)
         {
             return 0;
+        }
+
+        // Se ainda está na introdução animada, o cronômetro do desafio ainda não começou a correr
+        if (match.CurrentPhaseStartedAt is { } startedAt && now < startedAt)
+        {
+            return (int)Math.Max(0, Math.Ceiling((endsAt - startedAt).TotalSeconds));
         }
 
         return (int)Math.Max(0, Math.Ceiling((endsAt - now).TotalSeconds));
@@ -687,11 +696,12 @@ public class MatchService(
     /// Zera o cronometro para a fase indicada. O <c>CurrentPhaseEndedAt</c> volta a nulo aqui, e nao
     /// em cada chamador, porque "comecar uma fase" e "ela nao esta fechada" sao a mesma afirmacao —
     /// separa-las e como o codigo esqueceria de reabrir a fase num reinicio.
+    /// Inclui a janela de introducao/aquecimento sincronizada de 5 segundos.
     /// </summary>
     private static void StartPhaseClock(Match match, RoomQueuePhase phase, DateTimeOffset now)
     {
-        match.CurrentPhaseStartedAt = now;
-        match.CurrentPhaseEndsAt = now.AddSeconds(phase.TimeSeconds);
+        match.CurrentPhaseStartedAt = now.AddSeconds(IntroDurationSeconds);
+        match.CurrentPhaseEndsAt = match.CurrentPhaseStartedAt.Value.AddSeconds(phase.TimeSeconds);
         match.CurrentPhaseEndedAt = null;
         match.PausedSecondsLeft = null;
     }

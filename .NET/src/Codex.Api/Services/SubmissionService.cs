@@ -81,6 +81,11 @@ public class SubmissionService(
             throw PhaseClosed();
         }
 
+        if (match.CurrentPhaseStartedAt is { } notYetStarted && now < notYetStarted)
+        {
+            throw new ApiException(StatusCodes.Status409Conflict, ErrorCodes.PhaseNotStarted, "A fase ainda esta na contagem regressiva inicial.");
+        }
+
         var answer = PhaseGrading.Validate(phase, request.Answer);
 
         var startedAt = match.CurrentPhaseStartedAt ?? now;
