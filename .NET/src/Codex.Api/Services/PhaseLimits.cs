@@ -27,5 +27,52 @@ public static class PhaseLimits
     /// <summary>Cabe no HasPrecision(5,2) da coluna; alem disso o front mostra "x1,5", nao "x1,4999".</summary>
     public const int PointsMultiplierDecimals = 2;
 
+    /// <summary>
+    /// <b>Os tetos de texto livre.</b> Ate aqui nao existia nenhum: <c>ContentJson</c> e
+    /// <c>AnswerJson</c> sao <c>jsonb</c> sem <c>HasMaxLength</c>, e a validacao do editor conferia
+    /// tamanho de nome, pontos, tempo e multiplicador — nunca o de enunciado, codigo inicial,
+    /// casos de teste ou resposta. O teto real era o limite de corpo do HTTP.
+    ///
+    /// Isso ja era um buraco, e vira <b>bloqueio</b> na migracao de dados: um documento do Mongo
+    /// tem teto rigido de 16 MB, e o Redis — que passa a guardar a fila e as submissoes da partida
+    /// viva — tem <c>maxmemory</c>. Estourar no Redis e estritamente pior que no Mongo: no meio da
+    /// partida ainda nao existe snapshot para o qual retentar.
+    ///
+    /// O pior caso que a aplicacao aceita, com estes numeros (400 fases numa fila, 400 submissoes
+    /// no bucket de um participante):
+    /// <code>
+    /// fase code   4.000 + 4.096 + 4.096  =  ~12 KB  x 400 fases       =  ~4,9 MB  (matches.phases)
+    /// envio code  4.096 + metadados      =  ~4,2 KB x 400 submissoes  =  ~1,7 MB  (match_participants)
+    /// </code>
+    /// Os dois cabem com folga nos 16 MB. Ver <c>docs/contracts/postgresql/migracao-dados.md</c> §5.3.
+    /// </summary>
+    public const int MaxQuestionLength = 4_000;
+
+    /// <summary>Uma alternativa de quiz, uma palavra do banco do fill, uma entrada do gabarito posicional.</summary>
+    public const int MaxOptionLength = 300;
+
+    /// <summary>Banco de palavras do <c>fill</c>: distratores inclusos, 50 ja e muito mais do que qualquer enunciado real.</summary>
+    public const int MaxWords = 50;
+
+    public const int MaxStarterCodeLength = 4_096;
+    public const int MaxTestCasesLength = 4_096;
+    public const int MaxExpectedAnswerLength = 2_000;
+
+    /// <summary>
+    /// O lado da <i>resposta</i>. <c>MaxAnswerSourceLength</c> espelha
+    /// <see cref="MaxStarterCodeLength"/>: o aluno parte do codigo inicial, entao um teto menor
+    /// recusaria uma solucao que apenas completasse o esqueleto que a propria fase entregou.
+    /// </summary>
+    public const int MaxAnswerTextLength = 4_000;
+
+    public const int MaxAnswerSourceLength = MaxStarterCodeLength;
+
     public static decimal RoundMultiplier(decimal multiplier) => decimal.Round(multiplier, PointsMultiplierDecimals);
+
+    /// <summary>
+    /// Confere um texto opcional contra um teto. Devolve o proprio valor para encadear na
+    /// validacao, e <c>null</c> continua valido em todo lugar que aceitava <c>null</c> — campo em
+    /// branco e rascunho pela metade, nao erro (a politica de <see cref="PhaseSetService"/>).
+    /// </summary>
+    public static bool ExceedsLength(string? value, int max) => value is not null && value.Length > max;
 }

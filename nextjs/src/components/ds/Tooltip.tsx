@@ -3,13 +3,15 @@
 import { useId, useState, type ReactNode } from 'react';
 
 import styles from './Tooltip.module.css';
+import { cx } from '@/lib/cx';
 
 interface TooltipProps {
   label: string;
   children: ReactNode;
+  openDirection?: "top" | "down";
 }
 
-export function Tooltip({ label, children }: TooltipProps) {
+export function Tooltip({ label, children, openDirection = 'down' }: TooltipProps) {
   const [visible, setVisible] = useState(false);
   const id = useId();
 
@@ -24,7 +26,10 @@ export function Tooltip({ label, children }: TooltipProps) {
     >
       {children}
       {visible && (
-        <span className={styles.bubble} role="tooltip" id={id}>
+        <span
+          className={cx(styles.bubble, openDirection === 'down' ? styles.bubbleDescending : styles.bubbleAscending)}
+          role="tooltip"
+          id={id}>
           {label}
         </span>
       )}

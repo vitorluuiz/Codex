@@ -1,0 +1,407 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-heading);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* --- Sequência + stats ------------------------------------------------- */
+
+.topGrid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: var(--space-5);
+}
+
+.streakCard {
+  background: var(--ink-950);
+  border-radius: var(--radius-xl);
+  padding: 26px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.streakLabel {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-400);
+}
+
+.streakValue {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.streakNumber {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 42px;
+  color: var(--accent-streak);
+  line-height: 1;
+}
+
+.streakText {
+  color: #fff;
+  font-weight: var(--fw-bold);
+  font-size: var(--text-body);
+}
+
+.streakWeek {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.streakDay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.streakDot {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--ink-800);
+  color: var(--ink-500);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.streakDot[data-done='true'] {
+  background: var(--accent-streak);
+  color: var(--ink-950);
+}
+
+.streakDayLabel {
+  font-size: var(--text-caption);
+  color: var(--ink-400);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.statTile {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-s);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.statTileLabel {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.statTileValue {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 26px;
+  color: var(--text-primary);
+}
+
+/* --- Desempenho por tipo ------------------------------------------------- */
+
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.typeCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-s);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.typeHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.typeIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-m);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.typeLabel {
+  font-weight: var(--fw-bold);
+  font-size: var(--text-body-s);
+  color: var(--text-primary);
+}
+
+.typeMeta {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.typeBarRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  font-weight: var(--fw-bold);
+}
+
+.typeBarTrack {
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.typeBarFill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+}
+
+/* --- Praticados recentemente ---------------------------------------------- */
+
+.practicedList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.practicedRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-s);
+  padding: var(--space-4) var(--space-5);
+}
+
+.practicedIdentity {
+  flex: 1.5;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.practicedTitle {
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  font-size: var(--text-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.practicedMeta {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.practicedStat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 0.6;
+}
+
+.practicedStatValue {
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  font-size: var(--text-body);
+}
+
+.practicedScore {
+  color: var(--accent-streak);
+}
+
+.practicedStatLabel {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* --- Conquistas ------------------------------------------------------------ */
+
+.achievementsCount {
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+  font-weight: var(--fw-semibold);
+}
+
+.achievementsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+.achievementCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-s);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.achievementCard[data-locked='true'] {
+  opacity: 0.5;
+}
+
+.achievementIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--tone-amber-surface);
+  color: var(--accent-streak);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.achievementTitle {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-body-l);
+  color: var(--text-primary);
+}
+
+.achievementDescription {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* --- Salas em que participei ------------------------------------------------ */
+
+.roomList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.roomRow {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-s);
+  padding: var(--space-5) 24px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.roomIdentity {
+  min-width: 0;
+  flex: 1.4;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sparkline {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 30px;
+  flex: 0.9;
+}
+
+.sparklineBar {
+  flex: 1;
+  border-radius: 3px;
+  min-height: 4px;
+}
+
+.roomRank {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.roomRankLabel {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 22px;
+  color: var(--accent-streak);
+  line-height: 1.1;
+}
+
+.roomRankMeta {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 900px) {
+  .topGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .practicedRow,
+  .roomRow {
+    flex-wrap: wrap;
+  }
+
+  .practicedIdentity,
+  .roomIdentity {
+    flex: 1 1 100%;
+  }
+}

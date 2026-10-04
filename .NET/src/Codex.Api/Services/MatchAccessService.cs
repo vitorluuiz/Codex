@@ -4,6 +4,7 @@ using Codex.Api.Common.Errors;
 using Codex.Api.Data;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
+using Codex.Api.Services.Redis;
 using Microsoft.EntityFrameworkCore;
 
 namespace Codex.Api.Services;
@@ -19,33 +20,33 @@ namespace Codex.Api.Services;
 /// uma que so a partida faz: <see cref="GetPlayerAsync"/> — "quem chamou <i>joga</i> esta partida?".
 /// O lider nao joga.
 /// </summary>
-public class MatchAccessService(AppDbContext db)
+public class MatchAccessService(IRoomRepository repo, Codex.Api.Services.Redis.IMatchRepository matchRepo)
 {
     /// <summary>
-    /// A partida, se quem chamou for o lider da sala <b>ou</b> alguem que esta nela.
+    /// A partida e a sala, se quem chamou for o lider da sala <b>ou</b> alguem que esta nela.
     ///
     /// Id malformado, inexistente e "de uma sala que nao e sua" respondem todos
     /// <c>404 MATCH_NOT_FOUND</c>. Nao ha 403 aqui de proposito, pelo mesmo motivo do
     /// <c>GET /rooms/{code}</c>: a partida nao e mais publica que a sala que a contem, e responder
     /// 403 confirmaria a um estranho que aquele id existe.
     /// </summary>
-    public async Task<Match> GetMatchAsMemberAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
+    public async Task<(Match Match, Room Room)> GetMatchAsMemberAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
     {
         var match = await FindAsync(matchId, ct);
+        var roomData = await repo.GetRoomAsync(match.RoomId.ToString(), ct) ?? throw MatchNotFound();
+        var room = roomData.ToEntity();
 
-        if (principal.GetUserId() == match.Room.LeaderUserId)
+        if (principal.GetUserId() == room.LeaderUserId)
         {
-            return match;
+            return (match, room);
         }
 
         if (principal.GetParticipantId() is { } participantId)
         {
-            var isMember = await db.Participants.AnyAsync(
-                p => p.Id == participantId && p.RoomId == match.RoomId && p.Status != ParticipantStatus.Rejected, ct);
-
-            if (isMember)
+            var pData = await repo.GetParticipantAsync(room.Id.ToString(), participantId.ToString(), ct);
+            if (pData != null && pData.Status != "rejected")
             {
-                return match;
+                return (match, room);
             }
         }
 
@@ -53,15 +54,17 @@ public class MatchAccessService(AppDbContext db)
     }
 
     /// <summary>Controles da secao 10 e <c>GET …/stats</c> — "todos exigem lider".</summary>
-    public async Task<Match> GetMatchAsLeaderAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
+    public async Task<(Match Match, Room Room)> GetMatchAsLeaderAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
     {
         var match = await FindAsync(matchId, ct);
-        RoomAccessService.EnsureLeader(match.Room, principal);
-        return match;
+        var roomData = await repo.GetRoomAsync(match.RoomId.ToString(), ct) ?? throw MatchNotFound();
+        RoomAccessService.EnsureLeader(roomData, principal);
+        var room = roomData.ToEntity();
+        return (match, room);
     }
 
     /// <summary>
-    /// A partida <b>e</b> a linha de participante de quem chamou — para as rotas que so um jogador
+    /// A partida, a sala <b>e</b> a linha de participante de quem chamou — para as rotas que so um jogador
     /// faz sentido chamar: enviar resposta, marcar pronto, ver a propria comparacao e o proprio
     /// placar.
     ///
@@ -70,19 +73,24 @@ public class MatchAccessService(AppDbContext db)
     /// essas pessoas, entao chegar aqui e bug de integracao — e a resposta segue a mesma regra do
     /// <see cref="GetMatchAsMemberAsync"/>, "esta partida nao e sua para jogar".
     /// </summary>
-    public async Task<(Match Match, Participant Player)> GetPlayerAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
+    public async Task<(Match Match, Room Room, Participant Player)> GetPlayerAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
     {
         var match = await FindAsync(matchId, ct);
+        var roomData = await repo.GetRoomAsync(match.RoomId.ToString(), ct) ?? throw MatchNotFound();
+        var room = roomData.ToEntity();
 
         if (principal.GetParticipantId() is not { } participantId)
         {
             throw MatchNotFound();
         }
 
-        var player = await db.Participants.FirstOrDefaultAsync(
-            p => p.Id == participantId && p.RoomId == match.RoomId && p.Status == ParticipantStatus.Approved, ct);
+        var pData = await repo.GetParticipantAsync(room.Id.ToString(), participantId.ToString(), ct);
+        if (pData == null || pData.Status != "approved")
+        {
+            throw MatchNotFound();
+        }
 
-        return (match, player ?? throw MatchNotFound());
+        return (match, room, pData.ToEntity(room.Id.ToString()));
     }
 
     private async Task<Match> FindAsync(string matchId, CancellationToken ct)
@@ -94,7 +102,7 @@ public class MatchAccessService(AppDbContext db)
             throw MatchNotFound();
         }
 
-        return await db.Matches.Include(m => m.Room).FirstOrDefaultAsync(m => m.Id == id, ct)
+        return await matchRepo.GetMatchAsync(id.ToString(), ct)
                ?? throw MatchNotFound();
     }
 

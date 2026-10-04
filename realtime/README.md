@@ -1,6 +1,6 @@
 # codex-realtime
 
-Serviço de tempo real do Codex. Implementa `contract/websocket-contract.md`.
+Serviço de tempo real do Codex. Implementa [`docs/contracts/realtime.md`](../docs/contracts/realtime.md).
 
 > **A decisão que estrutura tudo:** este serviço **transporta** estado, não é dono
 > de nenhum. Toda mutação passa pela API REST, que grava e depois publica; aqui só

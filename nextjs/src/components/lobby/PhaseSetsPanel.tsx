@@ -155,7 +155,7 @@ function SetPicker({
         .catch(() => {
           if (!cancelled) setError('Não foi possível carregar os conjuntos.');
         });
-    }, 250);
+    }, 750);
 
     return () => {
       cancelled = true;
@@ -229,7 +229,7 @@ function SetPicker({
                   disabled && styles.resultDisabled,
                 )}
               >
-                <span>
+                <span className={styles.resultInfos}>
                   <span className={styles.resultTitle}>{set.title}</span>
                   <span className={styles.resultMeta}>
                     {set.phaseCount} fases ·{' '}

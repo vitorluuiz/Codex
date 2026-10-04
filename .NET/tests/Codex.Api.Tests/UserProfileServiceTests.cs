@@ -4,6 +4,7 @@ using Codex.Api.Contracts.Users;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 
 namespace Codex.Api.Tests;
 
@@ -237,6 +238,7 @@ public class UserProfileServiceTests
         var match = SeedFinishedMatch(ctx, TimeSpan.FromMinutes(32));
         SeedSubmission(ctx, match, "Ana Silva", score: 700, correct: true);
         SeedSubmission(ctx, match, "Bruno Costa", score: 580, correct: false);
+        await Snapshot(ctx, match);
 
         var profile = await ctx.Profiles.GetProfileAsync("me", ctx.AsLeader, CancellationToken.None);
 
@@ -269,11 +271,28 @@ public class UserProfileServiceTests
         var ctx = new RoomTestContext();
         SeedQueueSet(ctx, "Frações", order: 0);
         SeedQueueSet(ctx, "Funções", order: 1);
-        SeedFinishedMatch(ctx, TimeSpan.FromMinutes(10));
+        await Snapshot(ctx, SeedFinishedMatch(ctx, TimeSpan.FromMinutes(10)));
 
         var profile = await ctx.Profiles.GetProfileAsync("me", ctx.AsLeader, CancellationToken.None);
 
         Assert.Equal("Frações +1", Assert.Single(profile.Matches).SetTitle);
+    }
+
+    /// <summary>
+    /// Tira o snapshot da partida semeada, como <c>FinishCoreAsync</c> faz no encerramento.
+    ///
+    /// Necessario desde o passo 4 da migracao-dados: o historico le do banco de documentos, entao
+    /// semear so o lado relacional devolve lista vazia — e isso e o comportamento correto, nao um
+    /// furo do teste. O efeito colateral util e que estes testes passam a exercitar o caminho
+    /// inteiro, do Postgres ao documento.
+    /// </summary>
+    private static async Task Snapshot(RoomTestContext ctx, Match match)
+    {
+        var tracked = await ctx.Db.Matches
+            .Include(m => m.Room)
+            .SingleAsync(m => m.Id == match.Id, CancellationToken.None);
+
+        await ctx.MatchDocuments.CommitAsync(tracked, CancellationToken.None);
     }
 
     private static void SeedQueueSet(RoomTestContext ctx, string title, int order = 0)

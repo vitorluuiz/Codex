@@ -403,6 +403,15 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
             throw Validation($"phases[{index}].pointsMultiplier deve estar entre {PhaseLimits.MinPointsMultiplier} e {PhaseLimits.MaxPointsMultiplier}.");
         }
 
+        // Texto livre tem teto desde a migracao de dados: o conteudo da fase e copiado para a fila
+        // da sala e, no fim da partida, para dentro de um documento do Mongo (teto rigido de
+        // 16 MB) — passando antes pelo Redis, que tem maxmemory. O porque de cada numero esta em
+        // PhaseLimits. Campo <i>vazio</i> continua valido: isto aqui e rascunho.
+        if (PhaseLimits.ExceedsLength(phase.Question, PhaseLimits.MaxQuestionLength))
+        {
+            throw Validation($"phases[{index}].question deve ter no maximo {PhaseLimits.MaxQuestionLength} caracteres.");
+        }
+
         switch (phase.Kind)
         {
             case PhaseKind.Quiz:
@@ -419,12 +428,27 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
                     throw Validation($"phases[{index}] do tipo code exige starterCode e testCases.");
                 }
 
+                if (PhaseLimits.ExceedsLength(phase.StarterCode, PhaseLimits.MaxStarterCodeLength))
+                {
+                    throw Validation($"phases[{index}].starterCode deve ter no maximo {PhaseLimits.MaxStarterCodeLength} caracteres.");
+                }
+
+                if (PhaseLimits.ExceedsLength(phase.TestCases, PhaseLimits.MaxTestCasesLength))
+                {
+                    throw Validation($"phases[{index}].testCases deve ter no maximo {PhaseLimits.MaxTestCasesLength} caracteres.");
+                }
+
                 break;
 
             case PhaseKind.Text:
                 if (phase.ExpectedAnswer is null)
                 {
                     throw Validation($"phases[{index}] do tipo text exige expectedAnswer.");
+                }
+
+                if (PhaseLimits.ExceedsLength(phase.ExpectedAnswer, PhaseLimits.MaxExpectedAnswerLength))
+                {
+                    throw Validation($"phases[{index}].expectedAnswer deve ter no maximo {PhaseLimits.MaxExpectedAnswerLength} caracteres.");
                 }
 
                 break;
@@ -441,6 +465,11 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
         if (options.Count is < MinOptions or > MaxOptions)
         {
             throw Validation($"phases[{index}].options deve ter entre {MinOptions} e {MaxOptions} alternativas.");
+        }
+
+        if (options.Any(option => PhaseLimits.ExceedsLength(option, PhaseLimits.MaxOptionLength)))
+        {
+            throw Validation($"phases[{index}].options aceita no maximo {PhaseLimits.MaxOptionLength} caracteres por alternativa.");
         }
 
         if (correct.Count is 0)
@@ -473,6 +502,16 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
         if (phase.Words is not { } words || phase.Blanks is not { } blanks)
         {
             throw Validation($"phases[{index}] do tipo fill exige words e blanks.");
+        }
+
+        if (words.Count > PhaseLimits.MaxWords)
+        {
+            throw Validation($"phases[{index}].words aceita no maximo {PhaseLimits.MaxWords} palavras.");
+        }
+
+        if (words.Any(word => PhaseLimits.ExceedsLength(word, PhaseLimits.MaxOptionLength)))
+        {
+            throw Validation($"phases[{index}].words aceita no maximo {PhaseLimits.MaxOptionLength} caracteres por palavra.");
         }
 
         // O gabarito e posicional: uma entrada por lacuna, na ordem. Com tamanho diferente do

@@ -4,6 +4,7 @@ using Codex.Api.Common.Formatting;
 using Codex.Api.Common.Json;
 using Codex.Api.Common.RateLimiting;
 using Codex.Api.Data;
+using Codex.Api.Documents;
 using Codex.Api.Domain.Entities;
 using Codex.Api.Endpoints;
 using Codex.Api.Services;
@@ -34,6 +35,9 @@ builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
 builder.Services.AddSingleton<LabelFormatter>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddCodexOAuth(builder.Configuration);
+builder.Services.AddSingleton<Codex.Api.Services.Redis.RedisLuaRunner>();
+builder.Services.AddScoped<Codex.Api.Services.Redis.IRoomRepository, Codex.Api.Services.Redis.RoomRedisRepository>();
+builder.Services.AddScoped<Codex.Api.Services.Redis.IMatchRepository, Codex.Api.Services.Redis.MatchRedisRepository>();
 builder.Services.AddScoped<RoomAccessService>();
 builder.Services.AddScoped<RoomQueueService>();
 builder.Services.AddScoped<RoomService>();
@@ -43,11 +47,13 @@ builder.Services.AddScoped<PhaseSetService>();
 builder.Services.AddScoped<MatchAccessService>();
 builder.Services.AddScoped<MatchStatsService>();
 builder.Services.AddScoped<MatchEventPublisher>();
+builder.Services.AddScoped<MatchDocumentWriter>();
 builder.Services.AddScoped<MatchService>();
 builder.Services.AddScoped<SubmissionService>();
 
 builder.Services.AddCodexRateLimiter(builder.Configuration);
 builder.Services.AddCodexRealtime(builder.Configuration);
+builder.Services.AddCodexDocuments(builder.Configuration);
 
 builder.Services
     .AddAuthentication(CodexSessionAuthenticationHandler.SchemeName)

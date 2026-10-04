@@ -1,6 +1,6 @@
 # Docker
 
-Como rodar o MVP inteiro (`web`, `realtime`, `api`, `postgres`, `redis`) via
+Como rodar o MVP inteiro (`web`, `realtime`, `api`, `postgres`, `redis`, `mongo`) via
 Docker Compose, e o porquê de cada decisão nos Dockerfiles. Para rodar sem
 Docker (processos nativos), veja o [`README.md`](README.md).
 
@@ -12,13 +12,14 @@ Docker (processos nativos), veja o [`README.md`](README.md).
 docker-compose.yml
 ├── postgres/Dockerfile   FROM postgres:16-alpine   (+ init/ opcional)
 ├── redis/Dockerfile      FROM redis:7-alpine       (+ redis.conf)
+├── (mongo)               image mongo:8.0, sem Dockerfile proprio
 ├── .NET/Dockerfile       build .NET 10 SDK → runtime ASP.NET 10 alpine
 ├── realtime/Dockerfile   build Node 20 → runtime Node 20 alpine
 └── nextjs/Dockerfile     build Node 20 → runtime standalone Next.js
 ```
 
-Todos os 5 serviços sobem na mesma rede (`codex`) e se enxergam pelo nome do
-serviço (`postgres`, `redis`, `api`), nunca por `localhost` — `localhost`
+Todos os 6 serviços sobem na mesma rede (`codex`) e se enxergam pelo nome do
+serviço (`postgres`, `redis`, `mongo`, `api`), nunca por `localhost` — `localhost`
 dentro de um container é o próprio container.
 
 | Serviço | Porta no host | Porta interna |
@@ -28,6 +29,8 @@ dentro de um container é o próprio container.
 | `realtime` (Node) | `4001` | `4001` |
 | `postgres` | `5433` | `5432` |
 | `redis` | `6379` | `6379` |
+| `mongo` | `27018` | `27017` |
+
 
 **Por que Postgres publica `5433` e não `5432`:** em máquinas com um Postgres
 nativo instalado (comum em Windows), a porta padrão já está ocupada e o
@@ -121,6 +124,7 @@ cp .env.example .env
 |---|---|---|
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | `postgres` | cria o banco/role na primeira subida |
 | `REDIS_PASSWORD` | `redis`, `api`, `realtime` | ver nota abaixo sobre o healthcheck |
+| `MONGO_DB` / `MONGO_USER` / `MONGO_PASSWORD` | `mongo`, `api` | partidas encerradas; sem eles a API sobe e guarda o snapshot so em memoria |
 | `API_SERVICE_TOKEN` | `api`, `realtime`, `web` | precisa ser **idêntico** nos três — é o mesmo segredo descrito no `README.md` |
 | `NEXT_PUBLIC_REALTIME_URL` | `web` (build arg) | exige rebuild da imagem se mudar |
 | `SESSION_COOKIE_NAME` | `web`, `realtime` | precisa bater nos dois lados |
@@ -141,18 +145,19 @@ lerem.
 
 ```
 postgres ──┐
+mongo ─────┤
            ├─▶ api ──▶ realtime ──▶ web
 redis ─────┘
 ```
 
-`api` e `realtime` esperam `postgres` e `redis` ficarem `healthy`
+`api` e `realtime` esperam `postgres`, `redis` e `mongo` ficarem `healthy`
 (`depends_on: condition: service_healthy`), não só "started" — isso evita a
 API tentar conectar num Postgres que ainda está inicializando.
 
 ### Rede e volumes
 
-- Rede `codex` (bridge) compartilhada pelos 5 serviços.
-- Volume nomeado `postgres_data` persiste os dados entre `docker compose down`
+- Rede `codex` (bridge) compartilhada pelos 6 serviços.
+- Volumes nomeados `postgres_data` e `mongo_data` persistem os dados entre `docker compose down`
   / `up`. Só é apagado com `docker compose down -v`.
 
 ---

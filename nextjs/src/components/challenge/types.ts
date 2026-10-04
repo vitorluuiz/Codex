@@ -50,6 +50,8 @@ export interface ChallengeTypeModule<P extends Phase = Phase> {
 
 /** Telas pelas quais um aluno passa dentro de uma fase. */
 export type ChallengeScreen =
+  /** Tela animada de introdução/aquecimento (5s estilo Kahoot) antes de abrir a pergunta. */
+  | 'intro'
   | 'challenge'
   /** O tempo acabou sem resposta. Separada de `individual`, que precisa de uma submissão. */
   | 'timeup'

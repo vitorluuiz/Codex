@@ -36,6 +36,7 @@ import { LeaderDashboard } from './leader/LeaderDashboard';
 import { challengeModuleFor } from './registry';
 import { CollectiveFeedbackScreen } from './screens/CollectiveFeedbackScreen';
 import { IndividualFeedbackScreen } from './screens/IndividualFeedbackScreen';
+import { PhaseIntroScreen } from './screens/PhaseIntroScreen';
 import { PodiumScreen } from './screens/PodiumScreen';
 import { TimeUpScreen } from './screens/TimeUpScreen';
 import { WaitingScreen } from './screens/WaitingScreen';
@@ -55,7 +56,10 @@ export interface ChallengeShellProps {
 }
 
 export function ChallengeShell(props: ChallengeShellProps) {
-  const list = [channels.match(props.roomCode)];
+  const list = [
+    channels.room(props.roomCode),
+    channels.match(props.roomCode),
+  ];
   if (props.isLeader) list.push(channels.leader(props.roomCode));
   if (props.participantId) list.push(channels.participant(props.participantId));
 
@@ -91,8 +95,11 @@ function ChallengeContent({
   /* --- estado vindo do servidor ------------------------------------------ */
 
   const [phaseState, setPhaseState] = useState<PhaseState>(initialPhaseState);
+  const [startsAt, setStartsAt] = useState<number | null>(initialPhaseState.startsAt ?? null);
   const [endsAt, setEndsAt] = useState<number | null>(
-    initialPhaseState.secondsLeft > 0 ? Date.now() + initialPhaseState.secondsLeft * 1000 : null,
+    !initialPhaseState.paused && initialPhaseState.secondsLeft > 0
+      ? Date.now() + initialPhaseState.secondsLeft * 1000
+      : null,
   );
   const [stats, setStats] = useState<PhaseStats | null>(initialStats);
   const [scoreboard, setScoreboard] = useState<PlayerScoreboard | null>(initialScoreboard);
@@ -104,13 +111,25 @@ function ChallengeContent({
     // Partida encerrada abre no pódio — inclusive depois de um F5, que antes
     // redirecionava para o lobby e fazia o resultado sumir.
     if (initialPodium) return 'podium';
-    return initialPhaseState.mySubmission ? 'waiting' : 'challenge';
+    if (initialPhaseState.mySubmission) return 'waiting';
+    if (initialPhaseState.startsAt && initialPhaseState.startsAt > Date.now()) {
+      return 'intro';
+    }
+    return 'challenge';
   });
   const [submission, setSubmission] = useState<Submission | null>(initialPhaseState.mySubmission);
   const [comparison, setComparison] = useState<PhaseComparison | null>(null);
   const [podium, setPodium] = useState<PodiumEntry[]>(initialPodium ?? []);
   const [readyMarked, setReadyMarked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  /**
+   * Identificador síncrono da fase atual em exibição.
+   * Evita que eventos em trânsito de fases anteriores (como phase.ended,
+   * retornos do refreshPhaseStateAction ou submissões tardias) sobrescrevam
+   * ou encerrem a nova fase recém-iniciada por phase.started.
+   */
+  const currentPhaseIdRef = useRef(initialPhaseState.phase.id);
 
   /**
    * Se a fase corrente já fechou. É `ref`, e não `state`, porque quem precisa
@@ -167,6 +186,8 @@ function ChallengeContent({
    * segunda busca quando o evento chega antes.
    */
   const showPodium = useCallback(() => {
+    setScreen('podium');
+
     if (podiumFetchedRef.current) return;
     podiumFetchedRef.current = true;
 
@@ -174,7 +195,6 @@ function ChallengeContent({
       try {
         setPodium(await loadPodiumAction(match.id));
         setMatchStatus('finished');
-        setScreen('podium');
       } catch {
         podiumFetchedRef.current = false;
       }
@@ -184,13 +204,23 @@ function ChallengeContent({
   /* --- eventos de tempo real --------------------------------------------- */
 
   useRealtimeEvent('phase.started', (message) => {
+    currentPhaseIdRef.current = message.state.phase.id;
+    const phaseStartsAt = message.startsAt ?? message.state.startsAt ?? null;
+    setStartsAt(phaseStartsAt);
     setPhaseState(message.state);
-    setEndsAt(message.endsAt);
-    goTo('challenge');
+    setEndsAt(
+      message.endsAt ??
+        (!message.state.paused && message.state.secondsLeft > 0
+          ? Date.now() + message.state.secondsLeft * 1000
+          : null),
+    );
+    const isIntroActive = phaseStartsAt !== null && phaseStartsAt > Date.now();
+    setScreen((current) => (current === 'podium' ? current : (isIntroActive ? 'intro' : 'challenge')));
     setSubmission(message.state.mySubmission);
     setComparison(null);
     setReadyMarked(false);
     setSubmitting(false);
+    setStats(null);
     // Fase nova (ou reiniciada pelo líder) está aberta de novo.
     phaseEndedRef.current = false;
     timeUpPokedRef.current = false;
@@ -203,23 +233,29 @@ function ChallengeContent({
   });
 
   useRealtimeEvent('phase.progress', (message) => {
+    if (message.phaseId && message.phaseId !== currentPhaseIdRef.current) {
+      return;
+    }
     setPhaseState((state) => ({
       ...state,
       submittedCount: message.submittedCount,
       totalPlayers: message.totalPlayers,
     }));
+    setStats((current) =>
+      current && current.phaseId === message.phaseId
+        ? {
+            ...current,
+            submittedCount: message.submittedCount,
+            totalPlayers: message.totalPlayers,
+            readyCount: message.readyCount,
+          }
+        : current,
+    );
   });
 
   /** A fase acabou: tira quem estava esperando e quem não chegou a responder. */
   const applyPhaseEnded = useCallback(() => {
     phaseEndedRef.current = true;
-
-    // Era a última da fila: o servidor encerra a partida junto com ela, e o pódio
-    // substitui todas as telas de fase.
-    if (isLastPhase) {
-      showPodium();
-      return;
-    }
 
     goTo((current) => {
       if (current === 'waiting') return 'individual';
@@ -230,10 +266,15 @@ function ChallengeContent({
       if (current === 'challenge' && !isLeader && !answeringRef.current) return 'timeup';
       return current;
     });
-  }, [isLeader, isLastPhase, goTo, showPodium]);
+  }, [isLeader, goTo]);
 
   // O servidor decide quando a fase termina (todos enviaram ou o tempo acabou).
-  useRealtimeEvent('phase.ended', applyPhaseEnded);
+  useRealtimeEvent('phase.ended', (message) => {
+    if (message.phaseId && message.phaseId !== currentPhaseIdRef.current) {
+      return;
+    }
+    applyPhaseEnded();
+  });
 
   /**
    * Cronômetro zerado: cutuca a API.
@@ -254,10 +295,22 @@ function ChallengeContent({
     if (secondsLeft !== 0 || paused || phaseEndedRef.current || timeUpPokedRef.current) return;
     if (matchStatus === 'finished') return;
 
+    if (!isLeader && screen === 'challenge' && !answeringRef.current) {
+      applyPhaseEnded();
+    }
+
     timeUpPokedRef.current = true;
+    const pokingPhaseId = currentPhaseIdRef.current;
+
     startTransition(async () => {
       try {
         const state = await refreshPhaseStateAction(match.id);
+        // Se a fase mudou enquanto a requisição viajava, o evento phase.started
+        // já cuidou ou vai cuidar da inicialização da nova fase.
+        if (state.phase.id !== currentPhaseIdRef.current || currentPhaseIdRef.current !== pokingPhaseId) {
+          return;
+        }
+
         setPhaseState(state);
 
         // Só conclui pelo retorno se o servidor concordar que o tempo acabou — o
@@ -265,20 +318,33 @@ function ChallengeContent({
         // entre o tique e a resposta.
         if (state.secondsLeft === 0 && !state.paused) {
           applyPhaseEnded();
+        } else if (state.secondsLeft > 0 && !state.paused) {
+          timeUpPokedRef.current = false;
+          setEndsAt(Date.now() + state.secondsLeft * 1000);
+          phaseEndedRef.current = false;
         }
       } catch {
         // Falhou o cutucão: o líder ainda pode avançar a fase pela tela dele.
         timeUpPokedRef.current = false;
       }
     });
-  }, [secondsLeft, paused, matchStatus, match.id, applyPhaseEnded]);
+  }, [secondsLeft, paused, matchStatus, match.id, applyPhaseEnded, isLeader, screen]);
 
   useRealtimeEvent('submission.graded', (message) => {
     setSubmission(message.submission);
+    if (message.submission.score != null) {
+      const addedScore = message.submission.score;
+      setScoreboard((current) =>
+        current ? { ...current, myScore: current.myScore + addedScore } : current,
+      );
+    }
     goTo((current) => (current === 'waiting' ? 'individual' : current));
   });
 
   useRealtimeEvent('stats.updated', (message) => {
+    if (message.stats.phaseId !== currentPhaseIdRef.current) {
+      return;
+    }
     setStats(message.stats);
     setScoreboard((current) =>
       current ? { ...current, avgScore: message.stats.teamAvgScore } : current,
@@ -294,16 +360,23 @@ function ChallengeContent({
 
   useRealtimeEvent('match.returned-to-lobby', () => {
     // Quem está no pódio decide sozinho quando sair dele ("Continuar jogando"): o
-    // líder voltar ao lobby não volta por ninguém. Nos outros casos o evento quer
-    // dizer "o professor encerrou isto aqui", e aí a tela do desafio não tem mais o
-    // que fazer — ficar nela deixaria a pessoa respondendo uma partida que acabou.
-    if (screen !== 'podium') {
+    // líder voltar ao lobby não volta por ninguém. Quem já está nos resultados da
+    // partida terminada (individual ou coletivo) também tem direito de ver sua
+    // pontuação e gabarito antes de sair. Nos outros casos o evento quer
+    // dizer "o professor encerrou isto aqui antes da hora".
+    if (screen !== 'podium' && matchStatus !== 'finished') {
       router.push(`/sala/${roomCode}/lobby`);
     }
   });
 
   useRealtimeEvent('participant.removed', () => {
-    router.push('/sala');
+    router.replace('/sala?saida=removido');
+  });
+
+  useRealtimeEvent('room.closed', () => {
+    if (!isLeader) {
+      router.replace('/sala?saida=encerrada');
+    }
   });
 
   /* --- ações do aluno ----------------------------------------------------- */
@@ -312,9 +385,15 @@ function ChallengeContent({
     (answer: AnswerPayload) => {
       setSubmitting(true);
       answeringRef.current = true;
+      const submittingPhaseId = currentPhaseIdRef.current;
+
       startTransition(async () => {
         try {
-          const result = await submitAnswerAction(match.id, phase.id, answer);
+          const result = await submitAnswerAction(match.id, submittingPhaseId, answer);
+
+          if (currentPhaseIdRef.current !== submittingPhaseId) {
+            return;
+          }
 
           // O tempo acabou antes de o clique chegar ao servidor. Não é erro: a pessoa
           // segue para o feedback como quem não respondeu, em vez de ver uma tela de
@@ -325,19 +404,19 @@ function ChallengeContent({
             return;
           }
 
+          if (result.submission.score != null) {
+            const addedScore = result.submission.score;
+            setScoreboard((current) =>
+              current ? { ...current, myScore: current.myScore + addedScore } : current,
+            );
+          }
+
           setSubmission(result.submission);
 
           // Quem envia por último fecha a fase — e, se era a última da fila, encerra a
           // partida. O servidor publica `phase.ended` e `match.finished` *antes* de
-          // responder a este POST, então quando chegamos aqui a tela já pode ter virado
-          // o pódio. Por isso a troca passa por `goTo`, que não sai dele: sem essa
-          // guarda, a linha abaixo apagava o pódio recém-chegado e a partida parecia
-          // não terminar nunca.
-          //
-          // Fora da última fase, o evento chega com a tela ainda em 'challenge' e o
-          // handler dele — que só resgata quem está em 'waiting' — não faz nada. Ir
-          // para 'waiting' aqui deixaria essa pessoa esperando por envios que já
-          // aconteceram, sem nenhum evento futuro para resgatá-la.
+          // responder a este POST. Como o match.finished preserva telas ativas de aluno,
+          // navegar para individual ou waiting respeita o fluxo de feedback.
           if (match.mode === 'self-paced' || phaseEndedRef.current) {
             // Sem turma para esperar: vai direto para o feedback.
             goTo('individual');
@@ -351,19 +430,19 @@ function ChallengeContent({
         }
       });
     },
-    [match.id, match.mode, phase.id, applyPhaseEnded, goTo],
+    [match.id, match.mode, applyPhaseEnded, goTo],
   );
 
   function openComparison() {
     startTransition(async () => {
-      setComparison(await loadPhaseComparisonAction(match.id, phase.id));
+      setComparison(await loadPhaseComparisonAction(match.id, currentPhaseIdRef.current));
       goTo('collective');
     });
   }
 
   function markReady() {
     setReadyMarked(true);
-    startTransition(() => void markReadyAction(match.id, phase.id));
+    startTransition(() => void markReadyAction(match.id, currentPhaseIdRef.current));
   }
 
   /**
@@ -395,7 +474,7 @@ function ChallengeContent({
    */
   function backToLobby() {
     startTransition(async () => {
-      await (isLeader ? returnToLobbyAction(match.id) : returnToLobbyAsParticipantAction(roomCode));
+      await (isLeader ? returnToLobbyAction(match.id, roomCode) : returnToLobbyAsParticipantAction(roomCode));
       router.push(`/sala/${roomCode}/lobby`);
     });
   }
@@ -404,8 +483,8 @@ function ChallengeContent({
 
   const leaderControls: LeaderControls | null = isLeader
     ? {
-        onRestartPhase: () => startTransition(() => void restartPhaseAction(match.id, phase.id)),
-        onBackToLobby: () => startTransition(() => void returnToLobbyAction(match.id)),
+        onRestartPhase: () => startTransition(() => void restartPhaseAction(match.id, currentPhaseIdRef.current)),
+        onBackToLobby: () => startTransition(() => void returnToLobbyAction(match.id, roomCode)),
         onFinishMatch: finishMatch,
       }
     : null;
@@ -451,6 +530,18 @@ function ChallengeContent({
     );
   }
 
+  if (screen === 'intro') {
+    return (
+      <PhaseIntroScreen
+        phase={phase}
+        phaseNumber={phaseState.phaseNumber}
+        totalPhases={phaseState.totalPhases}
+        startsAt={startsAt}
+        onComplete={() => goTo('challenge')}
+      />
+    );
+  }
+
   if (screen === 'waiting') {
     return (
       <WaitingScreen
@@ -492,6 +583,7 @@ function ChallengeContent({
           stats={stats}
           matchMode={match.mode}
           paused={paused}
+          isTimeUp={secondsLeft === 0 || phaseEndedRef.current}
           isFirstPhase={phaseState.phaseNumber <= 1}
           isLastPhase={isLastPhase}
           onTogglePause={() => startTransition(() => void setPausedAction(match.id, !paused))}
@@ -506,7 +598,7 @@ function ChallengeContent({
       ) : (
         <PlayerStage
           phase={phase}
-          disabled={paused || submitting || matchStatus === 'finished'}
+          disabled={connection !== 'open' || paused || submitting || matchStatus === 'finished' || secondsLeft === 0}
           onSubmit={submit}
           matchId={match.id}
         />
@@ -531,7 +623,7 @@ function PlayerStage({
 
   return (
     <div className={styles.playerStage}>
-      <Player phase={phase} disabled={disabled} onSubmit={onSubmit} matchId={matchId} />
+      <Player key={phase.id} phase={phase} disabled={disabled} onSubmit={onSubmit} matchId={matchId} />
     </div>
   );
 }

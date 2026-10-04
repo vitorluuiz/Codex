@@ -37,6 +37,30 @@ services:
     networks:
       - codex
 
+  # Banco orientado a documentos das partidas encerradas — migracao-dados.md secao 5.
+  # Guarda `matches` e `match_participants`; os indices sao criados pela propria API na
+  # primeira operacao (CreateMany e idempotente), entao nao ha migration nem passo manual.
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-codex}
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      # Host 27018 -> container 27017, pela mesma razao do Postgres em 5433: nao brigar
+      # com um Mongo nativo do host. Servicos internos usam mongo:27017.
+      - "27018:27017"
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.adminCommand({ ping: 1 }).ok' | grep -q 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - codex
+
   api:
     build:
       context: ./.NET
@@ -47,11 +71,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mongo:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ConnectionStrings__Default: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       CodexApi__ServiceToken: ${API_SERVICE_TOKEN}
       CodexApi__Realtime__RedisConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
+      CodexApi__Documents__ConnectionString: "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin"
+      CodexApi__Documents__DatabaseName: ${MONGO_DB:-codex}
       # Login social. Vazio desliga o provedor: a rota responde 501 OAUTH_PROVIDER_NOT_CONFIGURED
       # em vez de quebrar o resto da API, entao da para ligar um provedor de cada vez.
       CodexApi__OAuth__RedirectBaseUrl: ${OAUTH_REDIRECT_BASE_URL:-}
@@ -140,5 +168,6 @@ networks:
 
 volumes:
   postgres_data:
+  mongo_data:
   prometheus_data:
   grafana_data:

@@ -60,6 +60,7 @@ public record LeaderPlayerRowDto(
 {
     public const string Submitted = "submitted";
     public const string Pending = "pending";
+    public const string Expired = "expired";
 }
 
 /// <summary>

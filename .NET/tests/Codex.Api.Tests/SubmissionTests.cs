@@ -481,7 +481,76 @@ public class SubmissionTests
         Assert.Null(leader.MySubmission);
     }
 
+    /* -------------------------------------------------- tetos de texto da resposta */
+
+    /// <summary>
+    /// <c>answer.source</c> era o unico campo que um aluno enviava sem teto nenhum, e e o que mais
+    /// cresce — e codigo colado. E ele que decide o tamanho do bucket do participante no documento
+    /// da partida e o consumo do Redis durante a partida
+    /// (<c>docs/contracts/postgresql/migracao-dados.md</c> secao 5.3).
+    /// </summary>
+    [Fact]
+    public async Task Code_source_longer_than_the_ceiling_is_rejected()
+    {
+        var content = new PhaseContent(Question: "Some os pares.", StarterCode: "function f(){}", TestCases: "Entrada: [1,2]\nSaida: 2");
+        var (ctx, match, player, phaseId) = await PlayingAsync(kind: PhaseKind.Code, content: content);
+
+        var error = await Assert.ThrowsAsync<ApiException>(() =>
+            Submit(ctx, match, phaseId, player, new AnswerDto("code", LanguageId: "js", Source: Filler(PhaseLimits.MaxAnswerSourceLength + 1))));
+
+        Assert.Equal(ErrorCodes.ValidationError, error.Code);
+        Assert.Equal(StatusCodes.Status400BadRequest, error.StatusCode);
+        Assert.Empty(ctx.Db.Submissions);
+    }
+
+    /// <summary>O teto e <c>&gt;</c>, nao <c>&gt;=</c>: o valor exato passa e e gravado.</summary>
+    [Fact]
+    public async Task Code_source_exactly_at_the_ceiling_is_accepted()
+    {
+        var content = new PhaseContent(Question: "Some os pares.", StarterCode: "function f(){}", TestCases: "Entrada: [1,2]\nSaida: 2");
+        var (ctx, match, player, phaseId) = await PlayingAsync(kind: PhaseKind.Code, content: content);
+
+        var submission = await Submit(
+            ctx, match, phaseId, player,
+            new AnswerDto("code", LanguageId: "js", Source: Filler(PhaseLimits.MaxAnswerSourceLength)));
+
+        Assert.Equal(GradingStatus.Pending, submission.Grading);
+        Assert.Equal(PhaseLimits.MaxAnswerSourceLength, submission.Answer.Source!.Length);
+    }
+
+    [Fact]
+    public async Task Text_answer_longer_than_the_ceiling_is_rejected()
+    {
+        var content = new PhaseContent(Question: "Explique fracoes equivalentes.", ExpectedAnswer: "Multiplicar em cima e embaixo.");
+        var (ctx, match, player, phaseId) = await PlayingAsync(kind: PhaseKind.Text, content: content);
+
+        var error = await Assert.ThrowsAsync<ApiException>(() =>
+            Submit(ctx, match, phaseId, player, new AnswerDto("text", Value: Filler(PhaseLimits.MaxAnswerTextLength + 1))));
+
+        Assert.Equal(ErrorCodes.ValidationError, error.Code);
+        Assert.Empty(ctx.Db.Submissions);
+    }
+
+    [Fact]
+    public async Task Fill_blank_longer_than_the_ceiling_is_rejected()
+    {
+        var content = new PhaseContent(
+            Question: "Ao ___ os termos, a ___ se mantem.",
+            Words: ["multiplicar", "proporcao"],
+            Blanks: ["multiplicar", "proporcao"]);
+        var (ctx, match, player, phaseId) = await PlayingAsync(kind: PhaseKind.Fill, content: content);
+
+        var error = await Assert.ThrowsAsync<ApiException>(() =>
+            Submit(ctx, match, phaseId, player, new AnswerDto("fill", Blanks: ["multiplicar", Filler(PhaseLimits.MaxOptionLength + 1)])));
+
+        Assert.Equal(ErrorCodes.ValidationError, error.Code);
+        Assert.Empty(ctx.Db.Submissions);
+    }
+
     /* ------------------------------------------------------------------ helpers */
+
+    /// <summary>Texto de <paramref name="length"/> caracteres, para exercitar um teto.</summary>
+    private static string Filler(int length) => new('x', length);
 
     private static Task<SubmissionDto> Submit(
         RoomTestContext ctx,

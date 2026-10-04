@@ -5,8 +5,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Dialog } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
 import { cssVars } from '@/lib/cssVars';
+import { setColor } from '@/lib/setColor';
 import type { PhaseSetSummary } from '@/lib/types';
-import { setColor } from './setColors';
 import styles from './SetsSection.module.css';
 
 /** Quanto o carrossel anda por clique — um card mais o gap. */

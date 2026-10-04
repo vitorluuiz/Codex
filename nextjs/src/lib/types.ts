@@ -86,6 +86,13 @@ export interface ActiveRoom {
   setTitle: string | null;
   phaseCount: number | null;
   participantCount: number;
+  /**
+   * Posição 1-based da fase em andamento. `null` fora de `status: 'running'`
+   * ou fora de `role: 'leader'` — mesma regra de `setTitle`/`phaseCount`: é o
+   * que o histórico do perfil mostra em "fase 3" para uma sala que o líder
+   * ainda está conduzindo.
+   */
+  currentPhase: number | null;
   /** Já formatado pelo servidor. Ex.: "28 jul 2026 · 14:32". */
   createdAtLabel: string;
 }
@@ -138,6 +145,45 @@ export interface PhaseSetSummary {
   updatedLabel: string | null;
   /** Preenchido em `community`. */
   authorName: string | null;
+}
+
+/**
+ * Um conjunto como a biblioteca o mostra (`GET /phase-sets/library`).
+ *
+ * É o `PhaseSetSummary` do seletor da sala mais o que só o card da biblioteca
+ * usa: capa, disciplina, pasta e os números do rodapé. Ficou em outra rota
+ * porque o seletor do lobby abre no meio de uma aula e não pode pagar por
+ * agregações de acerto médio que ninguém vai ler ali.
+ */
+export interface PhaseSetLibraryEntry extends PhaseSetSummary {
+  /** Fases por tipo. Tipo ausente significa nenhuma fase daquele tipo. */
+  phaseKindCounts: Partial<Record<PhaseKind, number>>;
+  /** 0..100, acerto médio de quem já jogou. `null` enquanto ninguém jogou. */
+  accuracyRate: number | null;
+  /** Já formatada pelo servidor. Ex.: "32 min". */
+  durationLabel: string;
+  /** Disciplina do conjunto. Ex.: "Matemática". */
+  subject: string;
+  /** Pasta em que o autor guardou. `null` em conjuntos da comunidade. */
+  folder: string | null;
+  /** Quantas partidas já usaram o conjunto — é o que ordena "Mais usados". */
+  useCount: number;
+  coverUrl: string | null;
+}
+
+/**
+ * Payload de `GET /phase-sets/library`.
+ *
+ * As listas de disciplinas e pastas vêm do servidor em vez de saírem de `sets`:
+ * uma pasta recém-esvaziada tem que continuar clicável, senão o filtro some
+ * justamente quando a pessoa quer voltar para ela.
+ */
+export interface PhaseSetLibrary {
+  sets: PhaseSetLibraryEntry[];
+  subjects: string[];
+  folders: string[];
+  /** Capa do topo da tela. */
+  coverUrl: string | null;
 }
 
 interface PhaseBase {
@@ -313,6 +359,8 @@ export interface PhaseState {
   totalPlayers: number;
   /** Submissão da própria pessoa, se já tiver enviado. */
   mySubmission: Submission | null;
+  /** Instante absoluto (ms) em que a fase passa a aceitar respostas (fim da intro). */
+  startsAt?: number | null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -383,7 +431,7 @@ export interface LeaderPlayerRow {
   participantId: string;
   name: string;
   avatarIndex: AvatarIndex;
-  status: 'submitted' | 'pending';
+  status: 'submitted' | 'pending' | 'expired';
   elapsedSeconds: number | null;
   correct: boolean | null;
 }
@@ -457,10 +505,19 @@ export interface LeaderMatchSummary {
   playedAtLabel: string;
   participantCount: number;
   avgScore: number;
+  maxAvgScore: number;
+  /** Maior pontuação possível na partida — o card mostra `avgScore / maxScore`. */
+  maxScore: number;
   /** 0..100. */
   accuracyRate: number;
   /** Ex.: "32 min". */
   durationLabel: string;
+  /**
+   * Acerto médio da turma em cada fase, 0..100, na ordem em que foram jogadas.
+   * Alimenta o mini-gráfico de barras do card do histórico.
+   */
+  phaseAccuracy: number[];
+  phaseAvgScore: number[];
 }
 
 /** Payload de `GET /users/{id}/profile`. */

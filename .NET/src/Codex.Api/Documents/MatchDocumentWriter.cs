@@ -1,0 +1,209 @@
+using Codex.Api.Data;
+using Codex.Api.Domain.Entities;
+using Codex.Api.Domain;
+using Codex.Api.Services;
+using Codex.Api.Services.Redis;
+using Microsoft.EntityFrameworkCore;
+
+namespace Codex.Api.Documents;
+
+public class MatchDocumentWriter(
+    IRoomRepository repo,
+    IMatchDocumentStore store,
+    ILogger<MatchDocumentWriter> logger,
+    Codex.Api.Services.Redis.IMatchRepository matchRepo)
+{
+    public async Task CommitAsync(Match match, CancellationToken ct)
+    {
+        try
+        {
+            var (document, participants) = await BuildAsync(match, ct);
+            await store.CommitAsync(document, participants, ct);
+            logger.LogInformation("Snapshot salvo para a partida {MatchId}.", match.Id);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Falha ao gravar snapshot em disco para a partida {MatchId}.", match.Id);
+        }
+    }
+
+    private static Guid CombineGuids(Guid a, Guid b)
+    {
+        var aBytes = a.ToByteArray();
+        var bBytes = b.ToByteArray();
+        for (int i = 0; i < 16; i++) aBytes[i] ^= bBytes[i];
+        return new Guid(aBytes);
+    }
+
+    public async Task<(MatchDocument Document, IReadOnlyList<MatchParticipantDocument> Participants)> BuildAsync(
+        Match match,
+        CancellationToken ct)
+    {
+        var room = await repo.GetRoomAsync(match.RoomId.ToString(), ct)
+            ?? throw new InvalidOperationException($"Sala {match.RoomId} não encontrada no Redis ao salvar documento.");
+
+        var queueSetsData = await repo.GetQueueSetsAsync(match.RoomId.ToString(), ct);
+        var queuePhasesData = await repo.GetQueuePhasesAsync(match.RoomId.ToString(), ct);
+
+        var queueSets = queueSetsData.Select(s => RoomRedisMappers.ToEntity(s, room.Id)).OrderBy(s => s.OrderIndex).ToList();
+        var queuePhases = queuePhasesData.Select(p => RoomRedisMappers.ToEntity(p, room.Id)).OrderBy(p => p.OrderIndex).ToList();
+
+        var playersData = await repo.GetParticipantsAsync(match.RoomId.ToString(), ct);
+        var players = playersData
+            .Where(p => RoomRedisData.ParseParticipantStatus(p.Status) == ParticipantStatus.Approved)
+            .Select(p => RoomRedisMappers.ToEntity(p, room.Id))
+            .OrderBy(p => p.JoinedAt)
+            .ToList();
+
+        var submissions = new List<Submission>();
+        foreach (var ph in queuePhases)
+        {
+            submissions.AddRange(await matchRepo.GetSubmissionsAsync(match.Id.ToString(), ph.Id.ToString(), ct));
+        }
+
+        var phases = queuePhases.Select(ToPhaseDocument).ToList();
+        var phaseById = phases.ToDictionary(p => p.PhaseId);
+        var byParticipant = submissions.ToLookup(s => s.ParticipantId);
+
+        var participants = players
+            .Select(player => ToParticipantDocument(match, player, byParticipant[player.Id], phaseById))
+            .ToList();
+
+        var document = new MatchDocument
+        {
+            Id = match.Id,
+            RoomCode = room.Code,
+            RoomId = match.RoomId,
+            LeaderUserId = Guid.Parse(room.LeaderUserId),
+            Mode = match.Mode,
+            StartedAt = match.StartedAt.UtcDateTime,
+            FinishedAt = (match.FinishedAt ?? match.StartedAt).UtcDateTime,
+            PhaseSets = queueSets.Select(ToPhaseSetDocument).ToList(),
+            Phases = phases,
+            Stats = BuildStats(phases, participants),
+        };
+
+        return (document, participants);
+    }
+
+    private static MatchPhaseSetDocument ToPhaseSetDocument(RoomQueueSet set) => new()
+    {
+        QueueSetId = set.Id,
+        SourcePhaseSetId = set.SourcePhaseSetId,
+        Title = set.Title,
+        Color = set.Color,
+        OrderIndex = set.OrderIndex,
+    };
+
+    private static MatchPhaseDocument ToPhaseDocument(RoomQueuePhase phase) => new()
+    {
+        PhaseId = phase.Id,
+        QueueSetId = phase.RoomQueueSetId,
+        SourcePhaseId = phase.SourcePhaseId,
+        OrderIndex = phase.OrderIndex,
+        Kind = phase.Kind,
+        Name = phase.Name,
+        BasePoints = phase.BasePoints,
+        PointsMultiplier = phase.PointsMultiplier,
+        TimeSeconds = phase.TimeSeconds,
+        MaxScore = PhaseGrading.MaxScore(phase),
+        Content = PhaseContent.Parse(phase.ContentJson),
+    };
+
+    private static MatchParticipantDocument ToParticipantDocument(
+        Match match,
+        Participant player,
+        IEnumerable<Submission> submissions,
+        IReadOnlyDictionary<Guid, MatchPhaseDocument> phaseById)
+    {
+        var rows = submissions
+            .Where(s => phaseById.ContainsKey(s.RoomQueuePhaseId))
+            .Select(s => ToSubmissionDocument(s, phaseById[s.RoomQueuePhaseId]))
+            .OrderBy(s => s.PhaseOrderIndex)
+            .ToList();
+
+        return new MatchParticipantDocument
+        {
+            Id = CombineGuids(match.Id, player.Id),
+            MatchId = match.Id,
+            ParticipantId = player.Id,
+            UserId = player.UserId,
+            DisplayName = player.DisplayName,
+            AvatarIndex = player.AvatarIndex,
+            JoinedAt = player.JoinedAt.UtcDateTime,
+            TotalScore = rows.Sum(s => s.Score ?? 0),
+            GradedCount = rows.Count(s => s.Grading is GradingStatus.Graded),
+            CorrectCount = rows.Count(s => s.Correct is true),
+            PendingCount = rows.Count(s => s.Grading is GradingStatus.Pending),
+            TotalElapsedSeconds = rows.Sum(s => s.ElapsedSeconds),
+            Submissions = rows,
+        };
+    }
+
+    private static MatchSubmissionDocument ToSubmissionDocument(Submission submission, MatchPhaseDocument phase)
+    {
+        var dto = SubmissionProjection.ToDto(submission);
+
+        return new MatchSubmissionDocument
+        {
+            PhaseId = phase.PhaseId,
+            PhaseOrderIndex = phase.OrderIndex,
+            MaxScore = phase.MaxScore,
+            Answer = dto.Answer,
+            SubmittedAt = submission.SubmittedAt.UtcDateTime,
+            ElapsedSeconds = submission.ElapsedSeconds,
+            ReadyAt = submission.ReadyAt?.UtcDateTime,
+            Grading = dto.Grading,
+            Correct = dto.Correct,
+            Score = dto.Score,
+            Explanation = dto.Explanation,
+            AiSuggestions = dto.AiSuggestions,
+            TestsPassed = dto.TestsPassed,
+        };
+    }
+
+    private static MatchStatsDocument BuildStats(
+        IReadOnlyList<MatchPhaseDocument> phases,
+        IReadOnlyList<MatchParticipantDocument> participants)
+    {
+        var graded = participants.Sum(p => p.GradedCount);
+        var correct = participants.Sum(p => p.CorrectCount);
+
+        var byPhase = participants
+            .SelectMany(p => p.Submissions)
+            .ToLookup(s => s.PhaseId);
+
+        return new MatchStatsDocument
+        {
+            ParticipantCount = participants.Count,
+            AvgScore = Average(participants.Select(p => p.TotalScore)),
+            MaxScore = phases.Sum(p => p.MaxScore),
+            AccuracyRate = Percentage(correct, graded),
+            PhaseAccuracy = phases.Select(phase => PhaseAccuracy(byPhase[phase.PhaseId])).ToList(),
+            PhaseAvgScore = phases.Select(phase => PhaseAvgScore(byPhase[phase.PhaseId])).ToList(),
+        };
+    }
+
+    private static int? PhaseAccuracy(IEnumerable<MatchSubmissionDocument> rows)
+    {
+        var list = rows.Where(s => s.Grading is GradingStatus.Graded).ToList();
+        return list.Count is 0 ? null : Percentage(list.Count(s => s.Correct is true), list.Count);
+    }
+
+    private static int? PhaseAvgScore(IEnumerable<MatchSubmissionDocument> rows)
+    {
+        var list = rows.Where(s => s.Score is not null).ToList();
+        return list.Count is 0 ? null : Average(list.Select(s => s.Score!.Value));
+    }
+
+    private static int Average(IEnumerable<int> values)
+    {
+        var list = values as IReadOnlyCollection<int> ?? [.. values];
+        return list.Count is 0 ? 0 : (int)Math.Round(list.Average(), MidpointRounding.AwayFromZero);
+    }
+
+    private static int Percentage(int part, int total)
+        => total is 0 ? 0 : (int)Math.Round(part * 100.0 / total, MidpointRounding.AwayFromZero);
+}
+
+

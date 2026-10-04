@@ -78,6 +78,7 @@ export type ServerMessage =
     }
   | { type: 'queue.updated'; revision: number }
   | { type: 'match.started'; matchId: string; mode: MatchMode }
+  | { type: 'room.closed' }
 
   /* --- partida ----------------------------------------------------------- */
   /**
@@ -89,6 +90,7 @@ export type ServerMessage =
       type: 'phase.started';
       phaseNumber: number;
       totalPhases: number;
+      startsAt?: number | null;
       endsAt: number | null;
       state: PhaseState;
     }

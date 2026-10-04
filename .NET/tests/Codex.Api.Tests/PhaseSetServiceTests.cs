@@ -588,9 +588,111 @@ public class PhaseSetServiceTests
     }
 
     /* ---------------------------------------------------------------- */
+    /* Tetos de texto livre (migracao-dados.md secao 5.3)                 */
+    /* ---------------------------------------------------------------- */
+
+    [Fact]
+    public async Task Question_longer_than_the_ceiling_is_rejected()
+    {
+        var ctx = new RoomTestContext();
+
+        var exception = await Assert.ThrowsAsync<ApiException>(
+            () => Create(ctx, Quiz(question: Filler(PhaseLimits.MaxQuestionLength + 1))));
+
+        Assert.Equal(ErrorCodes.ValidationError, exception.Code);
+        Assert.Equal(StatusCodes.Status400BadRequest, exception.StatusCode);
+    }
+
+    /// <summary>
+    /// O teto e <c>&gt;</c>, nao <c>&gt;=</c>: o valor exato do limite passa. Sem esta, trocar o
+    /// operador por engano nao quebraria teste nenhum.
+    /// </summary>
+    [Fact]
+    public async Task A_question_exactly_at_the_ceiling_is_accepted()
+    {
+        var ctx = new RoomTestContext();
+
+        var draft = await Create(ctx, Quiz(question: Filler(PhaseLimits.MaxQuestionLength)));
+
+        Assert.Equal(PhaseLimits.MaxQuestionLength, Assert.Single(draft.Phases).Question!.Length);
+    }
+
+    [Fact]
+    public async Task Quiz_option_longer_than_the_ceiling_is_rejected()
+    {
+        var ctx = new RoomTestContext();
+
+        var exception = await Assert.ThrowsAsync<ApiException>(
+            () => Create(ctx, Quiz(options: ["ok", Filler(PhaseLimits.MaxOptionLength + 1)], correct: [0])));
+
+        Assert.Equal(ErrorCodes.ValidationError, exception.Code);
+    }
+
+    [Fact]
+    public async Task Fill_word_bank_has_a_ceiling_on_how_many_words_it_holds()
+    {
+        var ctx = new RoomTestContext();
+        var words = Enumerable.Range(0, PhaseLimits.MaxWords + 1).Select(i => $"palavra{i}").ToList();
+
+        var exception = await Assert.ThrowsAsync<ApiException>(
+            () => Create(ctx, Fill(words: words, blanks: ["palavra0", "palavra1"])));
+
+        Assert.Equal(ErrorCodes.ValidationError, exception.Code);
+    }
+
+    [Fact]
+    public async Task Starter_code_longer_than_the_ceiling_is_rejected()
+    {
+        var ctx = new RoomTestContext();
+        var phase = Code() with { StarterCode = Filler(PhaseLimits.MaxStarterCodeLength + 1) };
+
+        var exception = await Assert.ThrowsAsync<ApiException>(() => Create(ctx, phase));
+
+        Assert.Equal(ErrorCodes.ValidationError, exception.Code);
+    }
+
+    [Fact]
+    public async Task Test_cases_longer_than_the_ceiling_are_rejected()
+    {
+        var ctx = new RoomTestContext();
+        var phase = Code() with { TestCases = Filler(PhaseLimits.MaxTestCasesLength + 1) };
+
+        var exception = await Assert.ThrowsAsync<ApiException>(() => Create(ctx, phase));
+
+        Assert.Equal(ErrorCodes.ValidationError, exception.Code);
+    }
+
+    [Fact]
+    public async Task Expected_answer_longer_than_the_ceiling_is_rejected()
+    {
+        var ctx = new RoomTestContext();
+        var phase = Text() with { ExpectedAnswer = Filler(PhaseLimits.MaxExpectedAnswerLength + 1) };
+
+        var exception = await Assert.ThrowsAsync<ApiException>(() => Create(ctx, phase));
+
+        Assert.Equal(ErrorCodes.ValidationError, exception.Code);
+    }
+
+    /// <summary>
+    /// Campo em branco continua valido — a politica de rascunho nao mudou, so ganhou teto em cima.
+    /// </summary>
+    [Fact]
+    public async Task An_empty_question_still_passes()
+    {
+        var ctx = new RoomTestContext();
+
+        var draft = await Create(ctx, Quiz(question: string.Empty));
+
+        Assert.Equal(string.Empty, Assert.Single(draft.Phases).Question);
+    }
+
+    /* ---------------------------------------------------------------- */
 
     private static Task<PhaseSetDraftResponse> Create(RoomTestContext ctx, DraftPhaseDto phase)
         => ctx.PhaseSets.CreateAsync(new SavePhaseSetRequest("Conjunto", [phase]), ctx.AsLeader, Ct);
+
+    /// <summary>Texto de <paramref name="length"/> caracteres, para exercitar um teto.</summary>
+    private static string Filler(int length) => new('x', length);
 
     private static DraftPhaseDto Quiz(
         string? id = "draft_1",

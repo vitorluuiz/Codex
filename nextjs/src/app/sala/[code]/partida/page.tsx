@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import { ChallengeShell } from '@/components/challenge/ChallengeShell';
 import { StateMessage } from '@/components/feedback/StateMessage';
 import { ApiNotConfiguredError } from '@/lib/api/client';
+import { checkRoomCodeAction } from '@/lib/actions/room';
 import { getCurrentPhase, getMatch, getMyScoreboard, getPhaseStats, getPodium } from '@/lib/api/match';
 import { getRoom } from '@/lib/api/rooms';
 import { getSession } from '@/lib/api/session';
@@ -52,6 +53,10 @@ export default async function MatchPage({ params }: PageProps) {
   // "você não está mais nela", não "esta sala não existe".
   if (!room) {
     if (session.participantId !== null && session.roomCode === code) {
+      const availability = await checkRoomCodeAction(code);
+      if (!availability.ok && availability.reason === 'not_found') {
+        redirect('/sala?saida=encerrada');
+      }
       redirect('/sala?saida=removido');
     }
     notFound();

@@ -13,27 +13,21 @@ import { useRealtime } from './RealtimeProvider';
  */
 export function useServerCountdown(endsAt: number | null, paused: boolean): number | null {
   const { clockOffset } = useRealtime();
-  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [, setTick] = useState(0);
 
   useEffect(() => {
-    if (endsAt === null) {
-      setSecondsLeft(null);
-      return;
-    }
+    if (endsAt === null || paused) return;
 
-    function tick() {
-      const remainingMs = endsAt! - (Date.now() + clockOffset);
-      setSecondsLeft(Math.max(0, Math.round(remainingMs / 1000)));
-    }
+    const interval = setInterval(() => {
+      setTick((t) => (t + 1) | 0);
+    }, 250);
 
-    tick();
-    if (paused) return;
-
-    const interval = setInterval(tick, 250);
     return () => clearInterval(interval);
-  }, [endsAt, paused, clockOffset]);
+  }, [endsAt, paused]);
 
-  return secondsLeft;
+  if (endsAt === null || paused) return null;
+  const remainingMs = endsAt - (Date.now() + clockOffset);
+  return Math.max(0, Math.ceil(remainingMs / 1000));
 }
 
 /** `125` → `"2:05"`. */

@@ -38,4 +38,5 @@ public class Room
     public ICollection<RoomQueueSet> QueueSets { get; init; } = [];
     public ICollection<RoomQueuePhase> QueuePhases { get; init; } = [];
     public ICollection<Match> Matches { get; init; } = [];
+    public Guid? CurrentMatchId { get; set; }
 }

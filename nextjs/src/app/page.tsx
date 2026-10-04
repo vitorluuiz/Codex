@@ -117,6 +117,9 @@ export default function LandingPage() {
             </a>
           </nav>
           <div className={styles.navActions}>
+            <Link href="/sala">
+              <Button variant="ghost">Jogar agora</Button>
+            </Link>
             <Link href="/entrar">
               <Button variant="ghost">Entrar</Button>
             </Link>

@@ -7,6 +7,7 @@ using Codex.Api.Contracts.PhaseSets;
 using Codex.Api.Contracts.Users;
 using Codex.Api.Data;
 using Codex.Api.Data.Configurations;
+using Codex.Api.Documents;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -18,18 +19,10 @@ namespace Codex.Api.Services;
 /// api-rest.md secao 2: PATCH /users/me (dialogo "Editar perfil") e GET /users/{userId}/profile
 /// (a tela de perfil inteira).
 /// </summary>
-public class UserProfileService(AppDbContext db, LabelFormatter labels)
+public class UserProfileService(AppDbContext db, LabelFormatter labels, IMatchDocumentStore matches, DocumentOptions documents)
 {
     private const int MaxNameLength = 120;
     private const int MaxEmailLength = 256;
-
-    /// <summary>
-    /// O contrato nao pagina o historico e a tela nao tem "carregar mais", entao o corte fica
-    /// aqui: um professor com tres anos de aulas nao pode transformar a abertura do perfil numa
-    /// resposta de megabytes. Quando existir paginacao (ou a tela de relatorios da secao 11),
-    /// este numero vira um parametro.
-    /// </summary>
-    private const int MaxHistoryEntries = 50;
 
     /// <summary>
     /// PATCH /users/me. Os tres campos sao independentes e opcionais.
@@ -159,52 +152,41 @@ public class UserProfileService(AppDbContext db, LabelFormatter labels)
     /// Historico de partidas conduzidas: partidas ja encerradas das salas em que a pessoa e
     /// lider, mais recentes primeiro.
     ///
-    /// Sai vazio hoje porque nada cria Match ainda (secao 7 nao tem endpoint). Os agregados foram
-    /// escritos mesmo assim, e nao deixados como placeholder, porque todo o dado de que precisam
-    /// ja existe no schema — o dia em que POST /rooms/{code}/match existir, esta lista acende
-    /// sozinha.
+    /// <b>Le do banco de documentos, e nao mais do Postgres</b> — passo 4 da secao 8.2 da
+    /// migracao-dados. A consulta anterior cruzava <b>cinco</b> tabelas, e duas delas eram a sala e
+    /// a fila: o titulo de cada linha vinha de <c>room_queue_sets</c> meses depois de a partida ter
+    /// acabado, e <c>participantCount</c> de <c>participants</c>. Era exatamente isso que impedia a
+    /// sala de virar efemera — com TTL, o historico perderia o nome das partidas.
+    ///
+    /// Agora e uma leitura so, de uma colecao so: <c>setTitles</c> sai de <c>phaseSets[]</c> e os
+    /// tres agregados de <c>stats</c>, calculados uma vez no encerramento. A sala nao e mais
+    /// consultada em lugar nenhum daqui.
     /// </summary>
     private async Task<IReadOnlyList<LeaderMatchSummaryDto>> GetMatchHistoryAsync(Guid userId, CancellationToken ct)
     {
-        var matches = await db.Matches
-            .AsNoTracking()
-            .Where(m => m.Room.LeaderUserId == userId && m.FinishedAt != null)
-            .OrderByDescending(m => m.FinishedAt)
-            .Take(MaxHistoryEntries)
-            .Select(m => new
-            {
-                m.Id,
-                m.Mode,
-                m.StartedAt,
-                m.FinishedAt,
-                SetTitles = m.Room.QueueSets.OrderBy(s => s.OrderIndex).Select(s => s.Title).ToList(),
-                // Quem foi aprovado e quem a tela chama de "participante"; pendente nunca jogou.
-                ParticipantCount = m.Room.Participants.Count(p => p.Status == ParticipantStatus.Approved),
-                ScoreSum = m.Submissions.Sum(s => s.Score),
-                GradedCount = m.Submissions.Count(s => s.Grading == GradingStatus.Graded),
-                CorrectCount = m.Submissions.Count(s => s.Correct == true),
-            })
-            .ToListAsync(ct);
+        var history = await matches.ListByLeaderAsync(userId, documents.MaxHistoryEntries, ct);
 
-        return matches.Select(m => new LeaderMatchSummaryDto(
-                m.Id,
-                LabelFormatter.SetTitleLabel(m.SetTitles),
-                m.Mode,
-                labels.DateTimeLabel(m.FinishedAt!.Value),
-                m.ParticipantCount,
+        return history.Select(match => new LeaderMatchSummaryDto(
+                match.Id,
+                LabelFormatter.SetTitleLabel(match.PhaseSets.OrderBy(s => s.OrderIndex).Select(s => s.Title).ToList()),
+                match.Mode,
+                labels.DateTimeLabel(match.FinishedAt),
+                match.Stats.ParticipantCount,
                 // Media por pessoa, nao por resposta: e o mesmo numero que
                 // GET /matches/{id}/scoreboard/me chama de avgScore, e a tela mostra "pts".
-                Average(m.ScoreSum ?? 0, m.ParticipantCount),
+                match.Stats.AvgScore,
+                MaxAvgScore: (int)match.Stats.MaxScore / match.Phases.Count(),
+                match.Stats.MaxScore,
                 // Sobre o que foi corrigido, nao sobre o que foi enviado: uma resposta de IA ainda
                 // pendente nao conta como erro.
-                Percentage(m.CorrectCount, m.GradedCount),
-                LabelFormatter.DurationLabel(m.FinishedAt!.Value - m.StartedAt)))
+                match.Stats.AccuracyRate,
+                // Array com Accuracy de cada phase
+                match.Stats.PhaseAccuracy,
+                // Array com AvgScore de cada phase
+                match.Stats.PhaseAvgScore,
+                LabelFormatter.DurationLabel(match.FinishedAt - match.StartedAt)))
             .ToList();
     }
-
-    private static int Average(int total, int count) => count is 0 ? 0 : (int)Math.Round((double)total / count);
-
-    private static int Percentage(int part, int total) => total is 0 ? 0 : (int)Math.Round(part * 100.0 / total);
 
     private static Guid ResolveUserId(string userId, ClaimsPrincipal principal)
     {

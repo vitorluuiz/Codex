@@ -3,6 +3,7 @@ using Codex.Api.Contracts.Matches;
 using Codex.Api.Data;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
+using Codex.Api.Services.Redis;
 using Microsoft.EntityFrameworkCore;
 
 namespace Codex.Api.Services;
@@ -21,7 +22,7 @@ namespace Codex.Api.Services;
 /// observavel (o aluno nao assina o canal do lider), o que so torna a divergencia mais facil de
 /// introduzir sem ninguem ver.
 /// </summary>
-public class MatchStatsService(AppDbContext db)
+public class MatchStatsService(IRoomRepository repo, Codex.Api.Services.Redis.IMatchRepository matchRepo)
 {
     /// <summary>
     /// Acima disto o histograma vira baldes. "Se a turma for grande, agregue em ~15 baldes antes de
@@ -43,6 +44,8 @@ public class MatchStatsService(AppDbContext db)
 
         var content = PhaseContent.Parse(phase.ContentJson);
         var byParticipant = submissions.ToDictionary(s => s.ParticipantId);
+        var closed = MatchService.IsCurrentPhaseClosed(match, DateTimeOffset.UtcNow);
+        var expiredCount = closed ? Math.Max(0, players.Count - submissions.Count) : 0;
 
         return new PhaseStatsDto(
             phase.Id,
@@ -60,8 +63,8 @@ public class MatchStatsService(AppDbContext db)
             totals.Count is 0 ? 0 : totals.Values.Max(),
             AnswerDistribution(phase, content, submissions),
             GradingDistribution(submissions, graded.Count, correctCount),
-            ResponseTimeBuckets(phase, submissions),
-            [.. players.Select(player => PlayerRow(player, byParticipant.GetValueOrDefault(player.Id)))]);
+            ResponseTimeBuckets(phase, submissions, expiredCount),
+            [.. players.Select(player => PlayerRow(player, byParticipant.GetValueOrDefault(player.Id), closed))]);
     }
 
     /// <summary>
@@ -113,12 +116,16 @@ public class MatchStatsService(AppDbContext db)
         var players = await ApprovedPlayersAsync(match, ct);
         var totals = await MatchTotalsAsync(match, players, ct);
 
-        var elapsed = await db.Submissions
-            .AsNoTracking()
-            .Where(s => s.MatchId == match.Id)
+        var phasesData = await repo.GetQueuePhasesAsync(match.RoomId.ToString(), ct);
+        var allSubs = new List<Submission>();
+        foreach (var ph in phasesData)
+        {
+            allSubs.AddRange(await matchRepo.GetSubmissionsAsync(match.Id.ToString(), ph.Id, ct));
+        }
+
+        var elapsed = allSubs
             .GroupBy(s => s.ParticipantId)
-            .Select(g => new { ParticipantId = g.Key, Total = g.Sum(s => s.ElapsedSeconds) })
-            .ToDictionaryAsync(x => x.ParticipantId, x => x.Total, ct);
+            .ToDictionary(g => g.Key, g => g.Sum(s => s.ElapsedSeconds));
 
         return
         [
@@ -146,12 +153,17 @@ public class MatchStatsService(AppDbContext db)
         IReadOnlyList<Participant> players,
         CancellationToken ct)
     {
-        var scored = await db.Submissions
-            .AsNoTracking()
-            .Where(s => s.MatchId == match.Id && s.Score != null)
+        var phasesData = await repo.GetQueuePhasesAsync(match.RoomId.ToString(), ct);
+        var allSubs = new List<Submission>();
+        foreach (var ph in phasesData)
+        {
+            allSubs.AddRange(await matchRepo.GetSubmissionsAsync(match.Id.ToString(), ph.Id, ct));
+        }
+
+        var scored = allSubs
+            .Where(s => s.Score != null)
             .GroupBy(s => s.ParticipantId)
-            .Select(g => new { ParticipantId = g.Key, Total = g.Sum(s => s.Score!.Value) })
-            .ToDictionaryAsync(x => x.ParticipantId, x => x.Total, ct);
+            .ToDictionary(g => g.Key, g => g.Sum(s => s.Score!.Value));
 
         return players.ToDictionary(p => p.Id, p => scored.GetValueOrDefault(p.Id));
     }
@@ -179,30 +191,28 @@ public class MatchStatsService(AppDbContext db)
     private async Task<IReadOnlyList<Participant>> ApprovedPlayersAsync(Match match, CancellationToken ct)
     {
         var finished = match.Status is MatchStatus.Finished;
+        var pDatas = await repo.GetParticipantsAsync(match.RoomId.ToString(), ct);
 
-        return await db.Participants
-            .AsNoTracking()
-            .Where(p => p.RoomId == match.RoomId
-                        && p.Status == ParticipantStatus.Approved
-                        && (finished || p.InResultsSince == null))
+        return pDatas
+            .Where(p => p.Status == "approved" && (finished || p.InResultsSinceMs == null))
+            .Select(p => p.ToEntity(match.RoomId.ToString()))
             .OrderBy(p => p.JoinedAt)
-            .ToListAsync(ct);
+            .ToList();
     }
 
     private async Task<IReadOnlyList<Submission>> PhaseSubmissionsAsync(Guid matchId, Guid phaseId, CancellationToken ct)
-        => await db.Submissions
-            .AsNoTracking()
-            .Where(s => s.MatchId == matchId && s.RoomQueuePhaseId == phaseId)
-            .ToListAsync(ct);
+        => await matchRepo.GetSubmissionsAsync(matchId.ToString(), phaseId.ToString(), ct);
 
     /// <summary>
     /// Quantos jogadores a sala tem — o <c>totalPlayers</c> de todo evento de progresso, e o que o
     /// <c>NO_PLAYERS</c> do inicio da partida conta. Mesmo criterio de
     /// <see cref="ApprovedPlayersAsync"/>: aprovado e no lobby.
     /// </summary>
-    public Task<int> CountPlayersAsync(Guid roomId, CancellationToken ct)
-        => db.Participants.CountAsync(
-            p => p.RoomId == roomId && p.Status == ParticipantStatus.Approved && p.InResultsSince == null, ct);
+    public async Task<int> CountPlayersAsync(Guid roomId, CancellationToken ct)
+    {
+        var pDatas = await repo.GetParticipantsAsync(roomId.ToString(), ct);
+        return pDatas.Count(p => p.Status == "approved" && p.InResultsSinceMs == null);
+    }
 
     private static int Average(IEnumerable<int> values)
     {
@@ -261,7 +271,8 @@ public class MatchStatsService(AppDbContext db)
 
     private static IReadOnlyList<ResponseTimeBucketDto> ResponseTimeBuckets(
         RoomQueuePhase phase,
-        IReadOnlyList<Submission> submissions)
+        IReadOnlyList<Submission> submissions,
+        int expiredCount)
     {
         var labels = LabelFormatter.ResponseTimeBucketLabels(phase.TimeSeconds);
         var counts = new int[labels.Count];
@@ -271,14 +282,20 @@ public class MatchStatsService(AppDbContext db)
             counts[LabelFormatter.ResponseTimeBucketIndex(submission.ElapsedSeconds, phase.TimeSeconds)]++;
         }
 
-        return [.. labels.Select((label, index) => new ResponseTimeBucketDto(label, counts[index]))];
+        var buckets = labels.Select((label, index) => new ResponseTimeBucketDto(label, counts[index])).ToList();
+        buckets.Add(new ResponseTimeBucketDto("Tempo esgotado", expiredCount));
+        return buckets;
     }
 
-    private static LeaderPlayerRowDto PlayerRow(Participant player, Submission? submission) => new(
+    private static LeaderPlayerRowDto PlayerRow(Participant player, Submission? submission, bool phaseClosed) => new(
         player.Id,
         player.DisplayName,
         player.AvatarIndex,
-        submission is null ? LeaderPlayerRowDto.Pending : LeaderPlayerRowDto.Submitted,
+        submission is not null
+            ? LeaderPlayerRowDto.Submitted
+            : phaseClosed
+                ? LeaderPlayerRowDto.Expired
+                : LeaderPlayerRowDto.Pending,
         submission?.ElapsedSeconds,
         submission?.Correct);
 

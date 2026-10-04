@@ -59,6 +59,11 @@ public record QueueUpdatedEvent(int Revision)
     public string Type => "queue.updated";
 }
 
+public record RoomClosedEvent
+{
+    public string Type => "room.closed";
+}
+
 /* -------------------------------------------------------------------------- */
 /* Partida                                                                     */
 /* -------------------------------------------------------------------------- */
@@ -83,9 +88,14 @@ public record MatchStartedEvent(Guid MatchId, MatchMode Mode)
 /// lider tem caminho proprio para a resposta certa — o modal "Ver desafio" da secao 6 e o
 /// <c>answerDistribution</c> do painel, que vai pelo canal dele.
 /// </summary>
-public record PhaseStartedEvent(int PhaseNumber, int TotalPhases, long? EndsAt, PhaseStateDto State)
+public record PhaseStartedEvent(int PhaseNumber, int TotalPhases, long? StartsAt, long? EndsAt, PhaseStateDto State)
 {
     public string Type => "phase.started";
+
+    public PhaseStartedEvent(int phaseNumber, int totalPhases, long? endsAt, PhaseStateDto state)
+        : this(phaseNumber, totalPhases, null, endsAt, state)
+    {
+    }
 }
 
 public record PhasePausedEvent(bool Paused, long? EndsAt)

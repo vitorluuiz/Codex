@@ -27,6 +27,7 @@ public static class ErrorCodes
     public const string EmptyQueue = "EMPTY_QUEUE";
     public const string NoPlayers = "NO_PLAYERS";
     public const string PhaseClosed = "PHASE_CLOSED";
+    public const string PhaseNotStarted = "PHASE_NOT_STARTED";
     public const string PhaseStillOpen = "PHASE_STILL_OPEN";
     public const string InvalidDirection = "INVALID_DIRECTION";
 

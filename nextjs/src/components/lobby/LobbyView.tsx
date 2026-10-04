@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useCallback, useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 
 import { Avatar } from '@/components/avatar/Avatar';
 import { Button, Popover, Switch, Tooltip, anchorFrom, type AnchorRect } from '@/components/ds';
@@ -11,6 +11,7 @@ import { RealtimeProvider, useRealtimeEvent } from '@/realtime/RealtimeProvider'
 import { channels } from '@/realtime/protocol';
 import {
   approveParticipantAction,
+  closeRoomAction,
   rejectParticipantAction,
   removeParticipantAction,
   startMatchAction,
@@ -19,7 +20,7 @@ import {
 import type { RoomQueue } from '@/lib/api/rooms';
 import { cssVars } from '@/lib/cssVars';
 import { cx } from '@/lib/cx';
-import type { Participant, Room } from '@/lib/types';
+import type { ActiveRoom, Participant, Room } from '@/lib/types';
 import { PhaseQueuePanel } from './PhaseQueuePanel';
 import { PhaseSetsPanel } from './PhaseSetsPanel';
 import styles from './Lobby.module.css';
@@ -126,6 +127,7 @@ function LobbyContent({
         // Recarrega em vez de montar o lobby com o que estava em memória: durante
         // a espera nenhum evento da sala chegou, então a lista de jogadores aqui
         // está parada no instante em que a pessoa pediu para entrar.
+        setApproved((list) => upsert(list, participant));
         router.refresh();
       } else if (participant.status === 'rejected') {
         setRejected(true);
@@ -155,6 +157,16 @@ function LobbyContent({
     router.push(`/sala/${room.code}/partida`);
   });
 
+  useEffect(() => {
+    if (room.status === 'running' && !awaitingApproval && !isLeader) {
+      router.push(`/sala/${room.code}/partida`);
+    }
+  }, [room.status, awaitingApproval, isLeader, room.code, router]);
+
+  useRealtimeEvent('match.returned-to-lobby', () => {
+    router.refresh();
+  });
+
   // Expulso pelo líder. Chega só pelo canal privado, e o serviço de WS fecha o
   // socket logo em seguida (§10) — daí a saída ser imediata em vez de um card
   // com botão como o de "recusado": a tela atrás já parou de receber
@@ -164,6 +176,12 @@ function LobbyContent({
   // para ela agora, então voltar por ele não é um caminho que exista mais.
   useRealtimeEvent('participant.removed', () => {
     router.replace('/sala?saida=removido');
+  });
+
+  useRealtimeEvent('room.closed', () => {
+    if (!isLeader) {
+      router.replace('/sala?saida=encerrada');
+    }
   });
 
   /* --- ações -------------------------------------------------------------- */
@@ -206,6 +224,13 @@ function LobbyContent({
     startTransition(async () => {
       await startMatchAction(room.code, mode);
       router.push(`/sala/${room.code}/partida`);
+    });
+  }
+
+  function closeRoom(room: Room) {
+    startTransition(async () => {
+      await closeRoomAction(room.code);
+      router.replace('/perfil');
     });
   }
 
@@ -276,10 +301,19 @@ function LobbyContent({
                   />
                 </div>
                 <div className={styles.startActions}>
-                  <Tooltip label="Cada participante avança pelas fases no próprio ritmo, quando quiser.">
+                  <Tooltip label="Encerra a sala definitivamente.">
+                    <Button
+                      variant="danger"
+                      onClick={() => closeRoom(room)}
+                    >
+                      Fechar sala
+                    </Button>
+                  </Tooltip>
+                  <Tooltip label="Cada participante avança pelas fases no próprio ritmo, quando quiser. Desabilitado temporariamente.">
                     <Button
                       variant="secondary"
-                      disabled={startDisabled}
+                      // disabled={startDisabled} Verificação quando for corretamente implementado
+                      disabled
                       onClick={() => start('self-paced')}
                     >
                       Permitir início

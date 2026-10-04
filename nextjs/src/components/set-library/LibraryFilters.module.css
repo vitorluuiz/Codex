@@ -1,0 +1,133 @@
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 220px;
+  max-width: 320px;
+  padding: 10px 14px;
+  border-radius: var(--radius-m);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.search:focus-within {
+  border-color: var(--accent-primary);
+}
+
+.search input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: none;
+  font-size: var(--text-body-s);
+  color: var(--text-primary);
+}
+
+.menuWrap {
+  position: relative;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 10px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-body-s);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.chip:hover {
+  background: var(--surface-sunken);
+}
+
+/* Filtro fora do padrão fica azul: a barra tem quatro controles e, rolando a
+   página, é o único sinal de que a grade abaixo está recortada. */
+.chipDirty {
+  background: var(--blue-100);
+  border-color: transparent;
+  color: var(--blue-700);
+}
+
+.chipDirty:hover {
+  background: var(--blue-200);
+}
+
+.caret {
+  color: currentColor;
+}
+
+/* Empurra a seleção em massa para a direita — ela age sobre a grade, não sobre
+   o recorte, e não deveria ser lida como mais um filtro. */
+.selectChip {
+  margin-left: auto;
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-l);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px var(--space-3);
+  border: none;
+  border-radius: var(--radius-m);
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.option:hover {
+  background: var(--surface-sunken);
+}
+
+.option svg {
+  color: var(--accent-primary);
+}
+
+.optionOn {
+  color: var(--text-primary);
+  font-weight: var(--fw-bold);
+}
+
+.optionAll {
+  margin: 6px 6px 2px;
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--text-secondary);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-caption);
+  cursor: pointer;
+}
+
+.optionAll:hover {
+  color: var(--text-primary);
+}

@@ -50,5 +50,11 @@ public static class RoomEndpoints
 
         group.MapPatch("", async (string code, UpdateRoomRequest request, ClaimsPrincipal principal, RoomService rooms, CancellationToken ct)
             => Results.Ok(await rooms.UpdateAsync(code, request, principal, ct)));
+
+        group.MapDelete("", async (string code, ClaimsPrincipal principal, RoomService rooms, CancellationToken ct) =>
+        {
+            await rooms.DeleteAsync(code, principal, ct);
+            return Results.NoContent();
+        });
     }
 }

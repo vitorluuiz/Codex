@@ -1,0 +1,12 @@
+.link {
+  display: inline-flex;
+  align-self: flex-start;
+  text-decoration: none;
+}
+
+.link :global(button) {
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}

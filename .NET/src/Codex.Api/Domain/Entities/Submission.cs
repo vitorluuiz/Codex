@@ -12,10 +12,8 @@ public class Submission
     public Match Match { get; init; } = null!;
 
     public Guid RoomQueuePhaseId { get; set; }
-    public RoomQueuePhase RoomQueuePhase { get; init; } = null!;
 
     public Guid ParticipantId { get; set; }
-    public Participant Participant { get; init; } = null!;
 
     /// <summary>Formato por kind (quiz/fill/text/code), ver secao 8 da doc.</summary>
     public required string AnswerJson { get; set; }

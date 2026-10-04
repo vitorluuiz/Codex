@@ -102,6 +102,15 @@ export async function updateRoomSettingsAction(
   revalidateTag(`room:${code}`);
 }
 
+/**
+ * `DELETE /rooms/{code}` — encerra a sala inteira sem o líder precisar entrar
+ * nela. Usado pelo botão "Encerrar sala" do histórico do perfil.
+ */
+export async function closeRoomAction(code: string) {
+  await apiRequest(`/rooms/${code}`, { method: 'DELETE' });
+  revalidateTag(`room:${code}`);
+}
+
 /** `POST /rooms/{code}/participants/{id}/approve` */
 export async function approveParticipantAction(code: string, participantId: string) {
   await apiRequest(`/rooms/${code}/participants/${participantId}/approve`, { method: 'POST' });

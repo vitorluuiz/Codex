@@ -1,0 +1,258 @@
+.sidebar {
+  background: var(--surface-card);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-4);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.brand,
+.brand:hover {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 22px;
+  color: var(--text-primary);
+  padding: 0 var(--space-2);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 11px var(--space-3);
+  border-radius: var(--radius-l);
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+}
+
+.navItemActive {
+  background: var(--blue-100);
+  color: var(--blue-700);
+  font-weight: var(--fw-bold);
+}
+
+.navItemLink,
+.navItemLink:hover {
+  color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.navItemLink:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+
+.navItemSoon {
+  color: var(--ink-400);
+  cursor: not-allowed;
+}
+
+.footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.switcher {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.switcherPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-2);
+  border-radius: var(--radius-l);
+  background: var(--surface-sunken);
+}
+
+.switcherHeading {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  padding: 4px var(--space-2) 6px;
+}
+
+.switcherOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius-m);
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.switcherOption:hover {
+  background: var(--surface-card);
+}
+
+.switcherOptionActive {
+  background: var(--surface-card);
+}
+
+.switcherIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-m);
+  background: var(--blue-100);
+  color: var(--blue-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.switcherText {
+  flex: 1;
+  min-width: 0;
+}
+
+.switcherLabel {
+  display: block;
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+
+.switcherHint {
+  display: block;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.switcherCheck {
+  color: var(--blue-500);
+  flex-shrink: 0;
+}
+
+.switcherChevron {
+  color: var(--ink-400);
+  flex-shrink: 0;
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 var(--space-2);
+  min-width: 0;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+
+.switcher .account {
+  padding: 9px var(--space-2);
+  border-radius: var(--radius-l);
+  background: var(--ink-950);
+  cursor: pointer;
+}
+
+.switcher .account .accountName {
+  color: #fff;
+}
+
+.switcher .account .accountRole {
+  color: var(--blue-300);
+  font-weight: var(--fw-bold);
+}
+
+.accountInfo {
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+}
+
+.accountName {
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.accountRole {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.signOut {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px var(--space-3);
+  border-radius: var(--radius-l);
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-body-s);
+  text-align: left;
+}
+
+.signOut:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+
+/* Abaixo de 900px a barra vira um cabeçalho: uma coluna fixa de 260px come
+   metade da tela num tablet em retrato. */
+@media (max-width: 900px) {
+  .sidebar {
+    position: static;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border-subtle);
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  .nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .footer {
+    margin-top: 0;
+    margin-left: auto;
+    flex-direction: row;
+    align-items: center;
+    padding-top: 0;
+    border-top: none;
+  }
+}
