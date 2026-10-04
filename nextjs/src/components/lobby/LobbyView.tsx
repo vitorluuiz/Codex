@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useCallback, useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 
 import { Avatar } from '@/components/avatar/Avatar';
 import { Button, Popover, Switch, Tooltip, anchorFrom, type AnchorRect } from '@/components/ds';
@@ -156,6 +156,12 @@ function LobbyContent({
   useRealtimeEvent('match.started', () => {
     router.push(`/sala/${room.code}/partida`);
   });
+
+  useEffect(() => {
+    if (room.status === 'running' && !awaitingApproval && !isLeader) {
+      router.push(`/sala/${room.code}/partida`);
+    }
+  }, [room.status, awaitingApproval, isLeader, room.code, router]);
 
   useRealtimeEvent('match.returned-to-lobby', () => {
     router.refresh();

@@ -325,18 +325,34 @@ export class Connection implements Subscriber {
     // atras (o lider pode ter mudado)." Uma releitura por quadro `subscribe`,
     // nao por canal: e o mesmo instante logico. `roleCacheTtlMs` (1 s) absorve
     // rajadas sem esticar a janela de um papel obsoleto.
-    const identity = await this.currentIdentity();
+    let identity = await this.currentIdentity();
     if (identity === null || this.state !== 'ready') return;
 
     for (const raw of requested) {
       const channel = parseChannel(raw);
-      if (channel === null || !canSubscribe(channel, identity)) {
+      if (channel === null) {
         this.send({
           type: 'error',
           code: 'FORBIDDEN_CHANNEL',
           message: `Canal indisponivel para esta sessao: ${String(raw)}`,
         });
         continue;
+      }
+
+      if (!canSubscribe(channel, identity)) {
+        // Se a permissão falhou (ex.: aluno recém-aprovado cujo papel em cache ainda era pendente),
+        // busca uma identidade fresca da API antes de recusar a assinatura.
+        const fresh = await this.currentIdentity(true);
+        if (fresh !== null && canSubscribe(channel, fresh)) {
+          identity = fresh;
+        } else {
+          this.send({
+            type: 'error',
+            code: 'FORBIDDEN_CHANNEL',
+            message: `Canal indisponivel para esta sessao: ${String(raw)}`,
+          });
+          continue;
+        }
       }
 
       if (this.deps.hub.channelsOf(this).length >= MAX_CHANNELS_PER_CONNECTION) {
@@ -393,10 +409,10 @@ export class Connection implements Subscriber {
   /* Auxiliares                                                              */
   /* ---------------------------------------------------------------------- */
 
-  private async currentIdentity(): Promise<Identity | null> {
+  private async currentIdentity(forceFresh = false): Promise<Identity | null> {
     if (this.credential === null || this.roomCode === null) return this.identity;
 
-    const result = await this.deps.resolver.resolve(this.credential, this.roomCode);
+    const result = await this.deps.resolver.resolve(this.credential, this.roomCode, forceFresh);
     if (!result.ok) {
       // Papel sumiu no meio da sessao (expulso, sessao expirada): derruba, em
       // vez de continuar servindo com o papel antigo.

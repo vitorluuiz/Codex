@@ -283,7 +283,15 @@ function RootRealtimeProvider({
           readyRef.current = true;
           syncChannels();
         }
-        if (message.type === 'error') lastErrorCode = message.code;
+        if (message.type === 'error') {
+          lastErrorCode = message.code;
+          if (message.code === 'FORBIDDEN_CHANNEL') {
+            activeServerChannelsRef.current.clear();
+            setTimeout(() => {
+              if (!disposed && readyRef.current) syncChannels();
+            }, 500);
+          }
+        }
         if (message.type === 'participant.removed' || message.type === 'room.closed') removed = true;
 
         listenersRef.current.forEach((listener) => listener(message));

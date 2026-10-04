@@ -87,6 +87,10 @@ export default async function LobbyPage({ params }: PageProps) {
     session.participantId !== null &&
     !approved.some((participant) => participant.id === session.participantId);
 
+  if (room.status === 'running' && !awaitingApproval) {
+    redirect(`/sala/${code}/partida`);
+  }
+
   return (
     <LobbyView
       room={room}

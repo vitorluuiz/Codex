@@ -95,7 +95,9 @@ function ChallengeContent({
 
   const [phaseState, setPhaseState] = useState<PhaseState>(initialPhaseState);
   const [endsAt, setEndsAt] = useState<number | null>(
-    initialPhaseState.secondsLeft > 0 ? Date.now() + initialPhaseState.secondsLeft * 1000 : null,
+    !initialPhaseState.paused && initialPhaseState.secondsLeft > 0
+      ? Date.now() + initialPhaseState.secondsLeft * 1000
+      : null,
   );
   const [stats, setStats] = useState<PhaseStats | null>(initialStats);
   const [scoreboard, setScoreboard] = useState<PlayerScoreboard | null>(initialScoreboard);
@@ -114,6 +116,14 @@ function ChallengeContent({
   const [podium, setPodium] = useState<PodiumEntry[]>(initialPodium ?? []);
   const [readyMarked, setReadyMarked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  /**
+   * Identificador síncrono da fase atual em exibição.
+   * Evita que eventos em trânsito de fases anteriores (como phase.ended,
+   * retornos do refreshPhaseStateAction ou submissões tardias) sobrescrevam
+   * ou encerrem a nova fase recém-iniciada por phase.started.
+   */
+  const currentPhaseIdRef = useRef(initialPhaseState.phase.id);
 
   /**
    * Se a fase corrente já fechou. É `ref`, e não `state`, porque quem precisa
@@ -188,13 +198,20 @@ function ChallengeContent({
   /* --- eventos de tempo real --------------------------------------------- */
 
   useRealtimeEvent('phase.started', (message) => {
+    currentPhaseIdRef.current = message.state.phase.id;
     setPhaseState(message.state);
-    setEndsAt(message.endsAt);
-    goTo('challenge');
+    setEndsAt(
+      message.endsAt ??
+        (!message.state.paused && message.state.secondsLeft > 0
+          ? Date.now() + message.state.secondsLeft * 1000
+          : null),
+    );
+    setScreen((current) => (current === 'podium' ? current : 'challenge'));
     setSubmission(message.state.mySubmission);
     setComparison(null);
     setReadyMarked(false);
     setSubmitting(false);
+    setStats(null);
     // Fase nova (ou reiniciada pelo líder) está aberta de novo.
     phaseEndedRef.current = false;
     timeUpPokedRef.current = false;
@@ -207,6 +224,9 @@ function ChallengeContent({
   });
 
   useRealtimeEvent('phase.progress', (message) => {
+    if (message.phaseId && message.phaseId !== currentPhaseIdRef.current) {
+      return;
+    }
     setPhaseState((state) => ({
       ...state,
       submittedCount: message.submittedCount,
@@ -240,7 +260,12 @@ function ChallengeContent({
   }, [isLeader, goTo]);
 
   // O servidor decide quando a fase termina (todos enviaram ou o tempo acabou).
-  useRealtimeEvent('phase.ended', applyPhaseEnded);
+  useRealtimeEvent('phase.ended', (message) => {
+    if (message.phaseId && message.phaseId !== currentPhaseIdRef.current) {
+      return;
+    }
+    applyPhaseEnded();
+  });
 
   /**
    * Cronômetro zerado: cutuca a API.
@@ -266,9 +291,17 @@ function ChallengeContent({
     }
 
     timeUpPokedRef.current = true;
+    const pokingPhaseId = currentPhaseIdRef.current;
+
     startTransition(async () => {
       try {
         const state = await refreshPhaseStateAction(match.id);
+        // Se a fase mudou enquanto a requisição viajava, o evento phase.started
+        // já cuidou ou vai cuidar da inicialização da nova fase.
+        if (state.phase.id !== currentPhaseIdRef.current || currentPhaseIdRef.current !== pokingPhaseId) {
+          return;
+        }
+
         setPhaseState(state);
 
         // Só conclui pelo retorno se o servidor concordar que o tempo acabou — o
@@ -278,6 +311,8 @@ function ChallengeContent({
           applyPhaseEnded();
         } else if (state.secondsLeft > 0 && !state.paused) {
           timeUpPokedRef.current = false;
+          setEndsAt(Date.now() + state.secondsLeft * 1000);
+          phaseEndedRef.current = false;
         }
       } catch {
         // Falhou o cutucão: o líder ainda pode avançar a fase pela tela dele.
@@ -298,6 +333,9 @@ function ChallengeContent({
   });
 
   useRealtimeEvent('stats.updated', (message) => {
+    if (message.stats.phaseId !== currentPhaseIdRef.current) {
+      return;
+    }
     setStats(message.stats);
     setScoreboard((current) =>
       current ? { ...current, avgScore: message.stats.teamAvgScore } : current,
@@ -338,9 +376,15 @@ function ChallengeContent({
     (answer: AnswerPayload) => {
       setSubmitting(true);
       answeringRef.current = true;
+      const submittingPhaseId = currentPhaseIdRef.current;
+
       startTransition(async () => {
         try {
-          const result = await submitAnswerAction(match.id, phase.id, answer);
+          const result = await submitAnswerAction(match.id, submittingPhaseId, answer);
+
+          if (currentPhaseIdRef.current !== submittingPhaseId) {
+            return;
+          }
 
           // O tempo acabou antes de o clique chegar ao servidor. Não é erro: a pessoa
           // segue para o feedback como quem não respondeu, em vez de ver uma tela de
@@ -377,19 +421,19 @@ function ChallengeContent({
         }
       });
     },
-    [match.id, match.mode, phase.id, applyPhaseEnded, goTo],
+    [match.id, match.mode, applyPhaseEnded, goTo],
   );
 
   function openComparison() {
     startTransition(async () => {
-      setComparison(await loadPhaseComparisonAction(match.id, phase.id));
+      setComparison(await loadPhaseComparisonAction(match.id, currentPhaseIdRef.current));
       goTo('collective');
     });
   }
 
   function markReady() {
     setReadyMarked(true);
-    startTransition(() => void markReadyAction(match.id, phase.id));
+    startTransition(() => void markReadyAction(match.id, currentPhaseIdRef.current));
   }
 
   /**
@@ -430,7 +474,7 @@ function ChallengeContent({
 
   const leaderControls: LeaderControls | null = isLeader
     ? {
-        onRestartPhase: () => startTransition(() => void restartPhaseAction(match.id, phase.id)),
+        onRestartPhase: () => startTransition(() => void restartPhaseAction(match.id, currentPhaseIdRef.current)),
         onBackToLobby: () => startTransition(() => void returnToLobbyAction(match.id, roomCode)),
         onFinishMatch: finishMatch,
       }
@@ -558,7 +602,7 @@ function PlayerStage({
 
   return (
     <div className={styles.playerStage}>
-      <Player phase={phase} disabled={disabled} onSubmit={onSubmit} matchId={matchId} />
+      <Player key={phase.id} phase={phase} disabled={disabled} onSubmit={onSubmit} matchId={matchId} />
     </div>
   );
 }
