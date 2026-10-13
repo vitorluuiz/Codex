@@ -1,6 +1,5 @@
 using Codex.Api.Contracts.Matches;
 using Codex.Api.Domain;
-using MongoDB.Bson.Serialization.Attributes;
 
 namespace Codex.Api.Documents;
 
@@ -8,28 +7,24 @@ namespace Codex.Api.Documents;
 /// Um participante numa partida, com as submissoes dele embutidas — <c>migracao-dados.md</c>
 /// secao 5.2.
 ///
-/// <b>Por que bucket por participante e nao tudo num documento so:</b> o teto do Mongo e rigido
-/// (16 MB) e o pior caso que a aplicacao aceita e 8 conjuntos x 50 fases x 500 participantes =
-/// 200.000 submissoes, o que daria 84 bytes por submissao. Aqui o maior documento possivel tem
-/// <b>400</b> submissoes — o maximo que <i>uma</i> pessoa consegue enviar —, e o teto e estrutural,
-/// nao estatistico.
+/// <b>Subdocumento, e nao colecao.</b> Vive dentro de <see cref="MatchDocument.Participants"/>:
+/// a partida inteira — cabecalho, fases, agregados e a folha de respostas de cada pessoa — e um
+/// unico documento em <c>matches</c>. Por isso nao ha <c>_id</c>, <c>schemaVersion</c> nem
+/// <c>matchId</c> aqui: os tres sao do documento pai. A unicidade de <see cref="ParticipantId"/>
+/// dentro da partida, que antes era um indice unico de <c>match_participants</c>, agora e uma
+/// invariante do documento conferida no commit (<see cref="MatchDocument.EnsureParticipantsAreUnique"/>).
+///
+/// O teto de 16 MB por documento do Mongo foi aceito conscientemente nesta modelagem — ver
+/// <c>docs/contracts/mongodb.md</c>.
 /// </summary>
 public sealed record MatchParticipantDocument
 {
-    public const int CurrentSchemaVersion = 1;
-
-    [BsonId]
-    public required Guid Id { get; init; }
-
-    public int SchemaVersion { get; init; } = CurrentSchemaVersion;
-
-    public required Guid MatchId { get; init; }
-
     public required Guid ParticipantId { get; init; }
 
     /// <summary>
-    /// <c>null</c> = convidado. O indice <c>{ userId, matchId }</c> <b>e</b> o historico do
-    /// jogador — quem entrou sem conta simplesmente nao aparece nele.
+    /// <c>null</c> = convidado. O indice multikey <c>{ participants.userId, finishedAt }</c> de
+    /// <c>matches</c> <b>e</b> o historico do jogador — quem entrou sem conta simplesmente nao
+    /// aparece nele.
     /// </summary>
     public Guid? UserId { get; init; }
 
@@ -56,8 +51,8 @@ public sealed record MatchParticipantDocument
 
 /// <summary>
 /// Uma resposta. <b>Nao carrega copia da fase</b> — so o ponteiro para
-/// <see cref="MatchPhaseDocument.PhaseId"/> dentro do mesmo documento de partida, mais os dois
-/// numeros que permitem montar uma linha de relatorio sem resolver nada.
+/// <see cref="MatchPhaseDocument.PhaseId"/> no <c>phases[]</c> irmao, dentro do mesmo documento de
+/// partida, mais os dois numeros que permitem montar uma linha de relatorio sem resolver nada.
 ///
 /// A invariante que isto cria: o relatorio resolve <see cref="Answer"/> <b>sempre</b> contra
 /// <c>matches.phases[]</c> da mesma partida, e nunca contra <c>phases</c> nem contra o catalogo

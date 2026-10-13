@@ -13,7 +13,7 @@ namespace Codex.Api.Tests;
 /// suite continua sem dependencia externa (EF InMemory, sem Postgres nem Redis). O que
 /// <c>MatchDocumentTests</c> cobre com o store em memoria e a <i>montagem</i> do snapshot; o que
 /// so aparece aqui e o que o driver faz com ele — o <c>Guid</c> como UUID padrao, o
-/// <c>Decimal128</c>, o enum em camelCase, e o upsert idempotente por chave composta.
+/// <c>Decimal128</c>, o enum em camelCase, a projecao de <c>participants[]</c> e o upsert idempotente por <c>_id</c>.
 ///
 /// <code>
 /// docker run -d --rm -p 27019:27017 mongo:8.0
@@ -43,12 +43,13 @@ public class MongoMatchDocumentStoreTests
         Skip.If(ConnectionString is null, "CODEX_TEST_MONGO nao configurado.");
         var store = Store(out _);
 
-        var (match, participants) = Sample();
-        await store.CommitAsync(match, participants, Ct);
+        var match = Sample();
+        await store.CommitAsync(match, Ct);
 
         var found = await store.FindAsync(match.Id, Ct);
 
         Assert.NotNull(found);
+        Assert.Equal(MatchDocument.CurrentSchemaVersion, found.SchemaVersion);
         Assert.Equal(match.RoomCode, found.RoomCode);
         Assert.Equal(match.LeaderUserId, found.LeaderUserId);
         Assert.Equal(MatchMode.Live, found.Mode);
@@ -61,12 +62,15 @@ public class MongoMatchDocumentStoreTests
         // O conteudo e copia, nao traducao — o gabarito volta inteiro.
         Assert.Equal("Quanto e 1 + 2?", phase.Content.Question);
         Assert.Equal([0], phase.Content.CorrectIndexes);
+
+        // Os participantes voltam embutidos no proprio documento da partida.
+        Assert.Equal("Maria", Assert.Single(found.Participants).DisplayName);
     }
 
     /// <summary>
-    /// O round-trip dos participantes, e junto com ele a <b>ordem do podio pelo driver</b>:
-    /// pontuacao, depois menor tempo somado. O store em memoria ordena igual, mas so o Mongo
-    /// exercita o <c>SortByDescending().ThenBy()</c> de verdade — e e o que a tela de podio le.
+    /// O round-trip dos participantes embutidos, e junto com ele a <b>ordem do array</b>: o
+    /// <c>MatchDocumentWriter</c> grava <c>participants[]</c> na ordem do podio, e o banco tem que
+    /// devolve-la intacta — e o que a tela de podio le.
     /// </summary>
     [SkippableFact]
     public async Task Participants_and_their_submissions_survive_the_round_trip()
@@ -74,16 +78,16 @@ public class MongoMatchDocumentStoreTests
         Skip.If(ConnectionString is null, "CODEX_TEST_MONGO nao configurado.");
         var store = Store(out _);
 
-        var (match, participants) = Sample();
-        // Um segundo participante com menos pontos: o primeiro tem que vir na frente.
-        var runnerUp = participants[0] with
+        var match = Sample();
+        // Um segundo participante com menos pontos, gravado depois do primeiro.
+        var runnerUp = match.Participants[0] with
         {
-            Id = Guid.CreateVersion7(),
             ParticipantId = Guid.CreateVersion7(),
             DisplayName = "Joao",
             TotalScore = 40,
         };
-        await store.CommitAsync(match, [.. participants, runnerUp], Ct);
+        match = match with { Participants = [.. match.Participants, runnerUp] };
+        await store.CommitAsync(match, Ct);
 
         var found = await store.ParticipantsAsync(match.Id, Ct);
 
@@ -94,13 +98,22 @@ public class MongoMatchDocumentStoreTests
         Assert.Equal(GradingStatus.Graded, submission.Grading);
         Assert.Equal("quiz", submission.Answer.Kind);
         Assert.Equal("o1", submission.Answer.OptionId);
-        // O ponteiro resolve contra phases[] do documento da partida, e nao carrega copia.
+        // O ponteiro resolve contra phases[] do mesmo documento, e nao carrega copia.
         Assert.Equal(match.Phases[0].PhaseId, submission.PhaseId);
     }
 
+    [SkippableFact]
+    public async Task Participants_of_an_unknown_match_come_back_empty()
+    {
+        Skip.If(ConnectionString is null, "CODEX_TEST_MONGO nao configurado.");
+        var store = Store(out _);
+
+        Assert.Empty(await store.ParticipantsAsync(Guid.CreateVersion7(), Ct));
+    }
+
     /// <summary>
-    /// O requisito da secao 7: refazer o commit depois de uma falha nao pode duplicar nada. Quem
-    /// garante isso no banco e o indice unico <c>(matchId, participantId)</c> mais o upsert.
+    /// O requisito da secao 7: refazer o commit depois de uma falha nao pode duplicar nada. Com um
+    /// documento so, quem garante isso e o upsert por <c>_id</c>.
     /// </summary>
     [SkippableFact]
     public async Task Committing_twice_is_idempotent()
@@ -108,12 +121,29 @@ public class MongoMatchDocumentStoreTests
         Skip.If(ConnectionString is null, "CODEX_TEST_MONGO nao configurado.");
         var store = Store(out _);
 
-        var (match, participants) = Sample();
-        await store.CommitAsync(match, participants, Ct);
-        await store.CommitAsync(match, participants, Ct);
+        var match = Sample();
+        await store.CommitAsync(match, Ct);
+        await store.CommitAsync(match, Ct);
 
         Assert.Single(await store.ParticipantsAsync(match.Id, Ct));
         Assert.Single(await store.ListByLeaderAsync(match.LeaderUserId, 50, Ct));
+    }
+
+    /// <summary>
+    /// A unicidade que o indice <c>(matchId, participantId)</c> garantia. Indice unico nao alcanca
+    /// elementos de um mesmo array, entao o store recusa o documento antes de grava-lo.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_participant_repeated_inside_the_match_is_rejected()
+    {
+        Skip.If(ConnectionString is null, "CODEX_TEST_MONGO nao configurado.");
+        var store = Store(out _);
+
+        var match = Sample();
+        match = match with { Participants = [match.Participants[0], match.Participants[0]] };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => store.CommitAsync(match, Ct));
+        Assert.Null(await store.FindAsync(match.Id, Ct));
     }
 
     [SkippableFact]
@@ -127,23 +157,24 @@ public class MongoMatchDocumentStoreTests
 
         for (var day = 1; day <= 3; day++)
         {
-            var (match, participants) = Sample(leader, finishedAt: new DateTime(2026, 9, day, 12, 0, 0, DateTimeKind.Utc));
-            await store.CommitAsync(match, participants, Ct);
+            await store.CommitAsync(Sample(leader, finishedAt: new DateTime(2026, 9, day, 12, 0, 0, DateTimeKind.Utc)), Ct);
         }
 
-        var (other, otherParticipants) = Sample(stranger);
-        await store.CommitAsync(other, otherParticipants, Ct);
+        await store.CommitAsync(Sample(stranger), Ct);
 
         var history = await store.ListByLeaderAsync(leader, 2, Ct);
 
         Assert.Equal(2, history.Count);
         Assert.True(history[0].FinishedAt > history[1].FinishedAt);
         Assert.All(history, m => Assert.Equal(leader, m.LeaderUserId));
+        // O historico projeta participants[] para fora: so cabecalho, fases e agregados.
+        Assert.All(history, m => Assert.Empty(m.Participants));
+        Assert.All(history, m => Assert.Equal(1, m.Stats.ParticipantCount));
     }
 
     /* ------------------------------------------------------------------ amostra */
 
-    private static (MatchDocument Match, IReadOnlyList<MatchParticipantDocument> Participants) Sample(
+    private static MatchDocument Sample(
         Guid? leaderUserId = null,
         DateTime? finishedAt = null)
     {
@@ -205,8 +236,6 @@ public class MongoMatchDocumentStoreTests
 
         var participant = new MatchParticipantDocument
         {
-            Id = participantId,
-            MatchId = matchId,
             ParticipantId = participantId,
             UserId = Guid.CreateVersion7(),
             DisplayName = "Maria",
@@ -234,6 +263,6 @@ public class MongoMatchDocumentStoreTests
             ],
         };
 
-        return (match, [participant]);
+        return match with { Participants = [participant] };
     }
 }

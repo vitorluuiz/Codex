@@ -39,12 +39,15 @@ public static class PhaseLimits
     /// partida ainda nao existe snapshot para o qual retentar.
     ///
     /// O pior caso que a aplicacao aceita, com estes numeros (400 fases numa fila, 400 submissoes
-    /// no bucket de um participante):
+    /// por participante):
     /// <code>
     /// fase code   4.000 + 4.096 + 4.096  =  ~12 KB  x 400 fases       =  ~4,9 MB  (matches.phases)
-    /// envio code  4.096 + metadados      =  ~4,2 KB x 400 submissoes  =  ~1,7 MB  (match_participants)
+    /// envio code  4.096 + metadados      =  ~4,2 KB x 400 submissoes  =  ~1,7 MB  (por item de matches.participants)
     /// </code>
-    /// Os dois cabem com folga nos 16 MB. Ver <c>docs/contracts/postgresql/migracao-dados.md</c> §5.3.
+    /// Com os participantes embutidos no documento da partida, a soma de todas as folhas de resposta
+    /// divide os 16 MB com <c>phases</c>: o teto deixou de ser estrutural e passou a depender do
+    /// tamanho da turma — limitacao aceita conscientemente, ver <c>docs/contracts/mongodb.md</c>.
+    /// Os tetos aqui continuam valendo para o Redis. Ver <c>docs/contracts/postgresql/migracao-dados.md</c> §5.3.
     /// </summary>
     public const int MaxQuestionLength = 4_000;
 

@@ -17,8 +17,8 @@ public class MatchDocumentWriter(
     {
         try
         {
-            var (document, participants) = await BuildAsync(match, ct);
-            await store.CommitAsync(document, participants, ct);
+            var document = await BuildAsync(match, ct);
+            await store.CommitAsync(document, ct);
             logger.LogInformation("Snapshot salvo para a partida {MatchId}.", match.Id);
         }
         catch (Exception ex)
@@ -27,17 +27,12 @@ public class MatchDocumentWriter(
         }
     }
 
-    private static Guid CombineGuids(Guid a, Guid b)
-    {
-        var aBytes = a.ToByteArray();
-        var bBytes = b.ToByteArray();
-        for (int i = 0; i < 16; i++) aBytes[i] ^= bBytes[i];
-        return new Guid(aBytes);
-    }
-
-    public async Task<(MatchDocument Document, IReadOnlyList<MatchParticipantDocument> Participants)> BuildAsync(
-        Match match,
-        CancellationToken ct)
+    /// <summary>
+    /// Monta o snapshot inteiro da partida: cabecalho, fases, agregados e
+    /// <see cref="MatchDocument.Participants"/> — cada participante aprovado com as proprias
+    /// submissoes, ja na ordem do podio. Idempotente: montar duas vezes da o mesmo documento.
+    /// </summary>
+    public async Task<MatchDocument> BuildAsync(Match match, CancellationToken ct)
     {
         var room = await repo.GetRoomAsync(match.RoomId.ToString(), ct)
             ?? throw new InvalidOperationException($"Sala {match.RoomId} não encontrada no Redis ao salvar documento.");
@@ -65,11 +60,17 @@ public class MatchDocumentWriter(
         var phaseById = phases.ToDictionary(p => p.PhaseId);
         var byParticipant = submissions.ToLookup(s => s.ParticipantId);
 
+        // A ordem do podio: pontuacao, depois menor tempo somado, depois ordem de entrada — a mesma
+        // de MatchStatsService.GetPodiumAsync. Fica fixada aqui, no array gravado, para toda
+        // leitura do documento devolver o podio sem reordenar nada.
         var participants = players
-            .Select(player => ToParticipantDocument(match, player, byParticipant[player.Id], phaseById))
+            .Select(player => ToParticipantDocument(player, byParticipant[player.Id], phaseById))
+            .OrderByDescending(p => p.TotalScore)
+            .ThenBy(p => p.TotalElapsedSeconds)
+            .ThenBy(p => p.JoinedAt)
             .ToList();
 
-        var document = new MatchDocument
+        return new MatchDocument
         {
             Id = match.Id,
             RoomCode = room.Code,
@@ -81,9 +82,8 @@ public class MatchDocumentWriter(
             PhaseSets = queueSets.Select(ToPhaseSetDocument).ToList(),
             Phases = phases,
             Stats = BuildStats(phases, participants),
+            Participants = participants,
         };
-
-        return (document, participants);
     }
 
     private static MatchPhaseSetDocument ToPhaseSetDocument(RoomQueueSet set) => new()
@@ -111,7 +111,6 @@ public class MatchDocumentWriter(
     };
 
     private static MatchParticipantDocument ToParticipantDocument(
-        Match match,
         Participant player,
         IEnumerable<Submission> submissions,
         IReadOnlyDictionary<Guid, MatchPhaseDocument> phaseById)
@@ -124,8 +123,6 @@ public class MatchDocumentWriter(
 
         return new MatchParticipantDocument
         {
-            Id = CombineGuids(match.Id, player.Id),
-            MatchId = match.Id,
             ParticipantId = player.Id,
             UserId = player.UserId,
             DisplayName = player.DisplayName,
@@ -173,12 +170,19 @@ public class MatchDocumentWriter(
             .SelectMany(p => p.Submissions)
             .ToLookup(s => s.PhaseId);
 
+        int MaxScore = phases.Sum(p => p.MaxScore);
+
         return new MatchStatsDocument
         {
             ParticipantCount = participants.Count,
-            AvgScore = Average(participants.Select(p => p.TotalScore)),
-            MaxScore = phases.Sum(p => p.MaxScore),
+            AvgTotalScore = Average(participants.Select(p => p.TotalScore)),
+            AvgScore = Average(participants
+        .SelectMany(p => p.Submissions)
+        .Where(s => s.Score != null)
+        .Select(s => s.Score!.Value)),
+            MaxScore = MaxScore,
             AccuracyRate = Percentage(correct, graded),
+            MaxAvgScore = MaxScore / phases.Count,
             PhaseAccuracy = phases.Select(phase => PhaseAccuracy(byPhase[phase.PhaseId])).ToList(),
             PhaseAvgScore = phases.Select(phase => PhaseAvgScore(byPhase[phase.PhaseId])).ToList(),
         };

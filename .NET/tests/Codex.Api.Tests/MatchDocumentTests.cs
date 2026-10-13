@@ -68,7 +68,7 @@ public class MatchDocumentTests
     /* ------------------------------------------------------- o snapshot em si */
 
     [Fact]
-    public async Task Finishing_writes_one_match_document_and_one_document_per_participant()
+    public async Task Finishing_writes_one_match_document_with_every_participant_embedded()
     {
         var (ctx, match, players) = await PlayedAsync();
 
@@ -81,9 +81,12 @@ public class MatchDocumentTests
         Assert.Equal(MatchMode.Live, document.Mode);
         Assert.Equal(MatchDocument.CurrentSchemaVersion, document.SchemaVersion);
 
+        Assert.Equal(players.Count, document.Participants.Count);
+        Assert.Equal(players.Select(p => p.Id).Order(), document.Participants.Select(p => p.ParticipantId).Order());
+
+        // ParticipantsAsync e so um atalho para o mesmo array.
         var participants = await ctx.Documents.ParticipantsAsync(match.Id, Ct);
-        Assert.Equal(players.Count, participants.Count);
-        Assert.Equal(players.Select(p => p.Id).Order(), participants.Select(p => p.ParticipantId).Order());
+        Assert.Equal(document.Participants.Select(p => p.ParticipantId), participants.Select(p => p.ParticipantId));
     }
 
     /// <summary>
@@ -257,10 +260,8 @@ public class MatchDocumentTests
         var first = await ctx.MatchDocuments.BuildAsync(entity, Ct);
         var second = await ctx.MatchDocuments.BuildAsync(entity, Ct);
 
-        Assert.Equal(Bson(first.Document), Bson(second.Document));
-        Assert.Equal(
-            first.Participants.Select(Bson),
-            second.Participants.Select(Bson));
+        Assert.Equal(Bson(first), Bson(second));
+        Assert.NotEmpty(first.Participants);
     }
 
     /* ------------------------------------------------------- serializacao */

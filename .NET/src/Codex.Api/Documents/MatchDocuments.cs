@@ -18,11 +18,20 @@ namespace Codex.Api.Documents;
 /// tipo com offset, e todo instante do sistema ja nasce de <c>DateTimeOffset.UtcNow</c>. Guardar
 /// o par [ticks, offset] que o driver usaria por padrao tornaria <c>sort({ finishedAt: -1 })</c>
 /// uma ordenacao sobre array.
+///
+/// <b>Um documento por partida, participantes embutidos.</b> A folha de respostas de cada pessoa
+/// fica em <see cref="Participants"/>, e nao numa colecao a parte: o commit vira uma escrita
+/// atomica de um documento so, e o relatorio sai de uma leitura so. O teto de 16 MB do Mongo foi
+/// aceito conscientemente nesta modelagem — ver <c>docs/contracts/mongodb.md</c>.
 /// </summary>
 public sealed record MatchDocument
 {
-    /// <summary>Versao do formato. Existe desde a primeira linha para uma mudanca futura nao ter que adivinhar.</summary>
-    public const int CurrentSchemaVersion = 1;
+    /// <summary>
+    /// Versao do formato. Existe desde a primeira linha para uma mudanca futura nao ter que adivinhar.
+    /// <c>2</c> = participantes embutidos em <see cref="Participants"/> (a <c>1</c> os guardava em
+    /// <c>match_participants</c>).
+    /// </summary>
+    public const int CurrentSchemaVersion = 2;
 
     [BsonId]
     public required Guid Id { get; init; }
@@ -47,6 +56,34 @@ public sealed record MatchDocument
     public required IReadOnlyList<MatchPhaseDocument> Phases { get; init; }
 
     public required MatchStatsDocument Stats { get; init; }
+
+    /// <summary>
+    /// Os participantes aprovados, cada um com as proprias submissoes, <b>gravados na ordem do
+    /// podio</b> — pontuacao, depois menor tempo somado, depois ordem de entrada. A ordem de um
+    /// array BSON e preservada pelo banco, entao ler o documento ja devolve o podio.
+    ///
+    /// Nao e <c>required</c> de proposito: leituras que so precisam do cabecalho (o historico do
+    /// lider) projetam o campo para fora, e ai ele volta vazio em vez de nulo.
+    /// </summary>
+    public IReadOnlyList<MatchParticipantDocument> Participants { get; init; } = [];
+
+    /// <summary>
+    /// A invariante que o indice unico <c>(matchId, participantId)</c> de <c>match_participants</c>
+    /// garantia: uma pessoa, uma entrada por partida. Indice unico nao alcanca elementos de um
+    /// mesmo array, entao quem garante agora e o store, antes de gravar.
+    /// </summary>
+    public void EnsureParticipantsAreUnique()
+    {
+        var duplicated = Participants
+            .GroupBy(p => p.ParticipantId)
+            .FirstOrDefault(group => group.Count() > 1);
+
+        if (duplicated is not null)
+        {
+            throw new InvalidOperationException(
+                $"Partida {Id}: o participante {duplicated.Key} aparece mais de uma vez em participants[].");
+        }
+    }
 }
 
 /// <summary>Um conjunto que estava na fila quando a partida rodou. O <c>SetTitle</c> do historico sai daqui.</summary>
@@ -105,20 +142,24 @@ public sealed record MatchPhaseDocument
 
 /// <summary>
 /// Os agregados da partida. <b>Calculados uma vez, no commit</b>, do mesmo payload em memoria que
-/// gera os documentos de participante — nunca recalculados, nunca corrigidos por um <c>$set</c>.
-/// Sao uma copia denormalizada de numeros cuja fonte e <c>match_participants</c>, e existem porque
-/// <c>LeaderMatchSummaryDto</c> nao tem nenhum campo por participante alem da contagem: assim uma
-/// leitura de <c>matches</c> resolve a tela de historico inteira.
+/// gera <c>participants[]</c> — nunca recalculados, nunca corrigidos por um <c>$set</c>.
+/// Sao uma copia denormalizada de numeros cuja fonte e <c>participants[]</c> do mesmo documento, e
+/// existem porque <c>LeaderMatchSummaryDto</c> nao tem nenhum campo por participante alem da
+/// contagem: assim o historico le <c>matches</c> sem trazer <c>participants[]</c> do disco.
 /// </summary>
 public sealed record MatchStatsDocument
 {
     public required int ParticipantCount { get; init; }
 
     /// <summary>Media <b>por pessoa aprovada</b>, com zero explicito para quem nao pontuou — a mesma de <c>MatchStatsService.MatchTotalsAsync</c>.</summary>
-    public required int AvgScore { get; init; }
+    public required int AvgTotalScore { get; init; }
+
+    public required int AvgScore { get; set; }
 
     /// <summary>A maior pontuacao possivel na partida: a soma dos <c>MaxScore</c> das fases.</summary>
     public required int MaxScore { get; init; }
+
+    public required int MaxAvgScore { get; set; }
 
     /// <summary>Sobre o que foi <b>corrigido</b>, nao sobre o que foi enviado: um <c>text</c> pendente nao conta como erro.</summary>
     public required int AccuracyRate { get; init; }

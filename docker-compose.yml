@@ -38,8 +38,9 @@ services:
       - codex
 
   # Banco orientado a documentos das partidas encerradas — migracao-dados.md secao 5.
-  # Guarda `matches` e `match_participants`; os indices sao criados pela propria API na
-  # primeira operacao (CreateMany e idempotente), entao nao ha migration nem passo manual.
+  # Guarda `matches` (participantes embutidos em `participants[]`); os indices sao criados pela
+  # propria API na primeira operacao (CreateMany e idempotente). Dados antigos, do layout com
+  # `match_participants`, sao convertidos uma vez por mongo/migrations/001-embed-participants.js.
   mongo:
     image: mongo:8.0
     restart: unless-stopped

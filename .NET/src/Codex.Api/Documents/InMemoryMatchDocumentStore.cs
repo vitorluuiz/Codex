@@ -14,15 +14,11 @@ namespace Codex.Api.Documents;
 public sealed class InMemoryMatchDocumentStore : IMatchDocumentStore
 {
     private readonly ConcurrentDictionary<Guid, MatchDocument> _matches = new();
-    private readonly ConcurrentDictionary<(Guid MatchId, Guid ParticipantId), MatchParticipantDocument> _participants = new();
 
-    public Task CommitAsync(MatchDocument match, IReadOnlyList<MatchParticipantDocument> participants, CancellationToken ct)
+    public Task CommitAsync(MatchDocument match, CancellationToken ct)
     {
-        // Mesma ordem da implementacao real, para os dois caminhos falharem igual.
-        foreach (var participant in participants)
-        {
-            _participants[(participant.MatchId, participant.ParticipantId)] = participant;
-        }
+        // Mesma validacao da implementacao real, para os dois caminhos falharem igual.
+        match.EnsureParticipantsAreUnique();
 
         _matches[match.Id] = match;
         return Task.CompletedTask;
@@ -30,10 +26,13 @@ public sealed class InMemoryMatchDocumentStore : IMatchDocumentStore
 
     public Task<IReadOnlyList<MatchDocument>> ListByLeaderAsync(Guid leaderUserId, int limit, CancellationToken ct)
     {
+        // Sem participantes, como a projecao do store real: quem testar contra este store nao pode
+        // passar a depender de um campo que o Mongo nao devolve nesta consulta.
         IReadOnlyList<MatchDocument> result = _matches.Values
             .Where(m => m.LeaderUserId == leaderUserId)
             .OrderByDescending(m => m.FinishedAt)
             .Take(limit)
+            .Select(m => m with { Participants = [] })
             .ToList();
 
         return Task.FromResult(result);
@@ -44,12 +43,9 @@ public sealed class InMemoryMatchDocumentStore : IMatchDocumentStore
 
     public Task<IReadOnlyList<MatchParticipantDocument>> ParticipantsAsync(Guid matchId, CancellationToken ct)
     {
-        IReadOnlyList<MatchParticipantDocument> result = _participants.Values
-            .Where(p => p.MatchId == matchId)
-            .OrderByDescending(p => p.TotalScore)
-            .ThenBy(p => p.TotalElapsedSeconds)
-            .ThenBy(p => p.JoinedAt)
-            .ToList();
+        IReadOnlyList<MatchParticipantDocument> result = _matches.TryGetValue(matchId, out var match)
+            ? match.Participants
+            : [];
 
         return Task.FromResult(result);
     }
