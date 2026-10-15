@@ -282,6 +282,18 @@ interface DraftPhaseBase {
   question: string;
   /** `true` enquanto o texto veio da IA e o autor não revisou. */
   fromAI: boolean;
+  /** Identificador do tema visual da fase (ex.: 'default', 'cyberpunk', 'emerald', 'sunset', 'crimson'). */
+  theme?: string;
+  /** Se deve exibir animações e feedback visual dinâmico. */
+  showFeedbackAnimation?: boolean;
+  /** Duração em segundos da tela de introdução / pré-desafio. */
+  introSeconds?: number;
+  /** Mensagem / orientação exibida na tela de pré-desafio antes de começar. */
+  introTip?: string;
+  /** Se os efeitos sonoros da contagem regressiva ficam ativos no pré-desafio. */
+  introSound?: boolean;
+  /** Se exibe as formas geométricas animadas na tela de pré-desafio. */
+  introShapes?: boolean;
 }
 
 export interface QuizDraftPhase extends DraftPhaseBase {
