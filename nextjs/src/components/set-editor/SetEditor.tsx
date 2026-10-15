@@ -85,11 +85,35 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
 
   /* --- Persistência ------------------------------------------------------- */
 
+  function cleanPhasesForSave(draftPhases: DraftPhase[]): DraftPhase[] {
+    return draftPhases.map((phase) => {
+      if (phase.kind !== 'quiz') return phase;
+      const newOptions: string[] = [];
+      const indexMap = new Map<number, number>();
+      phase.options.forEach((opt, oldIndex) => {
+        if (opt.trim() !== '' || phase.options.length <= 2) {
+          indexMap.set(oldIndex, newOptions.length);
+          newOptions.push(opt);
+        }
+      });
+      while (newOptions.length < 2) {
+        newOptions.push('');
+      }
+      let correctIndexes = phase.correctIndexes
+        .map((i) => indexMap.get(i))
+        .filter((i): i is number => i !== undefined && i < newOptions.length);
+      if (correctIndexes.length >= newOptions.length) correctIndexes = correctIndexes.slice(0, -1);
+      if (correctIndexes.length === 0) correctIndexes = [0];
+      return { ...phase, options: newOptions, correctIndexes };
+    });
+  }
+
   function save() {
     setSaveError(null);
+    const cleanedPhases = cleanPhasesForSave(phases);
     startTransition(async () => {
       try {
-        await savePhaseSetAction({ id: initialDraft.id, title: title.trim(), phases });
+        await savePhaseSetAction({ id: initialDraft.id, title: title.trim(), phases: cleanedPhases });
         router.push('/perfil');
       } catch {
         setSaveError('Não foi possível salvar o conjunto. Tente novamente.');

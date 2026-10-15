@@ -116,7 +116,7 @@ export function defaultDraftPhase(kind: PhaseKind, id: string): DraftPhase {
 
   switch (kind) {
     case 'quiz':
-      return { ...base, kind, options: ['', '', '', ''], correctIndexes: [0] };
+      return { ...base, kind, options: ['', ''], correctIndexes: [0] };
     case 'code':
       return { ...base, kind, starterCode: 'function solucao(entrada) {\n  \n}\n', testCases: '' };
     case 'text':

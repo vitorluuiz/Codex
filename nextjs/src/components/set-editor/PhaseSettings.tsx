@@ -31,19 +31,18 @@ export function PhaseSettings({ phase, onChange }: PhaseSettingsProps) {
       <h2 className={styles.title}>Configurações</h2>
 
       <Accordion type="single" defaultValue={['challenge-settings']}>
+        <Input
+          label="Nome da fase"
+          value={phase.name}
+          onChange={(event) => onChange({ name: event.target.value })}
+        />
         {/* 1. Configurações do Desafio */}
         <AccordionItem
           id="challenge-settings"
-          title="Configurações do desafio"
+          title="Definições do desafio"
           subtitle="Pontuação, tempo e multiplicadores"
           icon={<Icon.Settings size={18} />}
         >
-          <Input
-            label="Nome da fase"
-            value={phase.name}
-            onChange={(event) => onChange({ name: event.target.value })}
-          />
-
           <Input
             type="number"
             label="Pontuação"

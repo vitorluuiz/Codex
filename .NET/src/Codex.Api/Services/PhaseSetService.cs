@@ -42,7 +42,7 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
 
     /// <summary>"options entre 2 e 6" (secao 5), repetido aqui porque a UI impedir nao e garantia.</summary>
     private const int MinOptions = 2;
-    private const int MaxOptions = 6;
+    private const int MaxOptions = 8;
 
     /// <summary>
     /// GET /phase-sets?scope=owned|community&amp;q= — o seletor "Escolher conjunto de fases" e a

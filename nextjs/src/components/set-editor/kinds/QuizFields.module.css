@@ -39,10 +39,44 @@
   display: flex;
 }
 
+.shuffleButton {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.shuffleButton:hover {
+  background: var(--surface-page);
+  border-color: var(--border-strong);
+  color: var(--accent-primary);
+}
+
 .optionRow {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.rowDragging {
+  opacity: 0.35;
+}
+
+.rowDropTarget {
+  outline: 2px dashed var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-m);
 }
 
 .mark {
@@ -65,42 +99,28 @@
   color: var(--ink-0);
 }
 
-.removeOption {
+.dragHandle {
   width: 34px;
   height: 34px;
-  border-radius: 50%;
+  border-radius: var(--radius-m);
   border: 1.5px solid var(--border-subtle);
   background: var(--surface-card);
   color: var(--text-secondary);
-  cursor: pointer;
+  cursor: grab;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  user-select: none;
+  transition: all var(--dur-fast) var(--ease-out);
 }
 
-.removeOption:hover {
+.dragHandle:hover {
   color: var(--text-primary);
-}
-
-.addOption {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  width: 100%;
-  padding: 10px var(--space-3);
-  border: none;
-  background: transparent;
-  color: var(--accent-primary);
-  font-family: var(--font-body);
-  font-weight: var(--fw-semibold);
-  font-size: var(--text-body-s);
-  cursor: pointer;
-  border-radius: var(--radius-m);
-  transition: background var(--dur-fast) var(--ease-out);
-}
-
-.addOption:hover {
+  border-color: var(--border-strong);
   background: var(--surface-sunken);
+}
+
+.dragHandle:active {
+  cursor: grabbing;
 }
