@@ -158,7 +158,7 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
         {active ? (
           <div className={styles.workspace}>
             <div className={styles.editorColumn}>
-              <div className={styles.phaseMeta}>
+              {/* <div className={styles.phaseMeta}>
                 <span
                   className={styles.kindChip}
                   style={cssVars({ '--kind-color': KIND_META[active.kind].color })}
@@ -174,7 +174,7 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
                     Gerada com IA
                   </span>
                 )}
-              </div>
+              </div> */}
 
               <PhaseForm phase={active} onChange={patchActive} />
             </div>
