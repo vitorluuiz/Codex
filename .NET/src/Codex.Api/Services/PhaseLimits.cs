@@ -61,6 +61,19 @@ public static class PhaseLimits
     public const int MaxTestCasesLength = 4_096;
     public const int MaxExpectedAnswerLength = 2_000;
 
+    public const int MinIntroSeconds = 1;
+    public const int MaxIntroSeconds = 60;
+    public const int MaxIntroTipLength = 300;
+
+    public static readonly IReadOnlySet<string> AllowedThemes = new HashSet<string>(StringComparer.Ordinal)
+    {
+        "default",
+        "cyberpunk",
+        "emerald",
+        "sunset",
+        "crimson",
+    };
+
     /// <summary>
     /// O lado da <i>resposta</i>. <c>MaxAnswerSourceLength</c> espelha
     /// <see cref="MaxStarterCodeLength"/>: o aluno parte do codigo inicial, entao um teto menor

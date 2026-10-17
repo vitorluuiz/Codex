@@ -323,7 +323,13 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
             Blanks: phase.Kind is PhaseKind.Fill ? content.Blanks ?? [] : null,
             StarterCode: phase.Kind is PhaseKind.Code ? content.StarterCode ?? string.Empty : null,
             TestCases: phase.Kind is PhaseKind.Code ? content.TestCases ?? string.Empty : null,
-            ExpectedAnswer: phase.Kind is PhaseKind.Text ? content.ExpectedAnswer ?? string.Empty : null);
+            ExpectedAnswer: phase.Kind is PhaseKind.Text ? content.ExpectedAnswer ?? string.Empty : null,
+            Theme: content.Theme,
+            ShowFeedbackAnimation: content.ShowFeedbackAnimation,
+            IntroSeconds: content.IntroSeconds,
+            IntroTip: content.IntroTip,
+            IntroSound: content.IntroSound,
+            IntroShapes: content.IntroShapes);
     }
 
     private static void Apply(Phase phase, DraftPhaseDto incoming, int order)
@@ -401,6 +407,21 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
         if (phase.PointsMultiplier < PhaseLimits.MinPointsMultiplier || phase.PointsMultiplier > PhaseLimits.MaxPointsMultiplier)
         {
             throw Validation($"phases[{index}].pointsMultiplier deve estar entre {PhaseLimits.MinPointsMultiplier} e {PhaseLimits.MaxPointsMultiplier}.");
+        }
+
+        if (phase.Theme is { } rawTheme && rawTheme.Trim() is { Length: > 0 } theme && !PhaseLimits.AllowedThemes.Contains(theme))
+        {
+            throw Validation($"phases[{index}].theme invalido.");
+        }
+
+        if (phase.IntroSeconds is { } introSeconds && (introSeconds < PhaseLimits.MinIntroSeconds || introSeconds > PhaseLimits.MaxIntroSeconds))
+        {
+            throw Validation($"phases[{index}].introSeconds deve estar entre {PhaseLimits.MinIntroSeconds} e {PhaseLimits.MaxIntroSeconds}.");
+        }
+
+        if (PhaseLimits.ExceedsLength(phase.IntroTip, PhaseLimits.MaxIntroTipLength))
+        {
+            throw Validation($"phases[{index}].introTip deve ter no maximo {PhaseLimits.MaxIntroTipLength} caracteres.");
         }
 
         // Texto livre tem teto desde a migracao de dados: o conteudo da fase e copiado para a fila

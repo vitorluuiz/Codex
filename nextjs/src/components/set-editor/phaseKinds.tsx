@@ -112,6 +112,12 @@ export function defaultDraftPhase(kind: PhaseKind, id: string): DraftPhase {
     timeSeconds: 45,
     question: '',
     fromAI: false,
+    theme: 'default',
+    showFeedbackAnimation: true,
+    introSeconds: 5,
+    introTip: '',
+    introSound: true,
+    introShapes: true,
   };
 
   switch (kind) {
