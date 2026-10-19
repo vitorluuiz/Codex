@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Codex.Api.Contracts.Ai;
 using Codex.Api.Domain;
 
 namespace Codex.Api.Contracts.PhaseSets;
@@ -85,4 +86,6 @@ public record DraftPhaseDto(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     bool? IntroSound = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    bool? IntroShapes = null);
+    bool? IntroShapes = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    AiVariationOptions? VariationSettings = null);

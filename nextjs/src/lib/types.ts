@@ -308,6 +308,8 @@ interface DraftPhaseBase {
   introSound?: boolean;
   /** Se exibe as formas geométricas animadas na tela de pré-desafio. */
   introShapes?: boolean;
+  /** Preferências de geração de variações por IA salvas junto da fase. */
+  variationSettings?: AiVariationOptions;
 }
 
 export interface QuizDraftPhase extends DraftPhaseBase {
@@ -355,8 +357,58 @@ export interface AiPhaseRequest {
   topic: string;
   difficulty: AiDifficulty;
   /** Instruções adicionais do autor. Opcional. */
-  notes: string;
+  notes?: string;
 }
+
+export interface AiUsage {
+  plan: PlanId;
+  creditsUsed: number;
+  creditsLimit: number;
+  suggestionsUsedToday: number;
+  suggestionsDailyLimit: number;
+  resetsAt: string;
+  enabled: boolean;
+}
+
+export interface AiPhaseResult {
+  generationId: string;
+  phase: DraftPhase;
+  usage: AiUsage;
+}
+
+export type AiVariationAspect = 'wording' | 'values' | 'context' | 'distractors';
+export type AiDifficultyShift = 'same' | 'easier' | 'harder';
+
+export interface AiVariationOptions {
+  count: number;
+  aspects: AiVariationAspect[];
+  difficulty: AiDifficultyShift;
+  keepSettings: boolean;
+  notes?: string;
+}
+
+export interface AiVariationsResult {
+  generationId: string;
+  phases: DraftPhase[];
+  discarded: number;
+  usage: AiUsage;
+}
+
+export type QuizSuggestionMode = 'distractors' | 'correct' | 'any';
+
+export interface QuizOptionSuggestion {
+  label: string;
+  isCorrect: boolean;
+  rationale?: string;
+}
+
+export interface AiQuizOptionsResult {
+  generationId: string;
+  suggestions: QuizOptionSuggestion[];
+  usage: AiUsage;
+}
+
+export type AiDecision = 'accepted' | 'partial' | 'discarded';
 
 /* -------------------------------------------------------------------------- */
 /* Partida                                                                     */

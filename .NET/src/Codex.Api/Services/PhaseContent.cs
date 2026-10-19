@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Codex.Api.Contracts.Ai;
 using Codex.Api.Contracts.PhaseSets;
 
 namespace Codex.Api.Services;
@@ -36,7 +37,8 @@ public sealed record PhaseContent(
     int? IntroSeconds = null,
     string? IntroTip = null,
     bool? IntroSound = null,
-    bool? IntroShapes = null)
+    bool? IntroShapes = null,
+    AiVariationOptions? VariationSettings = null)
 {
     /// <summary>
     /// Marcadores que abrem uma lacuna numa fase <c>fill</c>. Espelham
@@ -56,6 +58,7 @@ public sealed record PhaseContent(
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
     /// <summary>
@@ -105,7 +108,8 @@ public sealed record PhaseContent(
         phase.IntroSeconds,
         phase.IntroTip?.Trim(),
         phase.IntroSound,
-        phase.IntroShapes);
+        phase.IntroShapes,
+        phase.VariationSettings);
 
     public string ToJson() => JsonSerializer.Serialize(this, SerializerOptions);
 

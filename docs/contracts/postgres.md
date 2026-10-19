@@ -164,9 +164,40 @@ CREATE INDEX "IX_published_phases_Set_Order" ON published_phases ("PublishedSetI
 
 ---
 
+### 3.4 Geração Assistida por IA (`ai_generations`)
+
+Registra as solicitações de geração por IA para controle de cota mensal por plano, limite diário de sugestões e histórico de perguntas aceitas.
+
+```sql
+CREATE TABLE ai_generations (
+    "Id"               uuid NOT NULL PRIMARY KEY,
+    "UserId"           uuid NOT NULL REFERENCES users ("Id") ON DELETE CASCADE,
+    "Operation"        varchar(24) NOT NULL, -- 'Phase', 'Variations', 'QuizOptions'
+    "Kind"             varchar(16) NULL,     -- 'Quiz', 'Fill', 'Text', 'Code'
+    "Provider"         varchar(32) NOT NULL,
+    "Model"            varchar(80) NOT NULL,
+    "Status"           varchar(16) NOT NULL, -- 'Pending', 'Succeeded', 'Failed'
+    "Decision"         varchar(16) NOT NULL DEFAULT 'Undecided', -- 'Undecided', 'Accepted', 'Partial', 'Discarded'
+    "Cost"             integer NOT NULL DEFAULT 0,
+    "InputJson"        jsonb NOT NULL,
+    "OutputJson"       jsonb NULL,
+    "PromptTokens"     integer NULL,
+    "CompletionTokens" integer NULL,
+    "LatencyMs"        integer NULL,
+    "ErrorCode"        varchar(48) NULL,
+    "CreatedAt"        timestamptz NOT NULL,
+    "DecidedAt"        timestamptz NULL
+);
+
+CREATE INDEX "IX_ai_generations_UserId_CreatedAt" ON ai_generations ("UserId", "CreatedAt");
+CREATE INDEX "IX_ai_generations_UserId_Operation_CreatedAt" ON ai_generations ("UserId", "Operation", "CreatedAt");
+```
+
+---
+
 ## 4. Estrutura do Campo `ContentJson` (`jsonb`)
 
-O campo `ContentJson` é tipado em tempo de execução e armazena a forma completa de autoria. Todas as variantes compartilham obrigatoriamente os atributos `question` e `fromAI`.
+O campo `ContentJson` é tipado em tempo de execução e armazena a forma completa de autoria. Todas as variantes compartilham obrigatoriamente os atributos `question` e `fromAI`, além dos metadados opcionais de apresentação e autoria (`theme`, `showFeedbackAnimation`, `introSeconds`, `introTip`, `introSound`, `introShapes`, `variationSettings`).
 
 ### 4.1 Formato Quiz
 ```json
@@ -177,7 +208,7 @@ O campo `ContentJson` é tipado em tempo de execução e armazena a forma comple
   "correctIndexes": [0]
 }
 ```
-* `options`: 2 a 6 itens.
+* `options`: 2 a 8 itens.
 * `correctIndexes`: array não-vazio de números correspondentes às alternativas corretas.
 
 ### 4.2 Formato Completar Frase (`Fill`)

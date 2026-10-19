@@ -1,6 +1,6 @@
 'use client';
 
-import type { DraftPhase } from '@/lib/types';
+import type { AiUsage, DraftPhase } from '@/lib/types';
 import { CodeFields, FillFields, FillQuestionLabel, QuizFields, TextFields } from './kinds';
 import { QUESTION_LABEL, QUESTION_PLACEHOLDER, syncBlanks } from './phaseKinds';
 import styles from './PhaseForm.module.css';
@@ -8,9 +8,16 @@ import styles from './PhaseForm.module.css';
 interface PhaseFormProps {
   phase: DraftPhase;
   onChange: (patch: Partial<DraftPhase>) => void;
+  aiUsage?: AiUsage | null;
+  onUsageChange?: (usage: AiUsage) => void;
 }
 
-export function PhaseForm({ phase, onChange }: PhaseFormProps) {
+export function PhaseForm({
+  phase,
+  onChange,
+  aiUsage = null,
+  onUsageChange,
+}: PhaseFormProps) {
   return (
     <div className={styles.card}>
       <div className={styles.field}>
@@ -35,7 +42,14 @@ export function PhaseForm({ phase, onChange }: PhaseFormProps) {
         />
       </div>
 
-      {phase.kind === 'quiz' && <QuizFields phase={phase} onChange={onChange} />}
+      {phase.kind === 'quiz' && (
+        <QuizFields
+          phase={phase}
+          onChange={onChange}
+          aiUsage={aiUsage}
+          onUsageChange={onUsageChange}
+        />
+      )}
       {phase.kind === 'code' && <CodeFields phase={phase} onChange={onChange} />}
       {phase.kind === 'text' && <TextFields phase={phase} onChange={onChange} />}
       {phase.kind === 'fill' && <FillFields phase={phase} onChange={onChange} />}

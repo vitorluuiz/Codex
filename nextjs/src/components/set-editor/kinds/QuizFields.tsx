@@ -1,10 +1,18 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useTransition } from 'react';
 
+import { Button, Popover, Tooltip, anchorFrom, type AnchorRect } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
+import { decideGenerationAction, suggestQuizOptionsAction } from '@/lib/actions/ai';
 import { cx } from '@/lib/cx';
-import type { QuizDraftPhase } from '@/lib/types';
+import type {
+  AiUsage,
+  QuizDraftPhase,
+  QuizOptionSuggestion,
+  QuizSuggestionMode,
+} from '@/lib/types';
+import { formatAiErrorMessage } from '../ai/aiErrors';
 import shared from '../PhaseForm.module.css';
 import styles from './QuizFields.module.css';
 
@@ -12,16 +20,47 @@ import styles from './QuizFields.module.css';
 const MIN_OPTIONS = 2;
 const MAX_OPTIONS = 8;
 
+const SUGGESTION_MODES: { id: QuizSuggestionMode; label: string }[] = [
+  { id: 'distractors', label: 'Distratores' },
+  { id: 'correct', label: 'Corretas' },
+  { id: 'any', label: 'Mistura' },
+];
+
+const SUGGESTION_COUNTS = [2, 3, 4];
+
 interface QuizFieldsProps {
   phase: QuizDraftPhase;
   onChange: (patch: Partial<QuizDraftPhase>) => void;
+  aiUsage?: AiUsage | null;
+  onUsageChange?: (usage: AiUsage) => void;
 }
 
-export function QuizFields({ phase, onChange }: QuizFieldsProps) {
-  const [alert, setAlert] = useState(false);
+export function QuizFields({
+  phase,
+  onChange,
+  aiUsage = null,
+  onUsageChange,
+}: QuizFieldsProps) {
+  const [alert, setAlert] = useState<string | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const [popoverAnchor, setPopoverAnchor] = useState<AnchorRect | null>(null);
+  const [suggestMode, setSuggestMode] = useState<QuizSuggestionMode>('distractors');
+  const [suggestCount, setSuggestCount] = useState<number>(3);
+  const [suggestions, setSuggestions] = useState<QuizOptionSuggestion[]>([]);
+  const [suggestionGenId, setSuggestionGenId] = useState<string | null>(null);
+  const [acceptedCount, setAcceptedCount] = useState<number>(0);
+  const [suggesting, startSuggestTransition] = useTransition();
+
+  const aiEnabled = aiUsage?.enabled !== false;
+  const filledOptionsCount = phase.options.filter((opt) => opt.trim() !== '').length;
+  const remainingSlots = Math.max(0, MAX_OPTIONS - filledOptionsCount);
+  const dailyExceeded =
+    aiUsage !== null &&
+    aiUsage.suggestionsDailyLimit > 0 &&
+    aiUsage.suggestionsUsedToday >= aiUsage.suggestionsDailyLimit;
 
   function toggleCorrect(index: number) {
     const current = phase.correctIndexes;
@@ -35,10 +74,101 @@ export function QuizFields({ phase, onChange }: QuizFieldsProps) {
     const next = [...current, index].sort((a, b) => a - b);
     // Se tudo estiver certo, a pergunta deixa de discriminar qualquer coisa.
     if (next.length >= phase.options.length) {
-      setAlert(true);
+      setAlert('Não é possível selecionar todas as alternativas como corretas.');
       return;
     }
     onChange({ correctIndexes: next });
+  }
+
+  function handleRequestSuggestions() {
+    if (!phase.question.trim() || remainingSlots === 0 || dailyExceeded || suggesting) return;
+    setAlert(null);
+    setPopoverAnchor(null);
+
+    if (suggestionGenId && suggestions.length > 0) {
+      void decideGenerationAction(
+        suggestionGenId,
+        acceptedCount > 0 ? 'partial' : 'discarded',
+        acceptedCount,
+      );
+    }
+
+    const effectiveCount = Math.min(suggestCount, remainingSlots);
+
+    startSuggestTransition(async () => {
+      const result = await suggestQuizOptionsAction({
+        question: phase.question,
+        options: phase.options,
+        correctIndexes: phase.correctIndexes,
+        count: effectiveCount,
+        mode: suggestMode,
+      });
+
+      if (!result.ok) {
+        if (result.usage) {
+          onUsageChange?.(result.usage);
+        }
+        setAlert(formatAiErrorMessage(result.code, result.message));
+        return;
+      }
+
+      onUsageChange?.(result.data.usage);
+      setSuggestions(result.data.suggestions);
+      setSuggestionGenId(result.data.generationId);
+      setAcceptedCount(0);
+    });
+  }
+
+  function handleAddSuggestion(suggestion: QuizOptionSuggestion, index: number) {
+    const nextOptions = [...phase.options];
+    let targetIdx = nextOptions.length;
+
+    // Se a última opção for um slot vazio em aberto, preenche ele antes de criar outro
+    if (nextOptions.length > 0 && nextOptions[nextOptions.length - 1].trim() === '') {
+      targetIdx = nextOptions.length - 1;
+      nextOptions[targetIdx] = suggestion.label;
+      if (nextOptions.length < MAX_OPTIONS) {
+        nextOptions.push('');
+      }
+    } else if (nextOptions.length < MAX_OPTIONS) {
+      nextOptions.push(suggestion.label);
+    } else {
+      setAlert('A fase já atingiu o limite máximo de 8 alternativas.');
+      return;
+    }
+
+    let nextCorrect = [...phase.correctIndexes];
+    if (suggestion.isCorrect && !nextCorrect.includes(targetIdx)) {
+      const candidate = [...nextCorrect, targetIdx].sort((a, b) => a - b);
+      if (candidate.length < nextOptions.length) {
+        nextCorrect = candidate;
+      }
+    }
+
+    onChange({ options: nextOptions, correctIndexes: nextCorrect });
+
+    const remaining = suggestions.filter((_, i) => i !== index);
+    const nextAccepted = acceptedCount + 1;
+    setSuggestions(remaining);
+    setAcceptedCount(nextAccepted);
+
+    if (remaining.length === 0 && suggestionGenId) {
+      void decideGenerationAction(suggestionGenId, 'accepted', nextAccepted);
+      setSuggestionGenId(null);
+    }
+  }
+
+  function handleDismissSuggestions() {
+    if (suggestionGenId) {
+      void decideGenerationAction(
+        suggestionGenId,
+        acceptedCount > 0 ? 'partial' : 'discarded',
+        acceptedCount,
+      );
+    }
+    setSuggestions([]);
+    setSuggestionGenId(null);
+    setAcceptedCount(0);
   }
 
   function reorderOptions(from: number, to: number) {
@@ -266,29 +396,118 @@ export function QuizFields({ phase, onChange }: QuizFieldsProps) {
     }
   }
 
+  const questionEmpty = !phase.question.trim();
+  const suggestButtonDisabled =
+    questionEmpty || remainingSlots === 0 || dailyExceeded || suggesting;
+
   return (
     <div className={shared.field} onBlur={handleContainerBlur}>
       <div className={shared.labelRow}>
         <span className={shared.label}>Alternativas · marque uma ou mais corretas</span>
-        <button
-          type="button"
-          className={styles.shuffleButton}
-          onClick={shuffleOptions}
-          title="Reordenar alternativas aleatoriamente"
-        >
-          <Icon.Shuffle size={14} />
-          <span>Alternar ordem</span>
-        </button>
+        <div className={styles.headerActions}>
+          {aiEnabled && (
+            <button
+              type="button"
+              className={styles.aiSuggestButton}
+              disabled={suggestButtonDisabled}
+              onClick={(event) => setPopoverAnchor(anchorFrom(event.currentTarget))}
+              title={
+                questionEmpty
+                  ? 'Escreva a pergunta antes de pedir sugestões da IA'
+                  : remainingSlots === 0
+                    ? 'Limite máximo de 8 alternativas atingido'
+                    : 'Sugerir novas alternativas com IA'
+              }
+            >
+              <Icon.Sparkle size={14} />
+              <span>{suggesting ? 'Sugerindo...' : 'Sugerir com IA'}</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            className={styles.shuffleButton}
+            onClick={shuffleOptions}
+            title="Reordenar alternativas aleatoriamente"
+          >
+            <Icon.Shuffle size={14} />
+            <span>Alternar ordem</span>
+          </button>
+        </div>
       </div>
+
+      {popoverAnchor && (
+        <Popover
+          anchor={popoverAnchor}
+          width={280}
+          align="end"
+          estimatedHeight={220}
+          label="Sugerir alternativas com IA"
+          onClose={() => setPopoverAnchor(null)}
+        >
+          <div className={styles.popoverBody}>
+            <div className={styles.popoverSection}>
+              <span className={styles.popoverLabel}>Tipo de sugestão</span>
+              <div className={styles.popoverChips}>
+                {SUGGESTION_MODES.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className={cx(
+                      styles.popoverChip,
+                      suggestMode === m.id && styles.popoverChipActive,
+                    )}
+                    onClick={() => setSuggestMode(m.id)}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.popoverSection}>
+              <span className={styles.popoverLabel}>Quantidade</span>
+              <div className={styles.popoverChips}>
+                {SUGGESTION_COUNTS.filter((c) => c <= Math.max(2, remainingSlots)).map((count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    className={cx(
+                      styles.popoverChip,
+                      suggestCount === count && styles.popoverChipActive,
+                    )}
+                    onClick={() => setSuggestCount(count)}
+                  >
+                    {count} opções
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {aiUsage && (
+              <div className={styles.popoverQuota}>
+                <span>
+                  Sugestões hoje: {aiUsage.suggestionsUsedToday} / {aiUsage.suggestionsDailyLimit}
+                </span>
+                <span>Grátis</span>
+              </div>
+            )}
+
+            <Button size="sm" onClick={handleRequestSuggestions}>
+              Gerar sugestões
+            </Button>
+          </div>
+        </Popover>
+      )}
 
       {alert && (
         <div className={styles.alert} role="alert">
           <Icon.Alert size={18} className={styles.alertIcon} />
-          <span>Não é possível selecionar todas as alternativas como corretas.</span>
+          <span>{alert}</span>
           <button
             type="button"
             className={styles.alertClose}
-            onClick={() => setAlert(false)}
+            onClick={() => setAlert(null)}
             aria-label="Fechar aviso"
           >
             <Icon.Close size={14} />
@@ -351,6 +570,57 @@ export function QuizFields({ phase, onChange }: QuizFieldsProps) {
           </div>
         );
       })}
+
+      {suggestions.length > 0 && (
+        <div className={styles.suggestionsBox}>
+          <div className={styles.suggestionsHead}>
+            <span className={styles.suggestionsTitle}>
+              <Icon.Sparkle size={14} />
+              Sugestões da IA · clique para adicionar
+            </span>
+            <button
+              type="button"
+              className={styles.dismissButton}
+              onClick={handleDismissSuggestions}
+            >
+              Descartar sugestões
+            </button>
+          </div>
+
+          <div className={styles.suggestionsList}>
+            {suggestions.map((suggestion, idx) => {
+              const chip = (
+                <button
+                  key={idx}
+                  type="button"
+                  className={styles.suggestionChip}
+                  onClick={() => handleAddSuggestion(suggestion, idx)}
+                >
+                  <Icon.Plus size={13} />
+                  <span>{suggestion.label}</span>
+                  <span
+                    className={
+                      suggestion.isCorrect
+                        ? styles.suggestionBadgeCorrect
+                        : styles.suggestionBadgeWrong
+                    }
+                  >
+                    {suggestion.isCorrect ? 'Correta' : 'Distrator'}
+                  </span>
+                </button>
+              );
+
+              return suggestion.rationale ? (
+                <Tooltip key={idx} label={suggestion.rationale} openDirection="top">
+                  {chip}
+                </Tooltip>
+              ) : (
+                chip
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

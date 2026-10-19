@@ -26,8 +26,7 @@ estão dentro do MVP.
 | Não entra | Por quê |
 |---|---|
 | Tela de vínculos OAuth no perfil | o login social entrou; ver e desconectar provedores já ligados, não |
-| Geração de fase por IA | depende de decisão de provedor; o editor só não mostra o botão |
-| Correção de desafios `text` e `code` | mesma decisão de IA — os tipos existem, a correção não |
+| Correção de desafios `text` e `code` | depende de avaliador assíncrono — os tipos existem e podem ser criados com IA, a correção na partida fica pendente |
 | `POST /matches/{id}/phases/{id}/run` (executar código) | exige sandbox |
 | Modo `self-paced` | responde `409 MODE_NOT_AVAILABLE`; só o modo guiado pelo líder existe |
 | Relatórios e CMS da landing | existem como modelo de dados, sem endpoint |

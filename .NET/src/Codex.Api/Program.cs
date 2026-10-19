@@ -8,6 +8,7 @@ using Codex.Api.Documents;
 using Codex.Api.Domain.Entities;
 using Codex.Api.Endpoints;
 using Codex.Api.Services;
+using Codex.Api.Services.Ai;
 using Codex.Api.Services.OAuth;
 using Codex.Api.Services.Realtime;
 using Microsoft.AspNetCore.Authentication;
@@ -54,6 +55,7 @@ builder.Services.AddScoped<SubmissionService>();
 builder.Services.AddCodexRateLimiter(builder.Configuration);
 builder.Services.AddCodexRealtime(builder.Configuration);
 builder.Services.AddCodexDocuments(builder.Configuration);
+builder.Services.AddCodexAi(builder.Configuration);
 
 builder.Services
     .AddAuthentication(CodexSessionAuthenticationHandler.SchemeName)
@@ -93,6 +95,7 @@ app.MapRoomEndpoints();
 app.MapParticipantEndpoints();
 app.MapRoomQueueEndpoints();
 app.MapPhaseSetEndpoints();
+app.MapAiEndpoints();
 app.MapMatchEndpoints();
 app.MapRealtimeEndpoints();
 app.MapMetrics();

@@ -44,9 +44,5 @@ public static class PhaseSetEndpoints
             await sets.DeleteAsync(setId, principal, ct);
             return Results.NoContent();
         });
-
-        // POST /phase-sets/phases/generate (geracao por IA) nao esta aqui: depende de escolher
-        // provedor e modelo, decisao que ninguem tomou (ver next-steps.md). O editor degrada sem
-        // ela — some o botao "Gerar com IA", o resto da tela funciona.
     }
 }

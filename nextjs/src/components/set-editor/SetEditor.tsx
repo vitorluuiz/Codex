@@ -8,7 +8,7 @@ import { Icon } from '@/components/icons/Icons';
 import { savePhaseSetAction } from '@/lib/actions/phaseSets';
 import { cssVars } from '@/lib/cssVars';
 import { cx } from '@/lib/cx';
-import type { DraftPhase, PhaseSetDraft } from '@/lib/types';
+import type { AiUsage, DraftPhase, PhaseSetDraft } from '@/lib/types';
 import { AddPhaseModal } from './AddPhaseModal';
 import { KIND_META, draftPhaseId } from './phaseKinds';
 import { PhaseForm } from './PhaseForm';
@@ -16,11 +16,23 @@ import { PhaseRail } from './PhaseRail';
 import { PhaseSettings } from './PhaseSettings';
 import styles from './SetEditor.module.css';
 
+const CONTENT_KEYS = new Set([
+  'question',
+  'options',
+  'correctIndexes',
+  'words',
+  'blanks',
+  'starterCode',
+  'testCases',
+  'expectedAnswer',
+]);
+
 interface SetEditorProps {
   initialDraft: PhaseSetDraft;
+  initialAiUsage?: AiUsage | null;
 }
 
-export function SetEditor({ initialDraft }: SetEditorProps) {
+export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -31,6 +43,7 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
   const [addOpen, setAddOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [nameHighlight, setNameHighlight] = useState(false);
+  const [aiUsage, setAiUsage] = useState<AiUsage | null>(initialAiUsage);
 
   const isNew = initialDraft.id === null;
   const active = phases.find((phase) => phase.id === activeId) ?? null;
@@ -39,12 +52,20 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
   /* --- Mutações do rascunho ---------------------------------------------- */
 
   function patchActive(patch: Partial<DraftPhase>) {
+    const editedContent = Object.keys(patch).some((key) => CONTENT_KEYS.has(key));
     setPhases((list) =>
-      list.map((phase) =>
+      list.map((phase) => {
+        if (phase.id !== activeId) return phase;
         // O cast é seguro porque o patch sempre vem do formulário da própria
         // fase ativa, que só produz campos do `kind` dela.
-        phase.id === activeId ? ({ ...phase, ...patch } as DraftPhase) : phase,
-      ),
+        const nextFromAI =
+          patch.fromAI !== undefined
+            ? patch.fromAI
+            : editedContent
+              ? false
+              : phase.fromAI;
+        return { ...phase, ...patch, fromAI: nextFromAI } as DraftPhase;
+      }),
     );
   }
 
@@ -52,6 +73,18 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
     setPhases((list) => [...list, phase]);
     setActiveId(phase.id);
     setAddOpen(false);
+  }
+
+  function insertPhasesAfter(afterId: string, newPhases: DraftPhase[]) {
+    if (newPhases.length === 0) return;
+    setPhases((list) => {
+      const index = list.findIndex((phase) => phase.id === afterId);
+      if (index === -1) return [...list, ...newPhases];
+      const next = list.slice();
+      next.splice(index + 1, 0, ...newPhases);
+      return next;
+    });
+    setActiveId(newPhases[0].id);
   }
 
   function duplicatePhase(id: string) {
@@ -164,25 +197,33 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
             <Button variant="secondary" onClick={() => router.push('/perfil')}>
               Cancelar
             </Button>
-            {saveDisabled ? <span
-              onMouseEnter={() => nameMissing && setNameHighlight(true)}
-              onMouseLeave={() => setNameHighlight(false)}
-            >
-              <Tooltip label={nameMissing ? 'O conjunto precisa ter um nome para ser salvo.' : 'Adicione ao menos um desafio para salvar o conjunto.'}>
-                <Button onClick={save} disabled={saveDisabled}>
-                  Salvar conjunto
-                </Button>
-              </Tooltip>
-            </span> : <Button onClick={save}>
-              Salvar conjunto
-            </Button>}
+            {saveDisabled ? (
+              <span
+                onMouseEnter={() => nameMissing && setNameHighlight(true)}
+                onMouseLeave={() => setNameHighlight(false)}
+              >
+                <Tooltip
+                  label={
+                    nameMissing
+                      ? 'O conjunto precisa ter um nome para ser salvo.'
+                      : 'Adicione ao menos um desafio para salvar o conjunto.'
+                  }
+                >
+                  <Button onClick={save} disabled={saveDisabled}>
+                    Salvar conjunto
+                  </Button>
+                </Tooltip>
+              </span>
+            ) : (
+              <Button onClick={save}>Salvar conjunto</Button>
+            )}
           </div>
         </header>
 
         {active ? (
           <div className={styles.workspace}>
             <div className={styles.editorColumn}>
-              {/* <div className={styles.phaseMeta}>
+              <div className={styles.phaseMeta}>
                 <span
                   className={styles.kindChip}
                   style={cssVars({ '--kind-color': KIND_META[active.kind].color })}
@@ -198,9 +239,14 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
                     Gerada com IA
                   </span>
                 )}
-              </div> */}
+              </div>
 
-              <PhaseForm phase={active} onChange={patchActive} />
+              <PhaseForm
+                phase={active}
+                onChange={patchActive}
+                aiUsage={aiUsage}
+                onUsageChange={setAiUsage}
+              />
             </div>
 
             <button
@@ -216,7 +262,15 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
               />
             </button>
 
-            {settingsOpen && <PhaseSettings phase={active} onChange={patchActive} />}
+            {settingsOpen && (
+              <PhaseSettings
+                phase={active}
+                onChange={patchActive}
+                aiUsage={aiUsage}
+                onUsageChange={setAiUsage}
+                onAddVariations={(newPhases) => insertPhasesAfter(active.id, newPhases)}
+              />
+            )}
           </div>
         ) : (
           <div className={styles.emptyState}>
@@ -234,7 +288,14 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
         )}
       </div>
 
-      {addOpen && <AddPhaseModal onAdd={addPhase} onClose={() => setAddOpen(false)} />}
+      {addOpen && (
+        <AddPhaseModal
+          onAdd={addPhase}
+          onClose={() => setAddOpen(false)}
+          aiUsage={aiUsage}
+          onUsageChange={setAiUsage}
+        />
+      )}
 
       {saveError && (
         <ToastViewport>

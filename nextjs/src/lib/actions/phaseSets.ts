@@ -3,7 +3,7 @@
 import { revalidateTag } from 'next/cache';
 
 import { apiRequest } from '@/lib/api/client';
-import type { AiPhaseRequest, DraftPhase, PhaseSetDraft, PhaseSetSummary } from '@/lib/types';
+import type { PhaseSetDraft, PhaseSetSummary } from '@/lib/types';
 
 /* -------------------------------------------------------------------------- */
 /* CRUD de conjuntos                                                           */
@@ -48,22 +48,4 @@ export async function renamePhaseSetAction(
 export async function deletePhaseSetAction(setId: string): Promise<void> {
   await apiRequest(`/phase-sets/${setId}`, { method: 'DELETE' });
   revalidateTag('phase-sets:owned');
-}
-
-/* -------------------------------------------------------------------------- */
-/* Geração por IA                                                              */
-/* -------------------------------------------------------------------------- */
-
-/**
- * `POST /phase-sets/phases/generate` — devolve uma fase pronta para revisão.
- *
- * A fase volta com `fromAI: true` e **não** é salva pelo servidor: ela entra no
- * rascunho local e só é persistida quando o autor salva o conjunto. Assim, sair
- * da tela sem salvar não deixa lixo gerado no banco.
- */
-export async function generatePhaseAction(request: AiPhaseRequest): Promise<DraftPhase> {
-  return apiRequest<DraftPhase>('/phase-sets/phases/generate', {
-    method: 'POST',
-    body: request,
-  });
 }

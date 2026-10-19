@@ -90,6 +90,18 @@ services:
       CodexApi__OAuth__Microsoft__ClientSecret: ${OAUTH_MICROSOFT_CLIENT_SECRET:-}
       CodexApi__OAuth__GitHub__ClientId: ${OAUTH_GITHUB_CLIENT_ID:-}
       CodexApi__OAuth__GitHub__ClientSecret: ${OAUTH_GITHUB_CLIENT_SECRET:-}
+      # Geracao por IA (OpenAI-compativel: LM Studio local e Gemini/OpenRouter/Groq em nuvem).
+      CodexApi__Ai__Enabled: ${AI_ENABLED:-true}
+      CodexApi__Ai__DefaultProvider: ${AI_DEFAULT_PROVIDER:-local}
+      CodexApi__Ai__FallbackProvider: ${AI_FALLBACK_PROVIDER:-}
+      CodexApi__Ai__Providers__local__BaseUrl: ${AI_LOCAL_BASE_URL:-http://host.docker.internal:1234/v1}
+      CodexApi__Ai__Providers__local__ApiKey: ${AI_LOCAL_API_KEY:-lm-studio}
+      CodexApi__Ai__Providers__local__Model: ${AI_LOCAL_MODEL:-qwen2.5-7b-instruct}
+      CodexApi__Ai__Providers__cloud__BaseUrl: ${AI_CLOUD_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
+      CodexApi__Ai__Providers__cloud__ApiKey: ${AI_CLOUD_API_KEY:-}
+      CodexApi__Ai__Providers__cloud__Model: ${AI_CLOUD_MODEL:-gemini-2.5-flash}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "5282:8080"
     networks:

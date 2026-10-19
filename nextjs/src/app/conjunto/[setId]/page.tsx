@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 
 import { StateMessage } from '@/components/feedback/StateMessage';
 import { SetEditor } from '@/components/set-editor/SetEditor';
+import { getAiUsage } from '@/lib/api/ai';
 import { getPhaseSetDraft } from '@/lib/api/phaseSets';
 import { getSession } from '@/lib/api/session';
 
@@ -20,7 +21,7 @@ export default async function EditPhaseSetPage({ params }: PageProps) {
   const session = await getSession();
   if (!session.user) redirect('/entrar');
 
-  const draft = await getPhaseSetDraft(setId);
+  const [draft, aiUsage] = await Promise.all([getPhaseSetDraft(setId), getAiUsage()]);
 
   if (!draft) {
     return (
@@ -35,5 +36,5 @@ export default async function EditPhaseSetPage({ params }: PageProps) {
     );
   }
 
-  return <SetEditor initialDraft={draft} />;
+  return <SetEditor initialDraft={draft} initialAiUsage={aiUsage} />;
 }
