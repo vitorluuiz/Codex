@@ -1,6 +1,6 @@
 'use client';
 
-import type { AiUsage, DraftPhase } from '@/lib/types';
+import type { AiUsage, DraftPhase, PendingAiQuizSuggestions } from '@/lib/types';
 import { CodeFields, FillFields, FillQuestionLabel, QuizFields, TextFields } from './kinds';
 import { QUESTION_LABEL, QUESTION_PLACEHOLDER, syncBlanks } from './phaseKinds';
 import styles from './PhaseForm.module.css';
@@ -10,6 +10,8 @@ interface PhaseFormProps {
   onChange: (patch: Partial<DraftPhase>) => void;
   aiUsage?: AiUsage | null;
   onUsageChange?: (usage: AiUsage) => void;
+  pendingQuizSuggestions?: PendingAiQuizSuggestions | null;
+  onPendingQuizSuggestionsChange?: (pending: PendingAiQuizSuggestions | null) => void;
 }
 
 export function PhaseForm({
@@ -17,6 +19,8 @@ export function PhaseForm({
   onChange,
   aiUsage = null,
   onUsageChange,
+  pendingQuizSuggestions = null,
+  onPendingQuizSuggestionsChange,
 }: PhaseFormProps) {
   return (
     <div className={styles.card}>
@@ -48,6 +52,8 @@ export function PhaseForm({
           onChange={onChange}
           aiUsage={aiUsage}
           onUsageChange={onUsageChange}
+          pendingSuggestions={pendingQuizSuggestions}
+          onPendingSuggestionsChange={onPendingQuizSuggestionsChange}
         />
       )}
       {phase.kind === 'code' && <CodeFields phase={phase} onChange={onChange} />}

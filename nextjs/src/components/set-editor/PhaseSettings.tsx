@@ -11,10 +11,9 @@ import type {
   AiUsage,
   AiVariationAspect,
   AiVariationOptions,
-  AiVariationsResult,
   DraftPhase,
+  PendingAiVariationsGeneration,
 } from '@/lib/types';
-import { VariationsReviewModal } from './ai/VariationsReviewModal';
 import { formatAiErrorMessage } from './ai/aiErrors';
 import styles from './PhaseSettings.module.css';
 
@@ -59,7 +58,7 @@ interface PhaseSettingsProps {
   onChange: (patch: Partial<DraftPhase>) => void;
   aiUsage?: AiUsage | null;
   onUsageChange?: (usage: AiUsage) => void;
-  onAddVariations?: (phases: DraftPhase[]) => void;
+  onPendingVariationsChange?: (pending: PendingAiVariationsGeneration | null) => void;
 }
 
 export function PhaseSettings({
@@ -67,11 +66,10 @@ export function PhaseSettings({
   onChange,
   aiUsage = null,
   onUsageChange,
-  onAddVariations,
+  onPendingVariationsChange,
 }: PhaseSettingsProps) {
   const [generatingVariations, startVariationsTransition] = useTransition();
   const [variationError, setVariationError] = useState<string | null>(null);
-  const [variationsResult, setVariationsResult] = useState<AiVariationsResult | null>(null);
 
   const aiEnabled = aiUsage?.enabled !== false;
   const variationSettings: AiVariationOptions = {
@@ -128,7 +126,12 @@ export function PhaseSettings({
       }
 
       onUsageChange?.(result.data.usage);
-      setVariationsResult(result.data);
+      onPendingVariationsChange?.({
+        sourcePhaseId: phase.id,
+        sourcePhaseName: phase.name,
+        result: result.data,
+        selectedIds: result.data.phases.map((p) => p.id),
+      });
     });
   }
 
@@ -391,18 +394,6 @@ export function PhaseSettings({
           </AccordionItem>
         )}
       </Accordion>
-
-      {variationsResult && (
-        <VariationsReviewModal
-          result={variationsResult}
-          sourcePhaseName={phase.name}
-          onAccept={(selected) => {
-            onAddVariations?.(selected);
-            setVariationsResult(null);
-          }}
-          onClose={() => setVariationsResult(null)}
-        />
-      )}
     </div>
   );
 }

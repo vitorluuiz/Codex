@@ -13,6 +13,8 @@ import styles from './VariationsReviewModal.module.css';
 interface VariationsReviewModalProps {
   result: AiVariationsResult;
   sourcePhaseName: string;
+  initialSelectedIds?: string[];
+  onSelectedIdsChange?: (selectedIds: string[]) => void;
   onAccept: (selectedPhases: DraftPhase[]) => void;
   onClose: () => void;
 }
@@ -20,33 +22,36 @@ interface VariationsReviewModalProps {
 export function VariationsReviewModal({
   result,
   sourcePhaseName,
+  initialSelectedIds,
+  onSelectedIdsChange,
   onAccept,
   onClose,
 }: VariationsReviewModalProps) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    () => new Set(result.phases.map((p) => p.id)),
-  );
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
+    if (initialSelectedIds) {
+      const validIds = new Set(result.phases.map((p) => p.id));
+      return new Set(initialSelectedIds.filter((id) => validIds.has(id)));
+    }
+    return new Set(result.phases.map((p) => p.id));
+  });
 
   const allSelected = selectedIds.size === result.phases.length;
 
   function toggleOne(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setSelectedIds(next);
+    onSelectedIdsChange?.(Array.from(next));
   }
 
   function toggleAll() {
-    if (allSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(result.phases.map((p) => p.id)));
-    }
+    const next = allSelected ? new Set<string>() : new Set(result.phases.map((p) => p.id));
+    setSelectedIds(next);
+    onSelectedIdsChange?.(Array.from(next));
   }
 
   function handleDiscardAll() {

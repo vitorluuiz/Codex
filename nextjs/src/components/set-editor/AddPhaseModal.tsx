@@ -4,10 +4,18 @@ import { useState, useTransition } from 'react';
 
 import { Button, Input, Meter } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
-import { decideGenerationAction, generatePhaseAction } from '@/lib/actions/ai';
+import { decideGenerationAction, type AiActionResult } from '@/lib/actions/ai';
 import { cssVars } from '@/lib/cssVars';
 import { cx } from '@/lib/cx';
-import type { AiDifficulty, AiPhaseResult, AiUsage, DraftPhase, PhaseKind } from '@/lib/types';
+import type {
+  AiDifficulty,
+  AiPhaseRequest,
+  AiPhaseResult,
+  AiUsage,
+  DraftPhase,
+  PendingAiPhaseGeneration,
+  PhaseKind,
+} from '@/lib/types';
 import { AiPhasePreview } from './ai/AiPhasePreview';
 import { formatAiErrorMessage } from './ai/aiErrors';
 import { KIND_META, KIND_ORDER, defaultDraftPhase, draftPhaseId } from './phaseKinds';
@@ -24,26 +32,38 @@ const DIFFICULTIES: { id: AiDifficulty; label: string }[] = [
 
 interface AddPhaseModalProps {
   onAdd: (phase: DraftPhase) => void;
+  onDiscardPhase?: (phaseId: string) => void;
+  onGeneratePhase: (request: AiPhaseRequest) => Promise<AiActionResult<AiPhaseResult>>;
   onClose: () => void;
   aiUsage?: AiUsage | null;
   onUsageChange?: (usage: AiUsage) => void;
+  initialPendingGeneration?: PendingAiPhaseGeneration | null;
+  onPendingGenerationChange?: (pending: PendingAiPhaseGeneration | null) => void;
 }
 
 export function AddPhaseModal({
   onAdd,
+  onDiscardPhase,
+  onGeneratePhase,
   onClose,
   aiUsage = null,
   onUsageChange,
+  initialPendingGeneration = null,
+  onPendingGenerationChange,
 }: AddPhaseModalProps) {
-  const [step, setStep] = useState<Step>('kind');
-  const [kind, setKind] = useState<PhaseKind | null>(null);
+  const [step, setStep] = useState<Step>(() => (initialPendingGeneration ? 'review' : 'kind'));
+  const [kind, setKind] = useState<PhaseKind | null>(() => initialPendingGeneration?.kind ?? null);
   const [query, setQuery] = useState('');
 
-  const [topic, setTopic] = useState('');
-  const [difficulty, setDifficulty] = useState<AiDifficulty>('medium');
-  const [notes, setNotes] = useState('');
+  const [topic, setTopic] = useState(() => initialPendingGeneration?.topic ?? '');
+  const [difficulty, setDifficulty] = useState<AiDifficulty>(
+    () => initialPendingGeneration?.difficulty ?? 'medium',
+  );
+  const [notes, setNotes] = useState(() => initialPendingGeneration?.notes ?? '');
   const [error, setError] = useState<string | null>(null);
-  const [generated, setGenerated] = useState<AiPhaseResult | null>(null);
+  const [generated, setGenerated] = useState<AiPhaseResult | null>(
+    () => initialPendingGeneration?.result ?? null,
+  );
   const [generating, startTransition] = useTransition();
 
   const aiEnabled = aiUsage?.enabled !== false;
@@ -68,12 +88,14 @@ export function AddPhaseModal({
 
     if (generated) {
       void decideGenerationAction(generated.generationId, 'discarded', 0);
+      onDiscardPhase?.(generated.phase.id);
       setGenerated(null);
+      onPendingGenerationChange?.(null);
     }
 
     setStep('ai');
     startTransition(async () => {
-      const result = await generatePhaseAction({
+      const result = await onGeneratePhase({
         kind,
         topic: topic.trim(),
         difficulty,
@@ -97,20 +119,26 @@ export function AddPhaseModal({
   function handleKeepGenerated() {
     if (!generated) return;
     void decideGenerationAction(generated.generationId, 'accepted', 1);
+    onPendingGenerationChange?.(null);
     onAdd(generated.phase);
   }
 
   function handleDiscardGenerated() {
     if (generated) {
       void decideGenerationAction(generated.generationId, 'discarded', 0);
+      onDiscardPhase?.(generated.phase.id);
       setGenerated(null);
+      onPendingGenerationChange?.(null);
     }
     setStep('ai');
   }
 
   function handleCloseModal() {
     if (generated) {
-      void decideGenerationAction(generated.generationId, 'discarded', 0);
+      void decideGenerationAction(generated.generationId, 'accepted', 1);
+      onPendingGenerationChange?.(null);
+      onAdd(generated.phase);
+      return;
     }
     onClose();
   }

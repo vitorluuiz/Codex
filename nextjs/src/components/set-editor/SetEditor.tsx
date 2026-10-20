@@ -1,15 +1,25 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 
 import { Button, Toast, ToastViewport, Tooltip } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
+import { decideGenerationAction, generatePhaseAction } from '@/lib/actions/ai';
 import { savePhaseSetAction } from '@/lib/actions/phaseSets';
 import { cssVars } from '@/lib/cssVars';
 import { cx } from '@/lib/cx';
-import type { AiUsage, DraftPhase, PhaseSetDraft } from '@/lib/types';
+import type {
+  AiPhaseRequest,
+  AiUsage,
+  DraftPhase,
+  PendingAiPhaseGeneration,
+  PendingAiQuizSuggestions,
+  PendingAiVariationsGeneration,
+  PhaseSetDraft,
+} from '@/lib/types';
 import { AddPhaseModal } from './AddPhaseModal';
+import { VariationsReviewModal } from './ai/VariationsReviewModal';
 import { KIND_META, draftPhaseId } from './phaseKinds';
 import { PhaseForm } from './PhaseForm';
 import { PhaseRail } from './PhaseRail';
@@ -27,6 +37,20 @@ const CONTENT_KEYS = new Set([
   'expectedAnswer',
 ]);
 
+interface StoredPhaseSetDraft {
+  title: string;
+  phases: DraftPhase[];
+  activeId: string | null;
+  pendingPhaseGen?: PendingAiPhaseGeneration | null;
+  pendingVariationsGen?: PendingAiVariationsGeneration | null;
+  pendingQuizSuggestions?: Record<string, PendingAiQuizSuggestions>;
+  updatedAt: number;
+}
+
+function getDraftStorageKey(setId: string | null): string {
+  return setId ? `codex:set-editor-draft:${setId}` : 'codex:set-editor-draft:new';
+}
+
 interface SetEditorProps {
   initialDraft: PhaseSetDraft;
   initialAiUsage?: AiUsage | null;
@@ -36,14 +60,97 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
   const router = useRouter();
   const [, startTransition] = useTransition();
 
+  const storageKey = getDraftStorageKey(initialDraft.id);
+  const skipStorageWriteRef = useRef(false);
+
   const [title, setTitle] = useState(initialDraft.title);
   const [phases, setPhases] = useState(initialDraft.phases);
   const [activeId, setActiveId] = useState(initialDraft.phases[0]?.id ?? null);
+  const [pendingPhaseGen, setPendingPhaseGen] = useState<PendingAiPhaseGeneration | null>(null);
+  const [pendingVariationsGen, setPendingVariationsGen] =
+    useState<PendingAiVariationsGeneration | null>(null);
+  const [pendingQuizSuggestions, setPendingQuizSuggestions] = useState<
+    Record<string, PendingAiQuizSuggestions>
+  >({});
+  const [isStorageHydrated, setIsStorageHydrated] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const addOpenRef = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [nameHighlight, setNameHighlight] = useState(false);
   const [aiUsage, setAiUsage] = useState<AiUsage | null>(initialAiUsage);
+
+  useEffect(() => {
+    addOpenRef.current = addOpen;
+  }, [addOpen]);
+
+  useEffect(() => {
+    skipStorageWriteRef.current = false;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<StoredPhaseSetDraft>;
+        const pendingGeneratedPhase = parsed.pendingPhaseGen?.result?.phase ?? null;
+        if (typeof parsed.title === 'string' && Array.isArray(parsed.phases)) {
+          const restoredPhases =
+            pendingGeneratedPhase &&
+            !parsed.phases.some((phase) => phase.id === pendingGeneratedPhase.id)
+              ? [...parsed.phases, pendingGeneratedPhase]
+              : parsed.phases;
+          const restoredActiveId =
+            typeof parsed.activeId === 'string' &&
+            restoredPhases.some((phase) => phase.id === parsed.activeId)
+              ? parsed.activeId
+              : (restoredPhases[0]?.id ?? null);
+          setTitle(parsed.title);
+          setPhases(restoredPhases);
+          setActiveId(restoredActiveId);
+        }
+        if (parsed.pendingPhaseGen && pendingGeneratedPhase) {
+          setPendingPhaseGen(parsed.pendingPhaseGen);
+          setAddOpen(true);
+          addOpenRef.current = true;
+        }
+        if (parsed.pendingVariationsGen && Array.isArray(parsed.pendingVariationsGen.result?.phases)) {
+          setPendingVariationsGen(parsed.pendingVariationsGen);
+        }
+        if (parsed.pendingQuizSuggestions && typeof parsed.pendingQuizSuggestions === 'object') {
+          setPendingQuizSuggestions(parsed.pendingQuizSuggestions);
+        }
+      }
+    } catch {
+      // Ignora rascunho malformado ou localStorage indisponível
+    } finally {
+      setIsStorageHydrated(true);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!isStorageHydrated || skipStorageWriteRef.current) return;
+    try {
+      const payload: StoredPhaseSetDraft = {
+        title,
+        phases,
+        activeId,
+        pendingPhaseGen,
+        pendingVariationsGen,
+        pendingQuizSuggestions,
+        updatedAt: Date.now(),
+      };
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+    } catch {
+      // Ignora erro de quota ou modo privado sem escrita em localStorage
+    }
+  }, [
+    storageKey,
+    isStorageHydrated,
+    title,
+    phases,
+    activeId,
+    pendingPhaseGen,
+    pendingVariationsGen,
+    pendingQuizSuggestions,
+  ]);
 
   const isNew = initialDraft.id === null;
   const active = phases.find((phase) => phase.id === activeId) ?? null;
@@ -70,9 +177,42 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
   }
 
   function addPhase(phase: DraftPhase) {
-    setPhases((list) => [...list, phase]);
+    setPhases((list) => (list.some((item) => item.id === phase.id) ? list : [...list, phase]));
     setActiveId(phase.id);
     setAddOpen(false);
+  }
+
+  async function handleGeneratePhase(request: AiPhaseRequest) {
+    const result = await generatePhaseAction(request);
+    if (!result.ok) {
+      if (result.usage) {
+        setAiUsage(result.usage);
+      }
+      return result;
+    }
+
+    setAiUsage(result.data.usage);
+    setPhases((list) =>
+      list.some((item) => item.id === result.data.phase.id)
+        ? list
+        : [...list, result.data.phase],
+    );
+    setActiveId(result.data.phase.id);
+
+    if (addOpenRef.current) {
+      setPendingPhaseGen({
+        kind: request.kind,
+        topic: request.topic,
+        difficulty: request.difficulty,
+        notes: request.notes ?? '',
+        result: result.data,
+      });
+    } else {
+      void decideGenerationAction(result.data.generationId, 'accepted', 1);
+      setPendingPhaseGen(null);
+    }
+
+    return result;
   }
 
   function insertPhasesAfter(afterId: string, newPhases: DraftPhase[]) {
@@ -99,7 +239,29 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
     });
   }
 
+  function setPhaseQuizSuggestions(phaseId: string, pending: PendingAiQuizSuggestions | null) {
+    setPendingQuizSuggestions((prev) => {
+      if (!pending) {
+        if (!(phaseId in prev)) return prev;
+        const next = { ...prev };
+        delete next[phaseId];
+        return next;
+      }
+      return { ...prev, [phaseId]: pending };
+    });
+  }
+
   function removePhase(id: string) {
+    const pendingQuiz = pendingQuizSuggestions[id];
+    if (pendingQuiz) {
+      void decideGenerationAction(
+        pendingQuiz.generationId,
+        pendingQuiz.acceptedCount > 0 ? 'partial' : 'discarded',
+        pendingQuiz.acceptedCount,
+      );
+      setPhaseQuizSuggestions(id, null);
+    }
+
     setPhases((list) => {
       const next = list.filter((phase) => phase.id !== id);
       if (id === activeId) setActiveId(next[0]?.id ?? null);
@@ -141,12 +303,27 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
     });
   }
 
+  function clearStoredDraft() {
+    skipStorageWriteRef.current = true;
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {
+      // Ignora indisponibilidade de localStorage
+    }
+  }
+
+  function cancel() {
+    clearStoredDraft();
+    router.push('/perfil');
+  }
+
   function save() {
     setSaveError(null);
     const cleanedPhases = cleanPhasesForSave(phases);
     startTransition(async () => {
       try {
         await savePhaseSetAction({ id: initialDraft.id, title: title.trim(), phases: cleanedPhases });
+        clearStoredDraft();
         router.push('/perfil');
       } catch {
         setSaveError('Não foi possível salvar o conjunto. Tente novamente.');
@@ -194,7 +371,7 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
           </div>
 
           <div className={styles.topActions}>
-            <Button variant="secondary" onClick={() => router.push('/perfil')}>
+            <Button variant="secondary" onClick={cancel}>
               Cancelar
             </Button>
             {saveDisabled ? (
@@ -246,6 +423,10 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
                 onChange={patchActive}
                 aiUsage={aiUsage}
                 onUsageChange={setAiUsage}
+                pendingQuizSuggestions={pendingQuizSuggestions[active.id] ?? null}
+                onPendingQuizSuggestionsChange={(pending) =>
+                  setPhaseQuizSuggestions(active.id, pending)
+                }
               />
             </div>
 
@@ -268,7 +449,7 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
                 onChange={patchActive}
                 aiUsage={aiUsage}
                 onUsageChange={setAiUsage}
-                onAddVariations={(newPhases) => insertPhasesAfter(active.id, newPhases)}
+                onPendingVariationsChange={setPendingVariationsGen}
               />
             )}
           </div>
@@ -291,9 +472,29 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
       {addOpen && (
         <AddPhaseModal
           onAdd={addPhase}
+          onDiscardPhase={removePhase}
+          onGeneratePhase={handleGeneratePhase}
           onClose={() => setAddOpen(false)}
           aiUsage={aiUsage}
           onUsageChange={setAiUsage}
+          initialPendingGeneration={pendingPhaseGen}
+          onPendingGenerationChange={setPendingPhaseGen}
+        />
+      )}
+
+      {pendingVariationsGen && (
+        <VariationsReviewModal
+          result={pendingVariationsGen.result}
+          sourcePhaseName={pendingVariationsGen.sourcePhaseName}
+          initialSelectedIds={pendingVariationsGen.selectedIds}
+          onSelectedIdsChange={(selectedIds) =>
+            setPendingVariationsGen((prev) => (prev ? { ...prev, selectedIds } : null))
+          }
+          onAccept={(selected) => {
+            insertPhasesAfter(pendingVariationsGen.sourcePhaseId, selected);
+            setPendingVariationsGen(null);
+          }}
+          onClose={() => setPendingVariationsGen(null)}
         />
       )}
 

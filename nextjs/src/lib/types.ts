@@ -410,6 +410,27 @@ export interface AiQuizOptionsResult {
 
 export type AiDecision = 'accepted' | 'partial' | 'discarded';
 
+export interface PendingAiPhaseGeneration {
+  kind: PhaseKind;
+  topic: string;
+  difficulty: AiDifficulty;
+  notes: string;
+  result: AiPhaseResult;
+}
+
+export interface PendingAiVariationsGeneration {
+  sourcePhaseId: string;
+  sourcePhaseName: string;
+  result: AiVariationsResult;
+  selectedIds: string[];
+}
+
+export interface PendingAiQuizSuggestions {
+  generationId: string;
+  suggestions: QuizOptionSuggestion[];
+  acceptedCount: number;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Partida                                                                     */
 /* -------------------------------------------------------------------------- */

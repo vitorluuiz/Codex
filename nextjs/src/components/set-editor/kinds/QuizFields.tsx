@@ -8,6 +8,7 @@ import { decideGenerationAction, suggestQuizOptionsAction } from '@/lib/actions/
 import { cx } from '@/lib/cx';
 import type {
   AiUsage,
+  PendingAiQuizSuggestions,
   QuizDraftPhase,
   QuizOptionSuggestion,
   QuizSuggestionMode,
@@ -33,6 +34,8 @@ interface QuizFieldsProps {
   onChange: (patch: Partial<QuizDraftPhase>) => void;
   aiUsage?: AiUsage | null;
   onUsageChange?: (usage: AiUsage) => void;
+  pendingSuggestions?: PendingAiQuizSuggestions | null;
+  onPendingSuggestionsChange?: (pending: PendingAiQuizSuggestions | null) => void;
 }
 
 export function QuizFields({
@@ -40,6 +43,8 @@ export function QuizFields({
   onChange,
   aiUsage = null,
   onUsageChange,
+  pendingSuggestions = null,
+  onPendingSuggestionsChange,
 }: QuizFieldsProps) {
   const [alert, setAlert] = useState<string | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -49,10 +54,11 @@ export function QuizFields({
   const [popoverAnchor, setPopoverAnchor] = useState<AnchorRect | null>(null);
   const [suggestMode, setSuggestMode] = useState<QuizSuggestionMode>('distractors');
   const [suggestCount, setSuggestCount] = useState<number>(3);
-  const [suggestions, setSuggestions] = useState<QuizOptionSuggestion[]>([]);
-  const [suggestionGenId, setSuggestionGenId] = useState<string | null>(null);
-  const [acceptedCount, setAcceptedCount] = useState<number>(0);
   const [suggesting, startSuggestTransition] = useTransition();
+
+  const suggestions = pendingSuggestions?.suggestions ?? [];
+  const suggestionGenId = pendingSuggestions?.generationId ?? null;
+  const acceptedCount = pendingSuggestions?.acceptedCount ?? 0;
 
   const aiEnabled = aiUsage?.enabled !== false;
   const filledOptionsCount = phase.options.filter((opt) => opt.trim() !== '').length;
@@ -91,6 +97,7 @@ export function QuizFields({
         acceptedCount > 0 ? 'partial' : 'discarded',
         acceptedCount,
       );
+      onPendingSuggestionsChange?.(null);
     }
 
     const effectiveCount = Math.min(suggestCount, remainingSlots);
@@ -113,9 +120,11 @@ export function QuizFields({
       }
 
       onUsageChange?.(result.data.usage);
-      setSuggestions(result.data.suggestions);
-      setSuggestionGenId(result.data.generationId);
-      setAcceptedCount(0);
+      onPendingSuggestionsChange?.({
+        generationId: result.data.generationId,
+        suggestions: result.data.suggestions,
+        acceptedCount: 0,
+      });
     });
   }
 
@@ -149,12 +158,18 @@ export function QuizFields({
 
     const remaining = suggestions.filter((_, i) => i !== index);
     const nextAccepted = acceptedCount + 1;
-    setSuggestions(remaining);
-    setAcceptedCount(nextAccepted);
 
-    if (remaining.length === 0 && suggestionGenId) {
-      void decideGenerationAction(suggestionGenId, 'accepted', nextAccepted);
-      setSuggestionGenId(null);
+    if (remaining.length === 0) {
+      if (suggestionGenId) {
+        void decideGenerationAction(suggestionGenId, 'accepted', nextAccepted);
+      }
+      onPendingSuggestionsChange?.(null);
+    } else if (suggestionGenId) {
+      onPendingSuggestionsChange?.({
+        generationId: suggestionGenId,
+        suggestions: remaining,
+        acceptedCount: nextAccepted,
+      });
     }
   }
 
@@ -166,9 +181,7 @@ export function QuizFields({
         acceptedCount,
       );
     }
-    setSuggestions([]);
-    setSuggestionGenId(null);
-    setAcceptedCount(0);
+    onPendingSuggestionsChange?.(null);
   }
 
   function reorderOptions(from: number, to: number) {
