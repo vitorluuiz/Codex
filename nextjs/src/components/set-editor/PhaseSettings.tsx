@@ -53,9 +53,12 @@ const DEFAULT_VARIATION_SETTINGS: AiVariationOptions = {
   notes: '',
 };
 
+export type ChallengeSettingKey = 'basePoints' | 'pointsMultiplier' | 'timeSeconds';
+
 interface PhaseSettingsProps {
   phase: DraftPhase;
   onChange: (patch: Partial<DraftPhase>) => void;
+  onApplyToAll?: (key: ChallengeSettingKey, value: number) => void;
   aiUsage?: AiUsage | null;
   onUsageChange?: (usage: AiUsage) => void;
   onPendingVariationsChange?: (pending: PendingAiVariationsGeneration | null) => void;
@@ -64,12 +67,22 @@ interface PhaseSettingsProps {
 export function PhaseSettings({
   phase,
   onChange,
+  onApplyToAll,
   aiUsage = null,
   onUsageChange,
   onPendingVariationsChange,
 }: PhaseSettingsProps) {
   const [generatingVariations, startVariationsTransition] = useTransition();
   const [variationError, setVariationError] = useState<string | null>(null);
+  const [appliedField, setAppliedField] = useState<ChallengeSettingKey | null>(null);
+
+  function handleApplyToAll(key: ChallengeSettingKey, value: number) {
+    onApplyToAll?.(key, value);
+    setAppliedField(key);
+    setTimeout(() => {
+      setAppliedField((curr) => (curr === key ? null : curr));
+    }, 2000);
+  }
 
   const aiEnabled = aiUsage?.enabled !== false;
   const variationSettings: AiVariationOptions = {
@@ -165,45 +178,87 @@ export function PhaseSettings({
           subtitle="Pontuação, tempo e multiplicadores"
           icon={<Icon.Settings size={18} />}
         >
-          <Input
-            type="number"
-            label="Pontuação"
-            value={phase.basePoints}
-            onChange={(event) => onChange({ basePoints: Number(event.target.value) || 0 })}
-          />
-          <PresetRow
-            values={POINTS_PRESETS}
-            current={phase.basePoints}
-            format={String}
-            onPick={(basePoints) => onChange({ basePoints })}
-          />
+          <div className={styles.settingField}>
+            <Input
+              type="number"
+              label="Pontuação"
+              value={phase.basePoints}
+              onChange={(event) => onChange({ basePoints: Number(event.target.value) || 0 })}
+            />
+            <PresetRow
+              values={POINTS_PRESETS}
+              current={phase.basePoints}
+              format={String}
+              onPick={(basePoints) => onChange({ basePoints })}
+            />
+            <button
+              type="button"
+              className={cx(
+                styles.applyToAllButton,
+                appliedField === 'basePoints' && styles.applyToAllSuccess,
+              )}
+              onClick={() => handleApplyToAll('basePoints', phase.basePoints)}
+            >
+              {appliedField === 'basePoints'
+                ? '✓ Aplicado a todos os outros desafios'
+                : 'Aplicar a todos os outros desafios'}
+            </button>
+          </div>
 
-          <Input
-            type="number"
-            step="0.1"
-            label="Multiplicador"
-            value={phase.pointsMultiplier}
-            onChange={(event) => onChange({ pointsMultiplier: Number(event.target.value) || 1 })}
-          />
-          <PresetRow
-            values={MULTIPLIER_PRESETS}
-            current={phase.pointsMultiplier}
-            format={(value) => `x${value}`}
-            onPick={(pointsMultiplier) => onChange({ pointsMultiplier })}
-          />
+          <div className={styles.settingField}>
+            <Input
+              type="number"
+              step="0.1"
+              label="Multiplicador"
+              value={phase.pointsMultiplier}
+              onChange={(event) => onChange({ pointsMultiplier: Number(event.target.value) || 1 })}
+            />
+            <PresetRow
+              values={MULTIPLIER_PRESETS}
+              current={phase.pointsMultiplier}
+              format={(value) => `x${value}`}
+              onPick={(pointsMultiplier) => onChange({ pointsMultiplier })}
+            />
+            <button
+              type="button"
+              className={cx(
+                styles.applyToAllButton,
+                appliedField === 'pointsMultiplier' && styles.applyToAllSuccess,
+              )}
+              onClick={() => handleApplyToAll('pointsMultiplier', phase.pointsMultiplier)}
+            >
+              {appliedField === 'pointsMultiplier'
+                ? '✓ Aplicado a todos os outros desafios'
+                : 'Aplicar a todos os outros desafios'}
+            </button>
+          </div>
 
-          <Input
-            type="number"
-            label="Tempo (s)"
-            value={phase.timeSeconds}
-            onChange={(event) => onChange({ timeSeconds: Number(event.target.value) || 0 })}
-          />
-          <PresetRow
-            values={TIME_PRESETS}
-            current={phase.timeSeconds}
-            format={(value) => `${value}s`}
-            onPick={(timeSeconds) => onChange({ timeSeconds })}
-          />
+          <div className={styles.settingField}>
+            <Input
+              type="number"
+              label="Tempo (s)"
+              value={phase.timeSeconds}
+              onChange={(event) => onChange({ timeSeconds: Number(event.target.value) || 0 })}
+            />
+            <PresetRow
+              values={TIME_PRESETS}
+              current={phase.timeSeconds}
+              format={(value) => `${value}s`}
+              onPick={(timeSeconds) => onChange({ timeSeconds })}
+            />
+            <button
+              type="button"
+              className={cx(
+                styles.applyToAllButton,
+                appliedField === 'timeSeconds' && styles.applyToAllSuccess,
+              )}
+              onClick={() => handleApplyToAll('timeSeconds', phase.timeSeconds)}
+            >
+              {appliedField === 'timeSeconds'
+                ? '✓ Aplicado a todos os outros desafios'
+                : 'Aplicar a todos os outros desafios'}
+            </button>
+          </div>
         </AccordionItem>
 
         {/* 2. Temas de Personalização do Desafio */}

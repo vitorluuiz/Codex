@@ -103,13 +103,23 @@ export function syncBlanks(question: string, blanks: (string | null)[]): (string
 }
 
 /** Fase nova, com os valores padrão que o autor vai ajustar. */
-export function defaultDraftPhase(kind: PhaseKind, id: string): DraftPhase {
+export interface ChallengeDefaults {
+  basePoints: number;
+  pointsMultiplier: number;
+  timeSeconds: number;
+}
+
+export function defaultDraftPhase(
+  kind: PhaseKind,
+  id: string,
+  defaults?: Partial<ChallengeDefaults>,
+): DraftPhase {
   const base = {
     id,
     name: `Nova fase · ${KIND_META[kind].label}`,
-    basePoints: 100,
-    pointsMultiplier: 1,
-    timeSeconds: 45,
+    basePoints: defaults?.basePoints ?? 100,
+    pointsMultiplier: defaults?.pointsMultiplier ?? 1,
+    timeSeconds: defaults?.timeSeconds ?? 45,
     question: '',
     fromAI: false,
     theme: 'default',

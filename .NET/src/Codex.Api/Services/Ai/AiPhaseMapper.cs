@@ -171,15 +171,15 @@ public static class AiPhaseMapper
             name = Truncate(question, 48) ?? "Fase gerada";
         }
 
-        var defaultPoints = kind == PhaseKind.Code ? 1000 : 500;
-        var defaultTime = kind switch
+        var defaultPoints = settingsSource?.BasePoints ?? 100;
+        var defaultTime = settingsSource?.TimeSeconds ?? (kind switch
         {
             PhaseKind.Quiz => 45,
             PhaseKind.Fill => 60,
             PhaseKind.Text => 90,
             PhaseKind.Code => 180,
-            _ => 60,
-        };
+            _ => 45,
+        });
 
         int basePoints;
         int timeSeconds;

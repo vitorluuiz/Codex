@@ -20,10 +20,10 @@ import type {
 } from '@/lib/types';
 import { AddPhaseModal } from './AddPhaseModal';
 import { VariationsReviewModal } from './ai/VariationsReviewModal';
-import { KIND_META, draftPhaseId } from './phaseKinds';
+import { KIND_META, draftPhaseId, type ChallengeDefaults } from './phaseKinds';
 import { PhaseForm } from './PhaseForm';
 import { PhaseRail } from './PhaseRail';
-import { PhaseSettings } from './PhaseSettings';
+import { PhaseSettings, type ChallengeSettingKey } from './PhaseSettings';
 import styles from './SetEditor.module.css';
 
 const CONTENT_KEYS = new Set([
@@ -44,6 +44,7 @@ interface StoredPhaseSetDraft {
   pendingPhaseGen?: PendingAiPhaseGeneration | null;
   pendingVariationsGen?: PendingAiVariationsGeneration | null;
   pendingQuizSuggestions?: Record<string, PendingAiQuizSuggestions>;
+  challengeDefaults?: ChallengeDefaults;
   updatedAt: number;
 }
 
@@ -79,6 +80,11 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
   const [saveError, setSaveError] = useState<string | null>(null);
   const [nameHighlight, setNameHighlight] = useState(false);
   const [aiUsage, setAiUsage] = useState<AiUsage | null>(initialAiUsage);
+  const [challengeDefaults, setChallengeDefaults] = useState<ChallengeDefaults>(() => ({
+    basePoints: initialDraft.phases[0]?.basePoints ?? 100,
+    pointsMultiplier: initialDraft.phases[0]?.pointsMultiplier ?? 1,
+    timeSeconds: initialDraft.phases[0]?.timeSeconds ?? 45,
+  }));
 
   useEffect(() => {
     addOpenRef.current = addOpen;
@@ -117,6 +123,9 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
         if (parsed.pendingQuizSuggestions && typeof parsed.pendingQuizSuggestions === 'object') {
           setPendingQuizSuggestions(parsed.pendingQuizSuggestions);
         }
+        if (parsed.challengeDefaults) {
+          setChallengeDefaults(parsed.challengeDefaults);
+        }
       }
     } catch {
       // Ignora rascunho malformado ou localStorage indisponível
@@ -135,6 +144,7 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
         pendingPhaseGen,
         pendingVariationsGen,
         pendingQuizSuggestions,
+        challengeDefaults,
         updatedAt: Date.now(),
       };
       localStorage.setItem(storageKey, JSON.stringify(payload));
@@ -150,6 +160,7 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
     pendingPhaseGen,
     pendingVariationsGen,
     pendingQuizSuggestions,
+    challengeDefaults,
   ]);
 
   const isNew = initialDraft.id === null;
@@ -176,6 +187,19 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
     );
   }
 
+  function handleApplySettingToAll(key: ChallengeSettingKey, value: number) {
+    setChallengeDefaults((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+    setPhases((list) =>
+      list.map((phase) => ({
+        ...phase,
+        [key]: value,
+      })),
+    );
+  }
+
   function addPhase(phase: DraftPhase) {
     setPhases((list) => (list.some((item) => item.id === phase.id) ? list : [...list, phase]));
     setActiveId(phase.id);
@@ -191,13 +215,25 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
       return result;
     }
 
+    const phaseWithDefaults: DraftPhase = {
+      ...result.data.phase,
+      basePoints: challengeDefaults.basePoints,
+      pointsMultiplier: challengeDefaults.pointsMultiplier,
+      timeSeconds: challengeDefaults.timeSeconds,
+    };
+
+    const dataWithDefaults = {
+      ...result.data,
+      phase: phaseWithDefaults,
+    };
+
     setAiUsage(result.data.usage);
     setPhases((list) =>
-      list.some((item) => item.id === result.data.phase.id)
+      list.some((item) => item.id === phaseWithDefaults.id)
         ? list
-        : [...list, result.data.phase],
+        : [...list, phaseWithDefaults],
     );
-    setActiveId(result.data.phase.id);
+    setActiveId(phaseWithDefaults.id);
 
     if (addOpenRef.current) {
       setPendingPhaseGen({
@@ -205,14 +241,14 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
         topic: request.topic,
         difficulty: request.difficulty,
         notes: request.notes ?? '',
-        result: result.data,
+        result: dataWithDefaults,
       });
     } else {
       void decideGenerationAction(result.data.generationId, 'accepted', 1);
       setPendingPhaseGen(null);
     }
 
-    return result;
+    return { ok: true, data: dataWithDefaults } as const;
   }
 
   function insertPhasesAfter(afterId: string, newPhases: DraftPhase[]) {
@@ -447,6 +483,7 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
               <PhaseSettings
                 phase={active}
                 onChange={patchActive}
+                onApplyToAll={handleApplySettingToAll}
                 aiUsage={aiUsage}
                 onUsageChange={setAiUsage}
                 onPendingVariationsChange={setPendingVariationsGen}
@@ -475,6 +512,7 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
           onDiscardPhase={removePhase}
           onGeneratePhase={handleGeneratePhase}
           onClose={() => setAddOpen(false)}
+          challengeDefaults={challengeDefaults}
           aiUsage={aiUsage}
           onUsageChange={setAiUsage}
           initialPendingGeneration={pendingPhaseGen}

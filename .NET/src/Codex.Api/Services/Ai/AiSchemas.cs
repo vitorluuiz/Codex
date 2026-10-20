@@ -81,24 +81,6 @@ public static class AiSchemas
                 ["type"] = "string",
                 ["maxLength"] = PhaseLimits.MaxQuestionLength,
             },
-            ["basePoints"] = new JsonObject
-            {
-                ["type"] = "integer",
-                ["minimum"] = 0,
-                ["maximum"] = PhaseLimits.MaxBasePoints,
-            },
-            ["timeSeconds"] = new JsonObject
-            {
-                ["type"] = "integer",
-                ["minimum"] = PhaseLimits.MinTimeSeconds,
-                ["maximum"] = PhaseLimits.MaxTimeSeconds,
-            },
-            ["pointsMultiplier"] = new JsonObject
-            {
-                ["type"] = "number",
-                ["minimum"] = (double)PhaseLimits.MinPointsMultiplier,
-                ["maximum"] = (double)PhaseLimits.MaxPointsMultiplier,
-            },
             ["introTip"] = new JsonObject
             {
                 ["type"] = "string",
@@ -109,9 +91,6 @@ public static class AiSchemas
         var required = new JsonArray(
             "name",
             "question",
-            "basePoints",
-            "timeSeconds",
-            "pointsMultiplier",
             "introTip");
 
         switch (kind)

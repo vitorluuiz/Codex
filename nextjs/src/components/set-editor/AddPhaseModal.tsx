@@ -18,7 +18,7 @@ import type {
 } from '@/lib/types';
 import { AiPhasePreview } from './ai/AiPhasePreview';
 import { formatAiErrorMessage } from './ai/aiErrors';
-import { KIND_META, KIND_ORDER, defaultDraftPhase, draftPhaseId } from './phaseKinds';
+import { KIND_META, KIND_ORDER, defaultDraftPhase, draftPhaseId, type ChallengeDefaults } from './phaseKinds';
 import styles from './AddPhaseModal.module.css';
 
 /** Passos do fluxo. `ai` e `review` só existem quando a pessoa escolhe o caminho assistido. */
@@ -35,6 +35,7 @@ interface AddPhaseModalProps {
   onDiscardPhase?: (phaseId: string) => void;
   onGeneratePhase: (request: AiPhaseRequest) => Promise<AiActionResult<AiPhaseResult>>;
   onClose: () => void;
+  challengeDefaults?: ChallengeDefaults;
   aiUsage?: AiUsage | null;
   onUsageChange?: (usage: AiUsage) => void;
   initialPendingGeneration?: PendingAiPhaseGeneration | null;
@@ -46,6 +47,7 @@ export function AddPhaseModal({
   onDiscardPhase,
   onGeneratePhase,
   onClose,
+  challengeDefaults,
   aiUsage = null,
   onUsageChange,
   initialPendingGeneration = null,
@@ -229,7 +231,7 @@ export function AddPhaseModal({
               <button
                 type="button"
                 className={styles.path}
-                onClick={() => kind && onAdd(defaultDraftPhase(kind, draftPhaseId()))}
+                onClick={() => kind && onAdd(defaultDraftPhase(kind, draftPhaseId(), challengeDefaults))}
               >
                 <span className={styles.pathIcon}>
                   <Icon.Pencil size={22} />

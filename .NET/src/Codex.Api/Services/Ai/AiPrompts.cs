@@ -142,9 +142,6 @@ public static class AiPrompts
         sb.AppendLine("Regras gerais obrigatorias da fase:");
         sb.AppendLine($"- \"name\": titulo curto da fase (1 a {PhaseLimits.MaxNameLength} caracteres).");
         sb.AppendLine($"- \"question\": enunciado claro e completo (1 a {PhaseLimits.MaxQuestionLength} caracteres).");
-        sb.AppendLine($"- \"basePoints\": inteiro entre 100 e {PhaseLimits.MaxBasePoints} (padrao sugerido: 500 para quiz/fill/text, 1000 para code).");
-        sb.AppendLine($"- \"timeSeconds\": inteiro entre {PhaseLimits.MinTimeSeconds} e {PhaseLimits.MaxTimeSeconds} (ex.: 45 para quiz, 60 para fill, 90 para text, 180 para code).");
-        sb.AppendLine($"- \"pointsMultiplier\": numero entre {PhaseLimits.MinPointsMultiplier} e {PhaseLimits.MaxPointsMultiplier} (use 1.0 como padrao).");
         sb.AppendLine($"- \"introTip\": dica curta opcional (0 a {PhaseLimits.MaxIntroTipLength} caracteres; use string vazia \"\" se nao precisar).");
         sb.AppendLine();
 
@@ -183,9 +180,6 @@ public static class AiPrompts
             ["kind"] = ToWireKind(source.Kind),
             ["name"] = source.Name,
             ["question"] = source.Question,
-            ["basePoints"] = source.BasePoints,
-            ["timeSeconds"] = source.TimeSeconds,
-            ["pointsMultiplier"] = source.PointsMultiplier,
             ["introTip"] = source.IntroTip,
         };
 
