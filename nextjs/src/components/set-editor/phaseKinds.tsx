@@ -107,6 +107,8 @@ export interface ChallengeDefaults {
   basePoints: number;
   pointsMultiplier: number;
   timeSeconds: number;
+  theme?: string;
+  introSeconds?: number;
 }
 
 export function defaultDraftPhase(
@@ -122,9 +124,9 @@ export function defaultDraftPhase(
     timeSeconds: defaults?.timeSeconds ?? 45,
     question: '',
     fromAI: false,
-    theme: 'default',
+    theme: defaults?.theme ?? 'default',
     showFeedbackAnimation: true,
-    introSeconds: 5,
+    introSeconds: defaults?.introSeconds ?? 5,
     introTip: '',
     introSound: true,
     introShapes: true,

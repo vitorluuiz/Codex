@@ -23,7 +23,7 @@ import { VariationsReviewModal } from './ai/VariationsReviewModal';
 import { KIND_META, draftPhaseId, type ChallengeDefaults } from './phaseKinds';
 import { PhaseForm } from './PhaseForm';
 import { PhaseRail } from './PhaseRail';
-import { PhaseSettings, type ChallengeSettingKey } from './PhaseSettings';
+import { PhaseSettings, type ChallengeSettingKey, type ChallengeSettingMap } from './PhaseSettings';
 import styles from './SetEditor.module.css';
 
 const CONTENT_KEYS = new Set([
@@ -84,6 +84,8 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
     basePoints: initialDraft.phases[0]?.basePoints ?? 100,
     pointsMultiplier: initialDraft.phases[0]?.pointsMultiplier ?? 1,
     timeSeconds: initialDraft.phases[0]?.timeSeconds ?? 45,
+    theme: initialDraft.phases[0]?.theme ?? 'default',
+    introSeconds: initialDraft.phases[0]?.introSeconds ?? 5,
   }));
 
   useEffect(() => {
@@ -187,7 +189,10 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
     );
   }
 
-  function handleApplySettingToAll(key: ChallengeSettingKey, value: number) {
+  function handleApplySettingToAll<K extends ChallengeSettingKey>(
+    key: K,
+    value: ChallengeSettingMap[K],
+  ) {
     setChallengeDefaults((prev) => ({
       ...prev,
       [key]: value,
@@ -196,7 +201,7 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
       list.map((phase) => ({
         ...phase,
         [key]: value,
-      })),
+      }) as DraftPhase),
     );
   }
 
@@ -220,6 +225,8 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
       basePoints: challengeDefaults.basePoints,
       pointsMultiplier: challengeDefaults.pointsMultiplier,
       timeSeconds: challengeDefaults.timeSeconds,
+      theme: challengeDefaults.theme ?? 'default',
+      introSeconds: challengeDefaults.introSeconds ?? 5,
     };
 
     const dataWithDefaults = {

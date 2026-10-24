@@ -53,12 +53,20 @@ const DEFAULT_VARIATION_SETTINGS: AiVariationOptions = {
   notes: '',
 };
 
-export type ChallengeSettingKey = 'basePoints' | 'pointsMultiplier' | 'timeSeconds';
+export type ChallengeSettingMap = {
+  basePoints: number;
+  pointsMultiplier: number;
+  timeSeconds: number;
+  theme: string;
+  introSeconds: number;
+};
+
+export type ChallengeSettingKey = keyof ChallengeSettingMap;
 
 interface PhaseSettingsProps {
   phase: DraftPhase;
   onChange: (patch: Partial<DraftPhase>) => void;
-  onApplyToAll?: (key: ChallengeSettingKey, value: number) => void;
+  onApplyToAll?: <K extends ChallengeSettingKey>(key: K, value: ChallengeSettingMap[K]) => void;
   aiUsage?: AiUsage | null;
   onUsageChange?: (usage: AiUsage) => void;
   onPendingVariationsChange?: (pending: PendingAiVariationsGeneration | null) => void;
@@ -76,7 +84,7 @@ export function PhaseSettings({
   const [variationError, setVariationError] = useState<string | null>(null);
   const [appliedField, setAppliedField] = useState<ChallengeSettingKey | null>(null);
 
-  function handleApplyToAll(key: ChallengeSettingKey, value: number) {
+  function handleApplyToAll<K extends ChallengeSettingKey>(key: K, value: ChallengeSettingMap[K]) {
     onApplyToAll?.(key, value);
     setAppliedField(key);
     setTimeout(() => {
@@ -289,6 +297,18 @@ export function PhaseSettings({
                 );
               })}
             </div>
+            <button
+              type="button"
+              className={cx(
+                styles.applyToAllButton,
+                appliedField === 'theme' && styles.applyToAllSuccess,
+              )}
+              onClick={() => handleApplyToAll('theme', phase.theme || 'default')}
+            >
+              {appliedField === 'theme'
+                ? '✓ Aplicado a todos os outros desafios'
+                : 'Aplicar a todos os outros desafios'}
+            </button>
           </div>
 
           <div className={styles.togglesBlock}>
@@ -310,18 +330,32 @@ export function PhaseSettings({
           subtitle="Contagem regressiva e instruções"
           icon={<Icon.Clock size={18} />}
         >
-          <Input
-            type="number"
-            label="Contagem regressiva (s)"
-            value={phase.introSeconds ?? 5}
-            onChange={(event) => onChange({ introSeconds: Number(event.target.value) || 5 })}
-          />
-          <PresetRow
-            values={INTRO_TIME_PRESETS}
-            current={phase.introSeconds ?? 5}
-            format={(value) => `${value}s`}
-            onPick={(introSeconds) => onChange({ introSeconds })}
-          />
+          <div className={styles.settingField}>
+            <Input
+              type="number"
+              label="Contagem regressiva (s)"
+              value={phase.introSeconds ?? 5}
+              onChange={(event) => onChange({ introSeconds: Number(event.target.value) || 5 })}
+            />
+            <PresetRow
+              values={INTRO_TIME_PRESETS}
+              current={phase.introSeconds ?? 5}
+              format={(value) => `${value}s`}
+              onPick={(introSeconds) => onChange({ introSeconds })}
+            />
+            <button
+              type="button"
+              className={cx(
+                styles.applyToAllButton,
+                appliedField === 'introSeconds' && styles.applyToAllSuccess,
+              )}
+              onClick={() => handleApplyToAll('introSeconds', phase.introSeconds ?? 5)}
+            >
+              {appliedField === 'introSeconds'
+                ? '✓ Aplicado a todos os outros desafios'
+                : 'Aplicar a todos os outros desafios'}
+            </button>
+          </div>
 
           <Input
             label="Mensagem de orientação"
