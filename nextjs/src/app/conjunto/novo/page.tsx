@@ -1,8 +1,9 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 
 import { SetEditor } from '@/components/set-editor/SetEditor';
 import { getAiUsage } from '@/lib/api/ai';
+import { getPhaseLimits } from '@/lib/api/phaseSets';
 import { getSession } from '@/lib/api/session';
 
 export const metadata: Metadata = { title: 'Novo conjunto' };
@@ -15,12 +16,13 @@ export default async function NewPhaseSetPage() {
   const session = await getSession();
   if (!session.user) redirect('/entrar');
 
-  const aiUsage = await getAiUsage();
+  const [aiUsage, limits] = await Promise.all([getAiUsage(), getPhaseLimits()]);
 
   return (
     <SetEditor
       initialDraft={{ id: null, title: '', phases: [] }}
       initialAiUsage={aiUsage}
+      limits={limits}
     />
   );
 }

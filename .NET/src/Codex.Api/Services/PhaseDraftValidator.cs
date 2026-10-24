@@ -28,15 +28,49 @@ public static class PhaseDraftValidator
     public const int MaxOptions = 8;
 
     /// <summary>
+    /// Desconsidera alternativas vazias enviadas pelo usuario para fases do tipo quiz,
+    /// remapeando os correctIndexes para os novos indices correspondentes.
+    /// </summary>
+    public static DraftPhaseDto SanitizePhase(DraftPhaseDto phase)
+    {
+        if (phase.Kind is not PhaseKind.Quiz || phase.Options is null)
+        {
+            return phase;
+        }
+
+        var newOptions = new List<string>();
+        var indexMap = new Dictionary<int, int>();
+
+        for (var i = 0; i < phase.Options.Count; i++)
+        {
+            var opt = phase.Options[i];
+            if (!string.IsNullOrWhiteSpace(opt))
+            {
+                indexMap[i] = newOptions.Count;
+                newOptions.Add(opt);
+            }
+        }
+
+        var newCorrect = phase.CorrectIndexes?
+            .Where(indexMap.ContainsKey)
+            .Select(i => indexMap[i])
+            .Distinct()
+            .ToList() ?? [];
+
+        return phase with
+        {
+            Options = newOptions,
+            CorrectIndexes = newCorrect
+        };
+    }
+
+    /// <summary>
     /// Valida a lista de fases de um conjunto no salvamento.
     ///
-    /// <b>O que deliberadamente nao e validado: campo em branco.</b> Enunciado vazio, alternativa
-    /// vazia, lacuna sem palavra escolhida — tudo isso passa. Isto e um <i>rascunho</i>: o editor
-    /// cria a fase com enunciado vazio e o autor sai da tela no meio, e um conjunto que so pode
-    /// ser salvo quando estiver perfeito e um conjunto que se perde. O que nao passa e o que e
-    /// <i>contraditorio</i> — um quiz cuja resposta certa e "todas", um gabarito posicional com
-    /// mais entradas do que lacunas —, porque isso nao e falta de conteudo, e conteudo que nao
-    /// pode existir.
+    /// <b>O que deliberadamente nao e validado: campo em branco.</b> Enunciado vazio, lacuna
+    /// sem palavra escolhida — tudo isso passa. Isto e um <i>rascunho</i>: o editor cria a fase
+    /// com enunciado vazio e o autor sai da tela no meio. O que nao passa e o que e <i>contraditorio</i>.
+    /// Se o usuario enviar uma alternativa vazia num quiz, a API a desconsidera.
     /// </summary>
     public static IReadOnlyList<DraftPhaseDto> Validate(IReadOnlyList<DraftPhaseDto>? phases)
     {
@@ -49,16 +83,19 @@ public static class PhaseDraftValidator
             throw Validation($"um conjunto aceita no maximo {MaxPhasesPerSet} fases.");
         }
 
-        for (var index = 0; index < phases.Count; index++)
+        var sanitized = phases.Select(SanitizePhase).ToList();
+
+        for (var index = 0; index < sanitized.Count; index++)
         {
-            Validate(phases[index], index);
+            Validate(sanitized[index], index);
         }
 
-        return phases;
+        return sanitized;
     }
 
     public static void Validate(DraftPhaseDto phase, int index)
     {
+        phase = SanitizePhase(phase);
         var name = phase.Name?.Trim();
         if (string.IsNullOrEmpty(name) || name.Length > MaxTitleLength)
         {

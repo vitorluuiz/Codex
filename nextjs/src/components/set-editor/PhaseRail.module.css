@@ -1,4 +1,4 @@
-.rail {
+﻿.rail {
   background: var(--surface-card);
   border-right: 1px solid var(--border-subtle);
   display: flex;
@@ -321,4 +321,25 @@
   .browseTile {
     flex: 0 0 180px;
   }
+}
+
+.tileInvalid {
+  border-color: var(--accent-danger) !important;
+  box-shadow: 0 0 0 1.5px var(--accent-danger) !important;
+}
+
+.tileAlertBadge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-danger);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  z-index: 3;
 }

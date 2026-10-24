@@ -1,10 +1,12 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 
 import { Button } from '@/components/ds';
 import { cx } from '@/lib/cx';
-import type { FillDraftPhase } from '@/lib/types';
+import { Icon } from '@/components/icons/Icons';
+import type { FillDraftPhase, PhaseLimits } from '@/lib/types';
+import type { PhaseValidationErrors } from '../validation';
 import { BLANK_TOKENS, splitQuestion, syncBlanks } from '../phaseKinds';
 import shared from '../PhaseForm.module.css';
 import styles from './FillFields.module.css';
@@ -28,9 +30,11 @@ export function FillQuestionLabel() {
 interface FillFieldsProps {
   phase: FillDraftPhase;
   onChange: (patch: Partial<FillDraftPhase>) => void;
+  limits?: PhaseLimits;
+  errors?: PhaseValidationErrors | null;
 }
 
-export function FillFields({ phase, onChange }: FillFieldsProps) {
+export function FillFields({ phase, onChange, limits, errors }: FillFieldsProps) {
   const [newWord, setNewWord] = useState('');
 
   const blanks = syncBlanks(phase.question, phase.blanks);
@@ -61,7 +65,13 @@ export function FillFields({ phase, onChange }: FillFieldsProps) {
   return (
     <div className={styles.fillGroup}>
       <div className={shared.field}>
-        <span className={shared.label}>
+        {errors?.fillGeneral && (
+        <div className={shared.fieldError} role="alert">
+          <Icon.Alert size={14} className={shared.fieldErrorIcon} />
+          <span>{errors.fillGeneral}</span>
+        </div>
+      )}
+      <span className={shared.label}>
           Pré-visualização · clique numa lacuna preenchida para devolver a palavra
         </span>
         <div className={styles.preview}>

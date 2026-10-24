@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using Codex.Api.Common.Auth;
 using Codex.Api.Common.Errors;
 using Codex.Api.Common.Formatting;
@@ -284,7 +284,8 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
     private PhaseSetDraftResponse ToDraft(PhaseSet set) => new(
         set.Id,
         set.Title,
-        [.. set.Phases.OrderBy(p => p.OrderIndex).Select(ToDraftPhase)]);
+        [.. set.Phases.OrderBy(p => p.OrderIndex).Select(ToDraftPhase)],
+        new PhaseLimitsDto());
 
     /// <summary>
     /// A fase como o editor a recebe de volta: colunas + o que estava no <c>ContentJson</c>.

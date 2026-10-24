@@ -1,4 +1,4 @@
-.correctChip {
+﻿.correctChip {
   display: inline-flex;
   align-items: center;
   padding: 4px var(--space-3);
@@ -299,4 +299,114 @@
 
 .dragHandle:active {
   cursor: grabbing;
+}
+
+/* --- Alertas, Contadores e Ações de Alternativas -------------------------- */
+
+.optionWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.inputWrapper {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.optionInput {
+  padding-right: 75px !important;
+}
+
+.charCounter {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  pointer-events: none;
+  background: var(--surface-card);
+  padding: 1px 5px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--border-subtle);
+  line-height: 1.2;
+  user-select: none;
+  z-index: 2;
+}
+
+.charCounterError {
+  color: var(--accent-danger);
+  border-color: var(--accent-danger);
+  font-weight: var(--fw-bold);
+}
+
+.optionErrorMsg {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--accent-danger);
+  font-weight: var(--fw-semibold);
+  margin-left: 38px;
+}
+
+.quizGeneralAlert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-m);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1.5px solid var(--accent-danger);
+  color: var(--accent-danger);
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-medium);
+  margin-bottom: var(--space-2);
+}
+
+.addOptionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-m);
+  border: 1.5px dashed var(--border-strong);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+  width: 100%;
+  margin-top: 4px;
+}
+
+.addOptionButton:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  background: var(--surface-sunken);
+}
+
+.removeOptionButton {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-s);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--dur-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.removeOptionButton:hover {
+  color: var(--accent-danger);
+  background: rgba(239, 68, 68, 0.1);
 }

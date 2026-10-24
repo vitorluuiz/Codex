@@ -21,6 +21,8 @@ public static class PhaseSetEndpoints
     {
         var group = app.MapGroup("/phase-sets");
 
+        group.MapGet("/limits", () => Results.Ok(new PhaseLimitsDto()));
+
         group.MapGet("", async (string? scope, string? q, ClaimsPrincipal principal, PhaseSetService sets, CancellationToken ct)
             => Results.Ok(await sets.ListAsync(scope, q, principal, ct)));
 

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRef, useState, useTransition } from 'react';
 
@@ -9,11 +9,13 @@ import { cx } from '@/lib/cx';
 import type {
   AiUsage,
   PendingAiQuizSuggestions,
+  PhaseLimits,
   QuizDraftPhase,
   QuizOptionSuggestion,
   QuizSuggestionMode,
 } from '@/lib/types';
 import { formatAiErrorMessage } from '../ai/aiErrors';
+import type { PhaseValidationErrors } from '../validation';
 import shared from '../PhaseForm.module.css';
 import styles from './QuizFields.module.css';
 
@@ -36,6 +38,8 @@ interface QuizFieldsProps {
   onUsageChange?: (usage: AiUsage) => void;
   pendingSuggestions?: PendingAiQuizSuggestions | null;
   onPendingSuggestionsChange?: (pending: PendingAiQuizSuggestions | null) => void;
+  limits: PhaseLimits;
+  errors?: PhaseValidationErrors | null;
 }
 
 export function QuizFields({
@@ -45,6 +49,8 @@ export function QuizFields({
   onUsageChange,
   pendingSuggestions = null,
   onPendingSuggestionsChange,
+  limits,
+  errors,
 }: QuizFieldsProps) {
   const [alert, setAlert] = useState<string | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -72,7 +78,11 @@ export function QuizFields({
     const current = phase.correctIndexes;
     if (current.includes(index)) {
       // Uma fase sem gabarito não tem como ser corrigida.
-      if (current.length === 1) return;
+      if (current.length === 1) {
+        setAlert('O desafio precisa de ao menos uma alternativa correta.');
+        return;
+      }
+      setAlert(null);
       onChange({ correctIndexes: current.filter((i) => i !== index) });
       return;
     }
@@ -80,9 +90,10 @@ export function QuizFields({
     const next = [...current, index].sort((a, b) => a - b);
     // Se tudo estiver certo, a pergunta deixa de discriminar qualquer coisa.
     if (next.length >= phase.options.length) {
-      setAlert('Não é possível selecionar todas as alternativas como corretas.');
+      setAlert('Não é possível assinalar todas as alternativas como corretas.');
       return;
     }
+    setAlert(null);
     onChange({ correctIndexes: next });
   }
 
@@ -132,13 +143,10 @@ export function QuizFields({
     const nextOptions = [...phase.options];
     let targetIdx = nextOptions.length;
 
-    // Se a última opção for um slot vazio em aberto, preenche ele antes de criar outro
+    // Se a última opção for um slot vazio em aberto, preenche antes de criar outro
     if (nextOptions.length > 0 && nextOptions[nextOptions.length - 1].trim() === '') {
       targetIdx = nextOptions.length - 1;
       nextOptions[targetIdx] = suggestion.label;
-      if (nextOptions.length < MAX_OPTIONS) {
-        nextOptions.push('');
-      }
     } else if (nextOptions.length < MAX_OPTIONS) {
       nextOptions.push(suggestion.label);
     } else {
@@ -231,17 +239,7 @@ export function QuizFields({
   function shuffleOptions() {
     if (phase.options.length <= 1) return;
 
-    const hasTrailingEmpty =
-      phase.options.length > MIN_OPTIONS &&
-      phase.options[phase.options.length - 1].trim() === '';
-
-    const countToShuffle = hasTrailingEmpty
-      ? phase.options.length - 1
-      : phase.options.length;
-
-    if (countToShuffle <= 1) return;
-
-    const pairs = phase.options.slice(0, countToShuffle).map((option, index) => ({
+    const pairs = phase.options.map((option, index) => ({
       option,
       isCorrect: phase.correctIndexes.includes(index),
     }));
@@ -252,17 +250,9 @@ export function QuizFields({
     }
 
     const nextOptions = pairs.map((p) => p.option);
-    if (hasTrailingEmpty) {
-      nextOptions.push(phase.options[phase.options.length - 1]);
-    }
-
     const correctIndexes = pairs
       .map((p, i) => (p.isCorrect ? i : -1))
       .filter((i) => i !== -1);
-
-    if (hasTrailingEmpty && phase.correctIndexes.includes(phase.options.length - 1)) {
-      correctIndexes.push(phase.options.length - 1);
-    }
 
     onChange({
       options: nextOptions,
@@ -299,67 +289,18 @@ export function QuizFields({
     }, 0);
   }
 
-  function trimTrailingEmpty() {
-    const nextOptions = [...phase.options];
-    while (nextOptions.length > MIN_OPTIONS && nextOptions[nextOptions.length - 1].trim() === '') {
-      nextOptions.pop();
-    }
-    if (nextOptions.length < phase.options.length) {
-      let correctIndexes = phase.correctIndexes.filter((i) => i < nextOptions.length);
-      if (correctIndexes.length >= nextOptions.length) correctIndexes = correctIndexes.slice(0, -1);
-      if (correctIndexes.length === 0) correctIndexes = [0];
-      onChange({ options: nextOptions, correctIndexes });
-    }
-  }
-
   function handleOptionChange(index: number, value: string) {
     const nextOptions = phase.options.map((opt, i) => (i === index ? value : opt));
-    const wasEmpty = phase.options[index].trim() === '';
-    const nowFilled = value.trim() !== '';
-
-    if (
-      wasEmpty &&
-      nowFilled &&
-      nextOptions.length < MAX_OPTIONS &&
-      nextOptions.every((opt) => opt.trim() !== '')
-    ) {
-      nextOptions.push('');
-    }
-
-    if (
-      !nowFilled &&
-      index < nextOptions.length - 1 &&
-      nextOptions.length > MIN_OPTIONS &&
-      nextOptions[nextOptions.length - 1].trim() === ''
-    ) {
-      nextOptions.pop();
-    }
-
-    let correctIndexes = phase.correctIndexes;
-    if (nextOptions.length < phase.options.length) {
-      correctIndexes = correctIndexes.filter((i) => i < nextOptions.length);
-      if (correctIndexes.length >= nextOptions.length) correctIndexes = correctIndexes.slice(0, -1);
-      if (correctIndexes.length === 0) correctIndexes = [0];
-    }
-
-    onChange({ options: nextOptions, correctIndexes });
+    onChange({ options: nextOptions });
   }
 
-  function handleInputBlur(index: number) {
-    if (
-      index === phase.options.length - 1 &&
-      phase.options[index].trim() === '' &&
-      phase.options.length > MIN_OPTIONS
-    ) {
-      removeOptionAt(index);
-    }
-  }
-
-  function handleContainerBlur(event: React.FocusEvent<HTMLDivElement>) {
-    if (event.currentTarget.contains(event.relatedTarget as Node)) {
-      return;
-    }
-    trimTrailingEmpty();
+  function handleAddOption() {
+    if (phase.options.length >= MAX_OPTIONS) return;
+    const nextOptions = [...phase.options, ''];
+    onChange({ options: nextOptions });
+    setTimeout(() => {
+      inputRefs.current[nextOptions.length - 1]?.focus();
+    }, 0);
   }
 
   function handleKeyDown(index: number, event: React.KeyboardEvent<HTMLInputElement>) {
@@ -414,7 +355,7 @@ export function QuizFields({
     questionEmpty || remainingSlots === 0 || dailyExceeded || suggesting;
 
   return (
-    <div className={shared.field} onBlur={handleContainerBlur}>
+    <div className={shared.field}>
       <div className={shared.labelRow}>
         <span className={shared.label}>Alternativas · marque uma ou mais corretas</span>
         <div className={styles.headerActions}>
@@ -528,61 +469,122 @@ export function QuizFields({
         </div>
       )}
 
+      {errors?.quizGeneral && (
+        <div className={styles.quizGeneralAlert} role="alert">
+          <Icon.Alert size={16} />
+          <span>{errors.quizGeneral}</span>
+        </div>
+      )}
+
       {phase.options.map((option, index) => {
         const isCorrect = phase.correctIndexes.includes(index);
+        const optionError = errors?.options?.[index];
+        const isOverLimit = option.length > limits.maxOptionLength;
+
         return (
-          <div
-            key={index}
-            className={cx(
-              styles.optionRow,
-              dragIndex === index && styles.rowDragging,
-              overIndex === index && dragIndex !== index && styles.rowDropTarget,
+          <div key={index} className={styles.optionWrapper}>
+            {optionError && (
+              <div className={styles.optionErrorMsg} role="alert">
+                <Icon.Alert size={12} />
+                <span>{optionError}</span>
+              </div>
             )}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setOverIndex(index);
-            }}
-            onDrop={() => handleDrop(index)}
-          >
-            <button
-              type="button"
-              className={cx(styles.mark, isCorrect && styles.markCorrect)}
-              onClick={() => toggleCorrect(index)}
-              aria-pressed={isCorrect}
-              aria-label={`Marcar alternativa ${index + 1} como correta`}
-            >
-              {isCorrect && <Icon.Check size={13} />}
-            </button>
-            <input
-              ref={(el) => {
-                inputRefs.current[index] = el;
-              }}
-              className={shared.input}
-              placeholder={`Alternativa ${index + 1}`}
-              value={option}
-              onChange={(event) => handleOptionChange(index, event.target.value)}
-              onBlur={() => handleInputBlur(index)}
-              onKeyDown={(event) => handleKeyDown(index, event)}
-            />
+
             <div
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData('text/plain', String(index));
-                setDragIndex(index);
+              className={cx(
+                styles.optionRow,
+                dragIndex === index && styles.rowDragging,
+                overIndex === index && dragIndex !== index && styles.rowDropTarget,
+              )}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setOverIndex(index);
               }}
-              onDragEnd={() => {
-                setDragIndex(null);
-                setOverIndex(null);
-              }}
-              className={styles.dragHandle}
-              title="Segure e arraste para alternar a posição"
-              aria-label={`Reordenar alternativa ${index + 1}`}
+              onDrop={() => handleDrop(index)}
             >
-              <Icon.Grip size={15} />
+              <button
+                type="button"
+                className={cx(styles.mark, isCorrect && styles.markCorrect)}
+                onClick={() => toggleCorrect(index)}
+                aria-pressed={isCorrect}
+                aria-label={`Marcar alternativa ${index + 1} como correta`}
+              >
+                {isCorrect && <Icon.Check size={13} />}
+              </button>
+
+              <div className={styles.inputWrapper}>
+                <input
+                  ref={(el) => {
+                    inputRefs.current[index] = el;
+                  }}
+                  className={cx(
+                    shared.input,
+                    styles.optionInput,
+                    optionError && shared.inputInvalid,
+                  )}
+                  placeholder={
+                    optionError
+                      ? 'A alternativa não pode ficar vazia'
+                      : `Alternativa ${index + 1}`
+                  }
+                  value={option}
+                  onChange={(event) => handleOptionChange(index, event.target.value)}
+                  onKeyDown={(event) => handleKeyDown(index, event)}
+                />
+                <span
+                  className={cx(
+                    styles.charCounter,
+                    isOverLimit && styles.charCounterError,
+                  )}
+                  title={`Quantidade atual: ${option.length} / Limite: ${limits.maxOptionLength}`}
+                >
+                  {option.length} / {limits.maxOptionLength}
+                </span>
+              </div>
+
+              {phase.options.length > MIN_OPTIONS && (
+                <button
+                  type="button"
+                  className={styles.removeOptionButton}
+                  onClick={() => removeOptionAt(index)}
+                  title="Remover alternativa"
+                  aria-label={`Remover alternativa ${index + 1}`}
+                >
+                  <Icon.Close size={14} />
+                </button>
+              )}
+
+              <div
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData('text/plain', String(index));
+                  setDragIndex(index);
+                }}
+                onDragEnd={() => {
+                  setDragIndex(null);
+                  setOverIndex(null);
+                }}
+                className={styles.dragHandle}
+                title="Segure e arraste para alternar a posição"
+                aria-label={`Reordenar alternativa ${index + 1}`}
+              >
+                <Icon.Grip size={15} />
+              </div>
             </div>
           </div>
         );
       })}
+
+      {phase.options.length < MAX_OPTIONS && (
+        <button
+          type="button"
+          className={styles.addOptionButton}
+          onClick={handleAddOption}
+        >
+          <Icon.Plus size={14} />
+          <span>Adicionar alternativa ({phase.options.length}/{MAX_OPTIONS})</span>
+        </button>
+      )}
 
       {suggestions.length > 0 && (
         <div className={styles.suggestionsBox}>

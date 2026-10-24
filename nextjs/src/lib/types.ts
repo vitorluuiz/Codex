@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Modelo de domínio do Codex.
  *
  * Este arquivo é o contrato: `contracts/api/api-rest-contract.md` e
@@ -342,11 +342,20 @@ export interface FillDraftPhase extends DraftPhaseBase {
 
 export type DraftPhase = QuizDraftPhase | CodeDraftPhase | TextDraftPhase | FillDraftPhase;
 
+export interface PhaseLimits {
+  maxQuestionLength: number;
+  maxOptionLength: number;
+  maxExpectedAnswerLength: number;
+  maxStarterCodeLength: number;
+  maxTestCasesLength: number;
+}
+
 export interface PhaseSetDraft {
   /** `null` num conjunto que ainda não foi salvo pela primeira vez. */
   id: string | null;
   title: string;
   phases: DraftPhase[];
+  limits?: PhaseLimits;
 }
 
 /** Dificuldade pedida na geração por IA. */

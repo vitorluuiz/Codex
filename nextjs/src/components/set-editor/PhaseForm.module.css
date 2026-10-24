@@ -1,4 +1,4 @@
-.card {
+﻿.card {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
@@ -99,4 +99,61 @@
   font-size: var(--text-caption);
   color: var(--text-secondary);
   margin: 0;
+}
+
+/* --- Estados de Alerta / Validação e Contadores --------------------------- */
+
+.textareaWrapper,
+.inputWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.charCounter {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  pointer-events: none;
+  background: var(--surface-card);
+  padding: 1px 6px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--border-subtle);
+  line-height: 1.2;
+  user-select: none;
+  z-index: 2;
+}
+
+.charCounterError {
+  color: var(--accent-danger);
+  border-color: var(--accent-danger);
+  font-weight: var(--fw-bold);
+}
+
+.fieldError {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-caption);
+  color: var(--accent-danger);
+  font-weight: var(--fw-semibold);
+  margin-bottom: 2px;
+}
+
+.fieldErrorIcon {
+  flex-shrink: 0;
+  color: var(--accent-danger);
+}
+
+.inputInvalid,
+.inputInvalid:focus {
+  border-color: var(--accent-danger) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.inputInvalid::placeholder {
+  color: var(--accent-danger) !important;
+  opacity: 0.8;
 }

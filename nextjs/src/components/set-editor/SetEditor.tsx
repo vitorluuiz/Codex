@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
@@ -9,6 +9,8 @@ import { decideGenerationAction, generatePhaseAction } from '@/lib/actions/ai';
 import { savePhaseSetAction } from '@/lib/actions/phaseSets';
 import { cssVars } from '@/lib/cssVars';
 import { cx } from '@/lib/cx';
+import type { PhaseLimits } from '@/lib/types';
+import { DEFAULT_PHASE_LIMITS, validatePhase, type SetValidationErrors } from './validation';
 import type {
   AiPhaseRequest,
   AiUsage,
@@ -55,9 +57,14 @@ function getDraftStorageKey(setId: string | null): string {
 interface SetEditorProps {
   initialDraft: PhaseSetDraft;
   initialAiUsage?: AiUsage | null;
+  limits?: PhaseLimits;
 }
 
-export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProps) {
+export function SetEditor({
+  initialDraft,
+  initialAiUsage = null,
+  limits = DEFAULT_PHASE_LIMITS,
+}: SetEditorProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -78,6 +85,7 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
   const [addOpen, setAddOpen] = useState(false);
   const addOpenRef = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<SetValidationErrors>({});
   const [nameHighlight, setNameHighlight] = useState(false);
   const [aiUsage, setAiUsage] = useState<AiUsage | null>(initialAiUsage);
   const [challengeDefaults, setChallengeDefaults] = useState<ChallengeDefaults>(() => ({
@@ -173,11 +181,9 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
 
   function patchActive(patch: Partial<DraftPhase>) {
     const editedContent = Object.keys(patch).some((key) => CONTENT_KEYS.has(key));
-    setPhases((list) =>
-      list.map((phase) => {
+    setPhases((list) => {
+      const nextList = list.map((phase) => {
         if (phase.id !== activeId) return phase;
-        // O cast é seguro porque o patch sempre vem do formulário da própria
-        // fase ativa, que só produz campos do `kind` dela.
         const nextFromAI =
           patch.fromAI !== undefined
             ? patch.fromAI
@@ -185,8 +191,26 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
               ? false
               : phase.fromAI;
         return { ...phase, ...patch, fromAI: nextFromAI } as DraftPhase;
-      }),
-    );
+      });
+
+      if (activeId && validationErrors[activeId]) {
+        const activePhase = nextList.find((p) => p.id === activeId);
+        if (activePhase) {
+          const errs = validatePhase(activePhase, limits);
+          setValidationErrors((prev) => {
+            const next = { ...prev };
+            if (errs) {
+              next[activeId] = errs;
+            } else {
+              delete next[activeId];
+            }
+            return next;
+          });
+        }
+      }
+
+      return nextList;
+    });
   }
 
   function handleApplySettingToAll<K extends ChallengeSettingKey>(
@@ -323,26 +347,13 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
 
   /* --- Persistência ------------------------------------------------------- */
 
-  function cleanPhasesForSave(draftPhases: DraftPhase[]): DraftPhase[] {
+  function preparePhasesForSave(draftPhases: DraftPhase[]): DraftPhase[] {
     return draftPhases.map((phase) => {
       if (phase.kind !== 'quiz') return phase;
-      const newOptions: string[] = [];
-      const indexMap = new Map<number, number>();
-      phase.options.forEach((opt, oldIndex) => {
-        if (opt.trim() !== '' || phase.options.length <= 2) {
-          indexMap.set(oldIndex, newOptions.length);
-          newOptions.push(opt);
-        }
-      });
-      while (newOptions.length < 2) {
-        newOptions.push('');
-      }
-      let correctIndexes = phase.correctIndexes
-        .map((i) => indexMap.get(i))
-        .filter((i): i is number => i !== undefined && i < newOptions.length);
-      if (correctIndexes.length >= newOptions.length) correctIndexes = correctIndexes.slice(0, -1);
-      if (correctIndexes.length === 0) correctIndexes = [0];
-      return { ...phase, options: newOptions, correctIndexes };
+      return {
+        ...phase,
+        options: phase.options.map((opt) => opt.trim()),
+      };
     });
   }
 
@@ -362,10 +373,35 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
 
   function save() {
     setSaveError(null);
-    const cleanedPhases = cleanPhasesForSave(phases);
+
+    // Validação cruzada para a criação e manipulação de desafios
+    const newErrors: SetValidationErrors = {};
+    let firstErrorPhaseId: string | null = null;
+
+    for (const phase of phases) {
+      const errs = validatePhase(phase, limits);
+      if (errs) {
+        newErrors[phase.id] = errs;
+        if (!firstErrorPhaseId) {
+          firstErrorPhaseId = phase.id;
+        }
+      }
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setValidationErrors(newErrors);
+      if (firstErrorPhaseId && firstErrorPhaseId !== activeId) {
+        setActiveId(firstErrorPhaseId);
+      }
+      setSaveError('Existem problemas no desafio. Corrija os campos destacados antes de salvar.');
+      return;
+    }
+
+    setValidationErrors({});
+    const preparedPhases = preparePhasesForSave(phases);
     startTransition(async () => {
       try {
-        await savePhaseSetAction({ id: initialDraft.id, title: title.trim(), phases: cleanedPhases });
+        await savePhaseSetAction({ id: initialDraft.id, title: title.trim(), phases: preparedPhases });
         clearStoredDraft();
         router.push('/perfil');
       } catch {
@@ -387,6 +423,7 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
         onDuplicate={duplicatePhase}
         onRemove={removePhase}
         onAdd={() => setAddOpen(true)}
+        invalidPhaseIds={new Set(Object.keys(validationErrors))}
       />
 
       <div className={styles.main}>
@@ -470,6 +507,8 @@ export function SetEditor({ initialDraft, initialAiUsage = null }: SetEditorProp
                 onPendingQuizSuggestionsChange={(pending) =>
                   setPhaseQuizSuggestions(active.id, pending)
                 }
+                limits={limits}
+                errors={active ? validationErrors[active.id] : null}
               />
             </div>
 
