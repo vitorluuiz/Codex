@@ -49,13 +49,13 @@ public static class PhaseLimits
     /// tamanho da turma — limitacao aceita conscientemente, ver <c>docs/contracts/mongodb.md</c>.
     /// Os tetos aqui continuam valendo para o Redis. Ver <c>docs/contracts/postgresql/migracao-dados.md</c> §5.3.
     /// </summary>
-    public const int MaxQuestionLength = 4_000;
+    public const int MaxQuestionLength = 300;
 
     /// <summary>Uma alternativa de quiz, uma palavra do banco do fill, uma entrada do gabarito posicional.</summary>
-    public const int MaxOptionLength = 300;
+    public const int MaxOptionLength = 100;
 
     /// <summary>Banco de palavras do <c>fill</c>: distratores inclusos, 50 ja e muito mais do que qualquer enunciado real.</summary>
-    public const int MaxWords = 50;
+    public const int MaxWords = 10;
 
     public const int MaxStarterCodeLength = 4_096;
     public const int MaxTestCasesLength = 4_096;
@@ -63,7 +63,7 @@ public static class PhaseLimits
 
     public const int MinIntroSeconds = 1;
     public const int MaxIntroSeconds = 60;
-    public const int MaxIntroTipLength = 300;
+    public const int MaxIntroTipLength = 60;
 
     public static readonly IReadOnlySet<string> AllowedThemes = new HashSet<string>(StringComparer.Ordinal)
     {

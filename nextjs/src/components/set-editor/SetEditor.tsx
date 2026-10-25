@@ -423,7 +423,6 @@ export function SetEditor({
         onDuplicate={duplicatePhase}
         onRemove={removePhase}
         onAdd={() => setAddOpen(true)}
-        invalidPhaseIds={new Set(Object.keys(validationErrors))}
       />
 
       <div className={styles.main}>

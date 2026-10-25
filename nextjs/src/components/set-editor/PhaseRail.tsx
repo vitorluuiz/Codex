@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useRef, useState } from 'react';
 
@@ -18,7 +18,6 @@ interface PhaseRailProps {
   onDuplicate: (id: string) => void;
   onRemove: (id: string) => void;
   onAdd: () => void;
-  invalidPhaseIds?: Set<string>;
 }
 
 export function PhaseRail({
@@ -29,7 +28,6 @@ export function PhaseRail({
   onDuplicate,
   onRemove,
   onAdd,
-  invalidPhaseIds,
 }: PhaseRailProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -69,20 +67,11 @@ export function PhaseRail({
             className={cx(
               styles.tile,
               phase.id === activeId && styles.tileActive,
-              invalidPhaseIds?.has(phase.id) && styles.tileInvalid,
               dragIndex === index && styles.tileDragging,
               overIndex === index && dragIndex !== index && styles.tileDropTarget,
             )}
             style={cssVars({ '--kind-color': KIND_META[phase.kind].color })}
           >
-            {invalidPhaseIds?.has(phase.id) && (
-              <span
-                className={styles.tileAlertBadge}
-                title="Este desafio possui problemas a serem corrigidos"
-              >
-                <Icon.Alert size={11} />
-              </span>
-            )}
             <button
               type="button"
               className={styles.thumbButton}

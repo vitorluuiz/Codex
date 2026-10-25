@@ -392,21 +392,4 @@
   background: var(--surface-sunken);
 }
 
-.removeOptionButton {
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 6px;
-  border-radius: var(--radius-s);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all var(--dur-fast) var(--ease-out);
-  flex-shrink: 0;
-}
 
-.removeOptionButton:hover {
-  color: var(--accent-danger);
-  background: rgba(239, 68, 68, 0.1);
-}
