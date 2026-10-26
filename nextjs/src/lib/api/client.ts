@@ -3,6 +3,7 @@ import 'server-only';
 import { cookies } from 'next/headers';
 
 import { SESSION_COOKIE } from '@/lib/cookies';
+import type { AiUsage } from '@/lib/types';
 
 /**
  * Cliente HTTP usado exclusivamente por Server Components e Server Actions.
@@ -22,6 +23,7 @@ export class ApiError extends Error {
     public readonly endpoint: string,
     public readonly code: string | null,
     message: string,
+    public readonly usage?: AiUsage,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -73,14 +75,20 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
   if (!response.ok) {
     let code: string | null = null;
     let message = response.statusText;
+    let usage: AiUsage | undefined;
     try {
-      const payload = (await response.json()) as { code?: string; message?: string };
+      const payload = (await response.json()) as {
+        code?: string;
+        message?: string;
+        usage?: AiUsage;
+      };
       code = payload.code ?? null;
       message = payload.message ?? message;
+      usage = payload.usage;
     } catch {
       /* corpo não-JSON: mantém o statusText */
     }
-    throw new ApiError(response.status, endpoint, code, message);
+    throw new ApiError(response.status, endpoint, code, message, usage);
   }
 
   if (response.status === 204) return undefined as T;

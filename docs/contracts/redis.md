@@ -33,6 +33,7 @@ Este documento define o contrato de dados, mapa de chaves, scripts atômicos em 
 | `user:{userId}:joined` | SET | IDs das salas em que o usuário entrou como participante. | Persistente / TTL da sala |
 | `commit:pending` | SET | IDs de partidas finalizadas aguardando confirmação no MongoDB. | Permanente até commit |
 | `codex:rt:ticket:{ticket}` | STRING | Token de sessão do usuário. Consumido com `GETDEL`. | 30 segundos fixos |
+| `ai:inflight:{userId}` | STRING | Token de lock in-flight criado via `SET NX EX` enquanto uma geração de IA está em andamento para a conta. | 180 segundos (configurável) |
 
 ---
 

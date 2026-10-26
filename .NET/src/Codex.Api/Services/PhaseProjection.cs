@@ -82,7 +82,13 @@ public static class PhaseProjection
             phase.Name,
             phase.BasePoints,
             phase.PointsMultiplier,
-            phase.TimeSeconds);
+            phase.TimeSeconds,
+            Theme: content.Theme,
+            ShowFeedbackAnimation: content.ShowFeedbackAnimation,
+            IntroSeconds: content.IntroSeconds,
+            IntroTip: content.IntroTip,
+            IntroSound: content.IntroSound,
+            IntroShapes: content.IntroShapes);
 
         return Enum.Parse<PhaseKind>(phase.Kind, ignoreCase: true) switch
         {

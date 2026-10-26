@@ -103,20 +103,38 @@ export function syncBlanks(question: string, blanks: (string | null)[]): (string
 }
 
 /** Fase nova, com os valores padrão que o autor vai ajustar. */
-export function defaultDraftPhase(kind: PhaseKind, id: string): DraftPhase {
+export interface ChallengeDefaults {
+  basePoints: number;
+  pointsMultiplier: number;
+  timeSeconds: number;
+  theme?: string;
+  introSeconds?: number;
+}
+
+export function defaultDraftPhase(
+  kind: PhaseKind,
+  id: string,
+  defaults?: Partial<ChallengeDefaults>,
+): DraftPhase {
   const base = {
     id,
     name: `Nova fase · ${KIND_META[kind].label}`,
-    basePoints: 100,
-    pointsMultiplier: 1,
-    timeSeconds: 45,
+    basePoints: defaults?.basePoints ?? 100,
+    pointsMultiplier: defaults?.pointsMultiplier ?? 1,
+    timeSeconds: defaults?.timeSeconds ?? 45,
     question: '',
     fromAI: false,
+    theme: defaults?.theme ?? 'default',
+    showFeedbackAnimation: true,
+    introSeconds: defaults?.introSeconds ?? 5,
+    introTip: '',
+    introSound: true,
+    introShapes: true,
   };
 
   switch (kind) {
     case 'quiz':
-      return { ...base, kind, options: ['', '', '', ''], correctIndexes: [0] };
+      return { ...base, kind, options: ['', ''], correctIndexes: [0] };
     case 'code':
       return { ...base, kind, starterCode: 'function solucao(entrada) {\n  \n}\n', testCases: '' };
     case 'text':

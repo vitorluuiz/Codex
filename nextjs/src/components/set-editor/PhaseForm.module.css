@@ -1,4 +1,4 @@
-.card {
+﻿.card {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
@@ -92,162 +92,8 @@
   outline: none;
 }
 
-/* --- Quiz ----------------------------------------------------------------- */
-
-.correctChip {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px var(--space-3);
-  border-radius: var(--radius-pill);
-  background: var(--tone-green-surface);
-  color: var(--green-600);
-  font-size: var(--text-caption);
-  font-weight: var(--fw-bold);
-}
-
-.alert {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: var(--surface-card);
-  border: 1px solid var(--accent-danger);
-  border-radius: var(--radius-m);
-  box-shadow: var(--shadow-l);
-  padding: var(--space-3) 14px;
-  font-size: var(--text-caption);
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-  line-height: var(--lh-relaxed);
-}
-
-.alertIcon {
-  color: var(--accent-danger);
-  margin-top: 1px;
-}
-
-.alertClose {
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0;
-  margin-left: auto;
-  display: flex;
-}
-
-.optionRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.mark {
-  width: 26px;
-  height: 26px;
-  border-radius: var(--radius-s);
-  border: 2px solid var(--border-strong);
-  background: var(--surface-card);
-  color: var(--text-inverse);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.markCorrect {
-  border-color: var(--accent-success);
-  background: var(--accent-success);
-  color: var(--ink-0);
-}
-
-.removeOption {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 1.5px solid var(--border-subtle);
-  background: var(--surface-card);
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.removeOption:hover {
-  color: var(--text-primary);
-}
-
-.addOption {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  width: 100%;
-  padding: 10px var(--space-3);
-  border: none;
-  background: transparent;
-  color: var(--accent-primary);
-  font-family: var(--font-body);
-  font-weight: var(--fw-semibold);
-  font-size: var(--text-body-s);
-  cursor: pointer;
-  border-radius: var(--radius-m);
-  transition: background var(--dur-fast) var(--ease-out);
-}
-
-.addOption:hover {
-  background: var(--surface-sunken);
-}
-
-/* --- Completar frase ------------------------------------------------------- */
-
-.fillGroup {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.preview {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 4px;
-  padding: var(--space-4);
-  border-radius: var(--radius-m);
-  background: var(--surface-sunken);
-  line-height: 2;
-  font-size: var(--text-body);
-  color: var(--text-primary);
-}
-
-.previewText {
-  white-space: pre-wrap;
-}
-
-.blank {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 64px;
-  padding: 4px var(--space-3);
-  border-radius: var(--radius-pill);
-  border: 1.5px dashed var(--border-strong);
-  background: var(--surface-card);
-  color: var(--text-secondary);
-  font-family: var(--font-body);
-  font-weight: var(--fw-bold);
-  cursor: default;
-}
-
-.blankFilled {
-  border-style: solid;
-  border-color: var(--accent-success);
-  background: var(--tone-green-surface);
-  color: var(--green-600);
-  cursor: pointer;
-}
+/* --- Apoio ---------------------------------------------------------------- */
+/* Estilos específicos de cada tipo de fase ficam em `kinds/*.module.css`. */
 
 .hint {
   font-size: var(--text-caption);
@@ -255,41 +101,59 @@
   margin: 0;
 }
 
-.wordBank {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+/* --- Estados de Alerta / Validação e Contadores --------------------------- */
+
+.textareaWrapper,
+.inputWrapper {
+  position: relative;
+  width: 100%;
 }
 
-.wordChip {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-2) 14px;
-  border-radius: var(--radius-pill);
-  border: 1.5px solid var(--border-subtle);
+.charCounter {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  pointer-events: none;
   background: var(--surface-card);
-  color: var(--text-primary);
-  font-family: var(--font-body);
-  font-weight: var(--fw-semibold);
-  font-size: var(--text-body-s);
-  cursor: pointer;
+  padding: 1px 6px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--border-subtle);
+  line-height: 1.2;
+  user-select: none;
+  z-index: 2;
 }
 
-.wordChip:hover:not(:disabled) {
-  border-color: var(--accent-primary);
+.charCounterError {
+  color: var(--accent-danger);
+  border-color: var(--accent-danger);
+  font-weight: var(--fw-bold);
 }
 
-.wordChip:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.newWordRow {
+.fieldError {
   display: flex;
-  gap: 10px;
   align-items: center;
+  gap: 6px;
+  font-size: var(--text-caption);
+  color: var(--accent-danger);
+  font-weight: var(--fw-semibold);
+  margin-bottom: 2px;
 }
 
-.newWordInput {
-  max-width: 240px;
+.fieldErrorIcon {
+  flex-shrink: 0;
+  color: var(--accent-danger);
+}
+
+.inputInvalid,
+.inputInvalid:focus {
+  border-color: var(--accent-danger) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.inputInvalid::placeholder {
+  color: var(--accent-danger) !important;
+  opacity: 0.8;
 }

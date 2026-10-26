@@ -2,17 +2,27 @@
 
 import { useState, useTransition } from 'react';
 
-import { Button, Input } from '@/components/ds';
+import { Button, Input, Meter } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
-import { generatePhaseAction } from '@/lib/actions/phaseSets';
+import { decideGenerationAction, type AiActionResult } from '@/lib/actions/ai';
 import { cssVars } from '@/lib/cssVars';
 import { cx } from '@/lib/cx';
-import type { AiDifficulty, DraftPhase, PhaseKind } from '@/lib/types';
-import { KIND_META, KIND_ORDER, defaultDraftPhase, draftPhaseId } from './phaseKinds';
+import type {
+  AiDifficulty,
+  AiPhaseRequest,
+  AiPhaseResult,
+  AiUsage,
+  DraftPhase,
+  PendingAiPhaseGeneration,
+  PhaseKind,
+} from '@/lib/types';
+import { AiPhasePreview } from './ai/AiPhasePreview';
+import { formatAiErrorMessage } from './ai/aiErrors';
+import { KIND_META, KIND_ORDER, defaultDraftPhase, draftPhaseId, type ChallengeDefaults } from './phaseKinds';
 import styles from './AddPhaseModal.module.css';
 
-/** Passos do fluxo. `ai` só existe quando a pessoa escolhe o caminho assistido. */
-type Step = 'kind' | 'path' | 'ai';
+/** Passos do fluxo. `ai` e `review` só existem quando a pessoa escolhe o caminho assistido. */
+type Step = 'kind' | 'path' | 'ai' | 'review';
 
 const DIFFICULTIES: { id: AiDifficulty; label: string }[] = [
   { id: 'easy', label: 'Fácil' },
@@ -22,19 +32,45 @@ const DIFFICULTIES: { id: AiDifficulty; label: string }[] = [
 
 interface AddPhaseModalProps {
   onAdd: (phase: DraftPhase) => void;
+  onDiscardPhase?: (phaseId: string) => void;
+  onGeneratePhase: (request: AiPhaseRequest) => Promise<AiActionResult<AiPhaseResult>>;
   onClose: () => void;
+  challengeDefaults?: ChallengeDefaults;
+  aiUsage?: AiUsage | null;
+  onUsageChange?: (usage: AiUsage) => void;
+  initialPendingGeneration?: PendingAiPhaseGeneration | null;
+  onPendingGenerationChange?: (pending: PendingAiPhaseGeneration | null) => void;
 }
 
-export function AddPhaseModal({ onAdd, onClose }: AddPhaseModalProps) {
-  const [step, setStep] = useState<Step>('kind');
-  const [kind, setKind] = useState<PhaseKind | null>(null);
+export function AddPhaseModal({
+  onAdd,
+  onDiscardPhase,
+  onGeneratePhase,
+  onClose,
+  challengeDefaults,
+  aiUsage = null,
+  onUsageChange,
+  initialPendingGeneration = null,
+  onPendingGenerationChange,
+}: AddPhaseModalProps) {
+  const [step, setStep] = useState<Step>(() => (initialPendingGeneration ? 'review' : 'kind'));
+  const [kind, setKind] = useState<PhaseKind | null>(() => initialPendingGeneration?.kind ?? null);
   const [query, setQuery] = useState('');
 
-  const [topic, setTopic] = useState('');
-  const [difficulty, setDifficulty] = useState<AiDifficulty>('medium');
-  const [notes, setNotes] = useState('');
+  const [topic, setTopic] = useState(() => initialPendingGeneration?.topic ?? '');
+  const [difficulty, setDifficulty] = useState<AiDifficulty>(
+    () => initialPendingGeneration?.difficulty ?? 'medium',
+  );
+  const [notes, setNotes] = useState(() => initialPendingGeneration?.notes ?? '');
   const [error, setError] = useState<string | null>(null);
+  const [generated, setGenerated] = useState<AiPhaseResult | null>(
+    () => initialPendingGeneration?.result ?? null,
+  );
   const [generating, startTransition] = useTransition();
+
+  const aiEnabled = aiUsage?.enabled !== false;
+  const quotaExceeded =
+    aiUsage !== null && aiUsage.creditsLimit > 0 && aiUsage.creditsUsed >= aiUsage.creditsLimit;
 
   const normalized = query.trim().toLowerCase();
   const kinds = KIND_ORDER.filter(
@@ -44,29 +80,78 @@ export function AddPhaseModal({ onAdd, onClose }: AddPhaseModalProps) {
       KIND_META[id].description.toLowerCase().includes(normalized),
   );
 
-  const totalSteps = step === 'ai' ? 3 : 2;
-  const stepIndex = step === 'kind' ? 1 : step === 'path' ? 2 : 3;
+  const totalSteps = step === 'ai' || step === 'review' ? 4 : 2;
+  const stepIndex =
+    step === 'kind' ? 1 : step === 'path' ? 2 : step === 'ai' ? 3 : 4;
 
   function generate() {
     if (!kind || !topic.trim()) return;
     setError(null);
+
+    if (generated) {
+      void decideGenerationAction(generated.generationId, 'discarded', 0);
+      onDiscardPhase?.(generated.phase.id);
+      setGenerated(null);
+      onPendingGenerationChange?.(null);
+    }
+
+    setStep('ai');
     startTransition(async () => {
-      try {
-        const phase = await generatePhaseAction({
-          kind,
-          topic: topic.trim(),
-          difficulty,
-          notes: notes.trim(),
-        });
-        onAdd(phase);
-      } catch {
-        setError('Não foi possível gerar a fase agora. Tente de novo ou crie manualmente.');
+      const result = await onGeneratePhase({
+        kind,
+        topic: topic.trim(),
+        difficulty,
+        notes: notes.trim() || undefined,
+      });
+
+      if (!result.ok) {
+        if (result.usage) {
+          onUsageChange?.(result.usage);
+        }
+        setError(formatAiErrorMessage(result.code, result.message));
+        return;
       }
+
+      onUsageChange?.(result.data.usage);
+      setGenerated(result.data);
+      setStep('review');
     });
   }
 
+  function handleKeepGenerated() {
+    if (!generated) return;
+    void decideGenerationAction(generated.generationId, 'accepted', 1);
+    onPendingGenerationChange?.(null);
+    onAdd(generated.phase);
+  }
+
+  function handleDiscardGenerated() {
+    if (generated) {
+      void decideGenerationAction(generated.generationId, 'discarded', 0);
+      onDiscardPhase?.(generated.phase.id);
+      setGenerated(null);
+      onPendingGenerationChange?.(null);
+    }
+    setStep('ai');
+  }
+
+  function handleCloseModal() {
+    if (generated) {
+      void decideGenerationAction(generated.generationId, 'accepted', 1);
+      onPendingGenerationChange?.(null);
+      onAdd(generated.phase);
+      return;
+    }
+    onClose();
+  }
+
+  const usagePercent =
+    aiUsage && aiUsage.creditsLimit > 0
+      ? Math.min(100, Math.round((aiUsage.creditsUsed / aiUsage.creditsLimit) * 100))
+      : 0;
+
   return (
-    <div className={styles.backdrop} onClick={onClose} role="presentation">
+    <div className={styles.backdrop} onClick={handleCloseModal} role="presentation">
       <div
         className={styles.panel}
         role="dialog"
@@ -81,7 +166,9 @@ export function AddPhaseModal({ onAdd, onClose }: AddPhaseModalProps) {
                 ? 'Escolha o tipo de fase'
                 : step === 'path'
                   ? 'Como você quer criar essa fase?'
-                  : 'Criar fase com IA'}
+                  : step === 'ai'
+                    ? 'Criar fase com IA'
+                    : 'Revisar fase gerada'}
             </h2>
             <div className={styles.steps}>
               {Array.from({ length: totalSteps }, (_, index) => (
@@ -95,7 +182,12 @@ export function AddPhaseModal({ onAdd, onClose }: AddPhaseModalProps) {
               </span>
             </div>
           </div>
-          <button type="button" className={styles.close} onClick={onClose} aria-label="Fechar">
+          <button
+            type="button"
+            className={styles.close}
+            onClick={handleCloseModal}
+            aria-label="Fechar"
+          >
             <Icon.Close size={18} />
           </button>
         </header>
@@ -135,11 +227,11 @@ export function AddPhaseModal({ onAdd, onClose }: AddPhaseModalProps) {
           )}
 
           {step === 'path' && (
-            <div className={styles.paths}>
+            <div className={cx(styles.paths, !aiEnabled && styles.pathsSingle)}>
               <button
                 type="button"
                 className={styles.path}
-                onClick={() => kind && onAdd(defaultDraftPhase(kind, draftPhaseId()))}
+                onClick={() => kind && onAdd(defaultDraftPhase(kind, draftPhaseId(), challengeDefaults))}
               >
                 <span className={styles.pathIcon}>
                   <Icon.Pencil size={22} />
@@ -151,22 +243,24 @@ export function AddPhaseModal({ onAdd, onClose }: AddPhaseModalProps) {
                 </span>
               </button>
 
-              <button
-                type="button"
-                className={cx(styles.path, styles.pathAi)}
-                onClick={() => setStep('ai')}
-              >
-                <span className={cx(styles.pathIcon, styles.pathIconAi)}>
-                  <Icon.Sparkle size={22} />
-                </span>
-                <span className={cx(styles.pathTitle, styles.pathTitleAi)}>
-                  Criar com aceleração de IA
-                </span>
-                <span className={styles.pathText}>
-                  Descreva o assunto e o nível — a IA escreve o enunciado, as respostas e a
-                  correção para você revisar.
-                </span>
-              </button>
+              {aiEnabled && (
+                <button
+                  type="button"
+                  className={cx(styles.path, styles.pathAi)}
+                  onClick={() => setStep('ai')}
+                >
+                  <span className={cx(styles.pathIcon, styles.pathIconAi)}>
+                    <Icon.Sparkle size={22} />
+                  </span>
+                  <span className={cx(styles.pathTitle, styles.pathTitleAi)}>
+                    Criar com aceleração de IA
+                  </span>
+                  <span className={styles.pathText}>
+                    Descreva o assunto e o nível — a IA escreve o enunciado, as respostas e a
+                    correção para você revisar.
+                  </span>
+                </button>
+              )}
             </div>
           )}
 
@@ -179,6 +273,23 @@ export function AddPhaseModal({ onAdd, onClose }: AddPhaseModalProps) {
               </div>
             ) : (
               <div className={styles.aiForm}>
+                {aiUsage && (
+                  <div className={styles.quotaBox}>
+                    <div className={styles.quotaHeader}>
+                      <span>
+                        Créditos de IA no mês: {aiUsage.creditsUsed} / {aiUsage.creditsLimit}
+                      </span>
+                      <span className={styles.quotaCost}>Custo: 1 crédito</span>
+                    </div>
+                    <Meter
+                      value={usagePercent}
+                      tone={quotaExceeded ? 'danger' : 'primary'}
+                      size="thin"
+                      label="Consumo de créditos de IA"
+                    />
+                  </div>
+                )}
+
                 <Input
                   label="Assunto do desafio"
                   placeholder="Ex: frações equivalentes para o 7º ano"
@@ -227,20 +338,54 @@ export function AddPhaseModal({ onAdd, onClose }: AddPhaseModalProps) {
                 </p>
               </div>
             ))}
+
+          {step === 'review' && generated && (
+            <div className={styles.aiForm}>
+              <AiPhasePreview phase={generated.phase} />
+              <p className={styles.disclaimer}>
+                <Icon.Info size={16} />
+                Ao confirmar, a fase entra no editor para você ajustar qualquer detalhe antes de
+                salvar o conjunto.
+              </p>
+            </div>
+          )}
         </div>
 
         <footer className={styles.foot}>
-          {step !== 'kind' && !generating && (
-            <Button variant="secondary" onClick={() => setStep(step === 'ai' ? 'path' : 'kind')}>
+          {step === 'path' && (
+            <Button variant="secondary" onClick={() => setStep('kind')}>
               Voltar
             </Button>
           )}
-          {step === 'ai' && (
-            <div className={styles.footPrimary}>
-              <Button onClick={generate} disabled={!topic.trim() || generating}>
-                Gerar fase
+
+          {step === 'ai' && !generating && (
+            <>
+              <Button variant="secondary" onClick={() => setStep('path')}>
+                Voltar
               </Button>
-            </div>
+              <div className={styles.footPrimary}>
+                <Button
+                  onClick={generate}
+                  disabled={!topic.trim() || generating || quotaExceeded}
+                >
+                  Gerar fase
+                </Button>
+              </div>
+            </>
+          )}
+
+          {step === 'review' && generated && (
+            <>
+              <Button variant="secondary" onClick={handleDiscardGenerated}>
+                Descartar
+              </Button>
+              <div className={styles.reviewActions}>
+                <Button variant="secondary" onClick={generate} disabled={quotaExceeded}>
+                  Gerar outra
+                </Button>
+                <Button onClick={handleKeepGenerated}>Usar esta fase</Button>
+              </div>
+            </>
           )}
         </footer>
       </div>

@@ -41,7 +41,6 @@ interface ProfileViewProps {
 export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: ProfileViewProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  console.log(profile)
 
   const [user, setUser] = useState(profile.user);
   const [profileMode, setProfileMode] = useState<ProfileMode>('leader');

@@ -21,6 +21,8 @@ public static class PhaseSetEndpoints
     {
         var group = app.MapGroup("/phase-sets");
 
+        group.MapGet("/limits", () => Results.Ok(new PhaseLimitsDto()));
+
         group.MapGet("", async (string? scope, string? q, ClaimsPrincipal principal, PhaseSetService sets, CancellationToken ct)
             => Results.Ok(await sets.ListAsync(scope, q, principal, ct)));
 
@@ -44,9 +46,5 @@ public static class PhaseSetEndpoints
             await sets.DeleteAsync(setId, principal, ct);
             return Results.NoContent();
         });
-
-        // POST /phase-sets/phases/generate (geracao por IA) nao esta aqui: depende de escolher
-        // provedor e modelo, decisao que ninguem tomou (ver next-steps.md). O editor degrada sem
-        // ela — some o botao "Gerar com IA", o resto da tela funciona.
     }
 }

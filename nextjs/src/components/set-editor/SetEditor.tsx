@@ -1,36 +1,177 @@
-'use client';
+﻿'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 
 import { Button, Toast, ToastViewport, Tooltip } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
+import { decideGenerationAction, generatePhaseAction } from '@/lib/actions/ai';
 import { savePhaseSetAction } from '@/lib/actions/phaseSets';
 import { cssVars } from '@/lib/cssVars';
 import { cx } from '@/lib/cx';
-import type { DraftPhase, PhaseSetDraft } from '@/lib/types';
+import type { PhaseLimits } from '@/lib/types';
+import { DEFAULT_PHASE_LIMITS, validatePhase, type SetValidationErrors } from './validation';
+import type {
+  AiPhaseRequest,
+  AiUsage,
+  DraftPhase,
+  PendingAiPhaseGeneration,
+  PendingAiQuizSuggestions,
+  PendingAiVariationsGeneration,
+  PhaseSetDraft,
+} from '@/lib/types';
 import { AddPhaseModal } from './AddPhaseModal';
-import { KIND_META, draftPhaseId } from './phaseKinds';
+import { VariationsReviewModal } from './ai/VariationsReviewModal';
+import { KIND_META, draftPhaseId, type ChallengeDefaults } from './phaseKinds';
 import { PhaseForm } from './PhaseForm';
 import { PhaseRail } from './PhaseRail';
-import { PhaseSettings } from './PhaseSettings';
+import { PhaseSettings, type ChallengeSettingKey, type ChallengeSettingMap } from './PhaseSettings';
 import styles from './SetEditor.module.css';
+
+const CONTENT_KEYS = new Set([
+  'question',
+  'options',
+  'correctIndexes',
+  'words',
+  'blanks',
+  'starterCode',
+  'testCases',
+  'expectedAnswer',
+]);
+
+interface StoredPhaseSetDraft {
+  title: string;
+  phases: DraftPhase[];
+  activeId: string | null;
+  pendingPhaseGen?: PendingAiPhaseGeneration | null;
+  pendingVariationsGen?: PendingAiVariationsGeneration | null;
+  pendingQuizSuggestions?: Record<string, PendingAiQuizSuggestions>;
+  challengeDefaults?: ChallengeDefaults;
+  updatedAt: number;
+}
+
+function getDraftStorageKey(setId: string | null): string {
+  return setId ? `codex:set-editor-draft:${setId}` : 'codex:set-editor-draft:new';
+}
 
 interface SetEditorProps {
   initialDraft: PhaseSetDraft;
+  initialAiUsage?: AiUsage | null;
+  limits?: PhaseLimits;
 }
 
-export function SetEditor({ initialDraft }: SetEditorProps) {
+export function SetEditor({
+  initialDraft,
+  initialAiUsage = null,
+  limits = DEFAULT_PHASE_LIMITS,
+}: SetEditorProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+
+  const storageKey = getDraftStorageKey(initialDraft.id);
+  const skipStorageWriteRef = useRef(false);
 
   const [title, setTitle] = useState(initialDraft.title);
   const [phases, setPhases] = useState(initialDraft.phases);
   const [activeId, setActiveId] = useState(initialDraft.phases[0]?.id ?? null);
+  const [pendingPhaseGen, setPendingPhaseGen] = useState<PendingAiPhaseGeneration | null>(null);
+  const [pendingVariationsGen, setPendingVariationsGen] =
+    useState<PendingAiVariationsGeneration | null>(null);
+  const [pendingQuizSuggestions, setPendingQuizSuggestions] = useState<
+    Record<string, PendingAiQuizSuggestions>
+  >({});
+  const [isStorageHydrated, setIsStorageHydrated] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const addOpenRef = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<SetValidationErrors>({});
   const [nameHighlight, setNameHighlight] = useState(false);
+  const [aiUsage, setAiUsage] = useState<AiUsage | null>(initialAiUsage);
+  const [challengeDefaults, setChallengeDefaults] = useState<ChallengeDefaults>(() => ({
+    basePoints: initialDraft.phases[0]?.basePoints ?? 100,
+    pointsMultiplier: initialDraft.phases[0]?.pointsMultiplier ?? 1,
+    timeSeconds: initialDraft.phases[0]?.timeSeconds ?? 45,
+    theme: initialDraft.phases[0]?.theme ?? 'default',
+    introSeconds: initialDraft.phases[0]?.introSeconds ?? 5,
+  }));
+
+  useEffect(() => {
+    addOpenRef.current = addOpen;
+  }, [addOpen]);
+
+  useEffect(() => {
+    skipStorageWriteRef.current = false;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<StoredPhaseSetDraft>;
+        const pendingGeneratedPhase = parsed.pendingPhaseGen?.result?.phase ?? null;
+        if (typeof parsed.title === 'string' && Array.isArray(parsed.phases)) {
+          const restoredPhases =
+            pendingGeneratedPhase &&
+            !parsed.phases.some((phase) => phase.id === pendingGeneratedPhase.id)
+              ? [...parsed.phases, pendingGeneratedPhase]
+              : parsed.phases;
+          const restoredActiveId =
+            typeof parsed.activeId === 'string' &&
+            restoredPhases.some((phase) => phase.id === parsed.activeId)
+              ? parsed.activeId
+              : (restoredPhases[0]?.id ?? null);
+          setTitle(parsed.title);
+          setPhases(restoredPhases);
+          setActiveId(restoredActiveId);
+        }
+        if (parsed.pendingPhaseGen && pendingGeneratedPhase) {
+          setPendingPhaseGen(parsed.pendingPhaseGen);
+          setAddOpen(true);
+          addOpenRef.current = true;
+        }
+        if (parsed.pendingVariationsGen && Array.isArray(parsed.pendingVariationsGen.result?.phases)) {
+          setPendingVariationsGen(parsed.pendingVariationsGen);
+        }
+        if (parsed.pendingQuizSuggestions && typeof parsed.pendingQuizSuggestions === 'object') {
+          setPendingQuizSuggestions(parsed.pendingQuizSuggestions);
+        }
+        if (parsed.challengeDefaults) {
+          setChallengeDefaults(parsed.challengeDefaults);
+        }
+      }
+    } catch {
+      // Ignora rascunho malformado ou localStorage indisponível
+    } finally {
+      setIsStorageHydrated(true);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!isStorageHydrated || skipStorageWriteRef.current) return;
+    try {
+      const payload: StoredPhaseSetDraft = {
+        title,
+        phases,
+        activeId,
+        pendingPhaseGen,
+        pendingVariationsGen,
+        pendingQuizSuggestions,
+        challengeDefaults,
+        updatedAt: Date.now(),
+      };
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+    } catch {
+      // Ignora erro de quota ou modo privado sem escrita em localStorage
+    }
+  }, [
+    storageKey,
+    isStorageHydrated,
+    title,
+    phases,
+    activeId,
+    pendingPhaseGen,
+    pendingVariationsGen,
+    pendingQuizSuggestions,
+    challengeDefaults,
+  ]);
 
   const isNew = initialDraft.id === null;
   const active = phases.find((phase) => phase.id === activeId) ?? null;
@@ -39,19 +180,118 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
   /* --- Mutações do rascunho ---------------------------------------------- */
 
   function patchActive(patch: Partial<DraftPhase>) {
+    const editedContent = Object.keys(patch).some((key) => CONTENT_KEYS.has(key));
+    setPhases((list) => {
+      const nextList = list.map((phase) => {
+        if (phase.id !== activeId) return phase;
+        const nextFromAI =
+          patch.fromAI !== undefined
+            ? patch.fromAI
+            : editedContent
+              ? false
+              : phase.fromAI;
+        return { ...phase, ...patch, fromAI: nextFromAI } as DraftPhase;
+      });
+
+      if (activeId && validationErrors[activeId]) {
+        const activePhase = nextList.find((p) => p.id === activeId);
+        if (activePhase) {
+          const errs = validatePhase(activePhase, limits);
+          setValidationErrors((prev) => {
+            const next = { ...prev };
+            if (errs) {
+              next[activeId] = errs;
+            } else {
+              delete next[activeId];
+            }
+            return next;
+          });
+        }
+      }
+
+      return nextList;
+    });
+  }
+
+  function handleApplySettingToAll<K extends ChallengeSettingKey>(
+    key: K,
+    value: ChallengeSettingMap[K],
+  ) {
+    setChallengeDefaults((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
     setPhases((list) =>
-      list.map((phase) =>
-        // O cast é seguro porque o patch sempre vem do formulário da própria
-        // fase ativa, que só produz campos do `kind` dela.
-        phase.id === activeId ? ({ ...phase, ...patch } as DraftPhase) : phase,
-      ),
+      list.map((phase) => ({
+        ...phase,
+        [key]: value,
+      }) as DraftPhase),
     );
   }
 
   function addPhase(phase: DraftPhase) {
-    setPhases((list) => [...list, phase]);
+    setPhases((list) => (list.some((item) => item.id === phase.id) ? list : [...list, phase]));
     setActiveId(phase.id);
     setAddOpen(false);
+  }
+
+  async function handleGeneratePhase(request: AiPhaseRequest) {
+    const result = await generatePhaseAction(request);
+    if (!result.ok) {
+      if (result.usage) {
+        setAiUsage(result.usage);
+      }
+      return result;
+    }
+
+    const phaseWithDefaults: DraftPhase = {
+      ...result.data.phase,
+      basePoints: challengeDefaults.basePoints,
+      pointsMultiplier: challengeDefaults.pointsMultiplier,
+      timeSeconds: challengeDefaults.timeSeconds,
+      theme: challengeDefaults.theme ?? 'default',
+      introSeconds: challengeDefaults.introSeconds ?? 5,
+    };
+
+    const dataWithDefaults = {
+      ...result.data,
+      phase: phaseWithDefaults,
+    };
+
+    setAiUsage(result.data.usage);
+    setPhases((list) =>
+      list.some((item) => item.id === phaseWithDefaults.id)
+        ? list
+        : [...list, phaseWithDefaults],
+    );
+    setActiveId(phaseWithDefaults.id);
+
+    if (addOpenRef.current) {
+      setPendingPhaseGen({
+        kind: request.kind,
+        topic: request.topic,
+        difficulty: request.difficulty,
+        notes: request.notes ?? '',
+        result: dataWithDefaults,
+      });
+    } else {
+      void decideGenerationAction(result.data.generationId, 'accepted', 1);
+      setPendingPhaseGen(null);
+    }
+
+    return { ok: true, data: dataWithDefaults } as const;
+  }
+
+  function insertPhasesAfter(afterId: string, newPhases: DraftPhase[]) {
+    if (newPhases.length === 0) return;
+    setPhases((list) => {
+      const index = list.findIndex((phase) => phase.id === afterId);
+      if (index === -1) return [...list, ...newPhases];
+      const next = list.slice();
+      next.splice(index + 1, 0, ...newPhases);
+      return next;
+    });
+    setActiveId(newPhases[0].id);
   }
 
   function duplicatePhase(id: string) {
@@ -66,7 +306,29 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
     });
   }
 
+  function setPhaseQuizSuggestions(phaseId: string, pending: PendingAiQuizSuggestions | null) {
+    setPendingQuizSuggestions((prev) => {
+      if (!pending) {
+        if (!(phaseId in prev)) return prev;
+        const next = { ...prev };
+        delete next[phaseId];
+        return next;
+      }
+      return { ...prev, [phaseId]: pending };
+    });
+  }
+
   function removePhase(id: string) {
+    const pendingQuiz = pendingQuizSuggestions[id];
+    if (pendingQuiz) {
+      void decideGenerationAction(
+        pendingQuiz.generationId,
+        pendingQuiz.acceptedCount > 0 ? 'partial' : 'discarded',
+        pendingQuiz.acceptedCount,
+      );
+      setPhaseQuizSuggestions(id, null);
+    }
+
     setPhases((list) => {
       const next = list.filter((phase) => phase.id !== id);
       if (id === activeId) setActiveId(next[0]?.id ?? null);
@@ -85,11 +347,62 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
 
   /* --- Persistência ------------------------------------------------------- */
 
+  function preparePhasesForSave(draftPhases: DraftPhase[]): DraftPhase[] {
+    return draftPhases.map((phase) => {
+      if (phase.kind !== 'quiz') return phase;
+      return {
+        ...phase,
+        options: phase.options.map((opt) => opt.trim()),
+      };
+    });
+  }
+
+  function clearStoredDraft() {
+    skipStorageWriteRef.current = true;
+    try {
+      localStorage.removeItem(storageKey);
+    } catch {
+      // Ignora indisponibilidade de localStorage
+    }
+  }
+
+  function cancel() {
+    clearStoredDraft();
+    router.push('/perfil');
+  }
+
   function save() {
     setSaveError(null);
+
+    // Validação cruzada para a criação e manipulação de desafios
+    const newErrors: SetValidationErrors = {};
+    let firstErrorPhaseId: string | null = null;
+
+    for (const phase of phases) {
+      const errs = validatePhase(phase, limits);
+      if (errs) {
+        newErrors[phase.id] = errs;
+        if (!firstErrorPhaseId) {
+          firstErrorPhaseId = phase.id;
+        }
+      }
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setValidationErrors(newErrors);
+      if (firstErrorPhaseId && firstErrorPhaseId !== activeId) {
+        setActiveId(firstErrorPhaseId);
+      }
+      setSaveError('Existem problemas no desafio. Corrija os campos destacados antes de salvar.');
+      return;
+    }
+
+    setValidationErrors({});
+    const preparedPhases = preparePhasesForSave(phases);
     startTransition(async () => {
       try {
-        await savePhaseSetAction({ id: initialDraft.id, title: title.trim(), phases });
+        await savePhaseSetAction({ id: initialDraft.id, title: title.trim(), phases: preparedPhases });
+        clearStoredDraft();
         router.push('/perfil');
       } catch {
         setSaveError('Não foi possível salvar o conjunto. Tente novamente.');
@@ -137,21 +450,29 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
           </div>
 
           <div className={styles.topActions}>
-            <Button variant="secondary" onClick={() => router.push('/perfil')}>
+            <Button variant="secondary" onClick={cancel}>
               Cancelar
             </Button>
-            {saveDisabled ? <span
-              onMouseEnter={() => nameMissing && setNameHighlight(true)}
-              onMouseLeave={() => setNameHighlight(false)}
-            >
-              <Tooltip label={nameMissing ? 'O conjunto precisa ter um nome para ser salvo.' : 'Adicione ao menos um desafio para salvar o conjunto.'}>
-                <Button onClick={save} disabled={saveDisabled}>
-                  Salvar conjunto
-                </Button>
-              </Tooltip>
-            </span> : <Button onClick={save}>
-              Salvar conjunto
-            </Button>}
+            {saveDisabled ? (
+              <span
+                onMouseEnter={() => nameMissing && setNameHighlight(true)}
+                onMouseLeave={() => setNameHighlight(false)}
+              >
+                <Tooltip
+                  label={
+                    nameMissing
+                      ? 'O conjunto precisa ter um nome para ser salvo.'
+                      : 'Adicione ao menos um desafio para salvar o conjunto.'
+                  }
+                >
+                  <Button onClick={save} disabled={saveDisabled}>
+                    Salvar conjunto
+                  </Button>
+                </Tooltip>
+              </span>
+            ) : (
+              <Button onClick={save}>Salvar conjunto</Button>
+            )}
           </div>
         </header>
 
@@ -176,7 +497,18 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
                 )}
               </div>
 
-              <PhaseForm phase={active} onChange={patchActive} />
+              <PhaseForm
+                phase={active}
+                onChange={patchActive}
+                aiUsage={aiUsage}
+                onUsageChange={setAiUsage}
+                pendingQuizSuggestions={pendingQuizSuggestions[active.id] ?? null}
+                onPendingQuizSuggestionsChange={(pending) =>
+                  setPhaseQuizSuggestions(active.id, pending)
+                }
+                limits={limits}
+                errors={active ? validationErrors[active.id] : null}
+              />
             </div>
 
             <button
@@ -192,7 +524,16 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
               />
             </button>
 
-            {settingsOpen && <PhaseSettings phase={active} onChange={patchActive} />}
+            {settingsOpen && (
+              <PhaseSettings
+                phase={active}
+                onChange={patchActive}
+                onApplyToAll={handleApplySettingToAll}
+                aiUsage={aiUsage}
+                onUsageChange={setAiUsage}
+                onPendingVariationsChange={setPendingVariationsGen}
+              />
+            )}
           </div>
         ) : (
           <div className={styles.emptyState}>
@@ -210,7 +551,35 @@ export function SetEditor({ initialDraft }: SetEditorProps) {
         )}
       </div>
 
-      {addOpen && <AddPhaseModal onAdd={addPhase} onClose={() => setAddOpen(false)} />}
+      {addOpen && (
+        <AddPhaseModal
+          onAdd={addPhase}
+          onDiscardPhase={removePhase}
+          onGeneratePhase={handleGeneratePhase}
+          onClose={() => setAddOpen(false)}
+          challengeDefaults={challengeDefaults}
+          aiUsage={aiUsage}
+          onUsageChange={setAiUsage}
+          initialPendingGeneration={pendingPhaseGen}
+          onPendingGenerationChange={setPendingPhaseGen}
+        />
+      )}
+
+      {pendingVariationsGen && (
+        <VariationsReviewModal
+          result={pendingVariationsGen.result}
+          sourcePhaseName={pendingVariationsGen.sourcePhaseName}
+          initialSelectedIds={pendingVariationsGen.selectedIds}
+          onSelectedIdsChange={(selectedIds) =>
+            setPendingVariationsGen((prev) => (prev ? { ...prev, selectedIds } : null))
+          }
+          onAccept={(selected) => {
+            insertPhasesAfter(pendingVariationsGen.sourcePhaseId, selected);
+            setPendingVariationsGen(null);
+          }}
+          onClose={() => setPendingVariationsGen(null)}
+        />
+      )}
 
       {saveError && (
         <ToastViewport>

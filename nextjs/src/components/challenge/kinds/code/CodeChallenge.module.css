@@ -10,6 +10,7 @@
 .statementCard {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
+  border-top: 3px solid var(--phase-accent, var(--blue-500));
   border-radius: var(--radius-xl);
   padding: 28px;
   box-shadow: var(--shadow-s);
@@ -139,9 +140,9 @@
 }
 
 .languageActive {
-  border-color: var(--blue-500);
-  background: var(--blue-100);
-  color: var(--blue-700);
+  border-color: var(--phase-accent, var(--blue-500));
+  background: var(--phase-accent-soft, var(--blue-100));
+  color: var(--phase-accent-strong, var(--blue-700));
 }
 
 .language:disabled {

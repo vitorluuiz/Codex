@@ -71,3 +71,54 @@ public enum GradingStatus
     Graded,
     Pending,
 }
+
+public enum AiOperation
+{
+    Phase,
+    Variations,
+    QuizOptions,
+}
+
+public enum AiGenerationStatus
+{
+    Pending,
+    Succeeded,
+    Failed,
+}
+
+public enum AiDecision
+{
+    Undecided,
+    Accepted,
+    Partial,
+    Discarded,
+}
+
+public enum AiDifficulty
+{
+    Easy,
+    Medium,
+    Hard,
+}
+
+public enum AiVariationAspect
+{
+    Wording,
+    Values,
+    Context,
+    Distractors,
+}
+
+public enum AiDifficultyShift
+{
+    Same,
+    Easier,
+    Harder,
+}
+
+public enum QuizSuggestionMode
+{
+    Distractors,
+    Correct,
+    Any,
+}

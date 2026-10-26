@@ -1,7 +1,19 @@
 using System.Text.Json.Serialization;
+using Codex.Api.Contracts.Ai;
 using Codex.Api.Domain;
+using Codex.Api.Services;
 
 namespace Codex.Api.Contracts.PhaseSets;
+
+/// <summary>
+/// Limites de tamanho de campos para exibicao e validacao no frontend e backend.
+/// </summary>
+public record PhaseLimitsDto(
+    int MaxQuestionLength = PhaseLimits.MaxQuestionLength,
+    int MaxOptionLength = PhaseLimits.MaxOptionLength,
+    int MaxExpectedAnswerLength = PhaseLimits.MaxExpectedAnswerLength,
+    int MaxStarterCodeLength = PhaseLimits.MaxStarterCodeLength,
+    int MaxTestCasesLength = PhaseLimits.MaxTestCasesLength);
 
 /// <summary>
 /// Formato de PhaseSetDraft (api-rest.md secao 5): o conjunto na forma que o <b>editor</b>
@@ -13,7 +25,9 @@ namespace Codex.Api.Contracts.PhaseSets;
 public record PhaseSetDraftResponse(
     Guid Id,
     string Title,
-    IReadOnlyList<DraftPhaseDto> Phases);
+    IReadOnlyList<DraftPhaseDto> Phases,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    PhaseLimitsDto? Limits = null);
 
 /// <summary>
 /// Corpo de POST /phase-sets e de PUT /phase-sets/{setId}/draft — "mesmo corpo" nos dois, diz o
@@ -73,4 +87,18 @@ public record DraftPhaseDto(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? TestCases = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    string? ExpectedAnswer = null);
+    string? ExpectedAnswer = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? Theme = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    bool? ShowFeedbackAnimation = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? IntroSeconds = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? IntroTip = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    bool? IntroSound = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    bool? IntroShapes = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    AiVariationOptions? VariationSettings = null);

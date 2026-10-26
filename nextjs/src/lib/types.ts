@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Modelo de domínio do Codex.
  *
  * Este arquivo é o contrato: `contracts/api/api-rest-contract.md` e
@@ -186,6 +186,8 @@ export interface PhaseSetLibrary {
   coverUrl: string | null;
 }
 
+export type PhaseTheme = 'default' | 'cyberpunk' | 'emerald' | 'sunset' | 'crimson';
+
 interface PhaseBase {
   id: string;
   setId: string;
@@ -193,6 +195,18 @@ interface PhaseBase {
   basePoints: number;
   pointsMultiplier: number;
   timeSeconds: number;
+  /** Identificador do tema visual da fase (ex.: 'default', 'cyberpunk', 'emerald', 'sunset', 'crimson'). */
+  theme?: string;
+  /** Se deve exibir animações e feedback visual dinâmico. */
+  showFeedbackAnimation?: boolean;
+  /** Duração em segundos da tela de introdução / pré-desafio. */
+  introSeconds?: number;
+  /** Mensagem / orientação exibida na tela de pré-desafio antes de começar. */
+  introTip?: string;
+  /** Se os efeitos sonoros da contagem regressiva ficam ativos no pré-desafio. */
+  introSound?: boolean;
+  /** Se exibe as formas geométricas animadas na tela de pré-desafio. */
+  introShapes?: boolean;
 }
 
 export interface QuizOption {
@@ -282,6 +296,20 @@ interface DraftPhaseBase {
   question: string;
   /** `true` enquanto o texto veio da IA e o autor não revisou. */
   fromAI: boolean;
+  /** Identificador do tema visual da fase (ex.: 'default', 'cyberpunk', 'emerald', 'sunset', 'crimson'). */
+  theme?: string;
+  /** Se deve exibir animações e feedback visual dinâmico. */
+  showFeedbackAnimation?: boolean;
+  /** Duração em segundos da tela de introdução / pré-desafio. */
+  introSeconds?: number;
+  /** Mensagem / orientação exibida na tela de pré-desafio antes de começar. */
+  introTip?: string;
+  /** Se os efeitos sonoros da contagem regressiva ficam ativos no pré-desafio. */
+  introSound?: boolean;
+  /** Se exibe as formas geométricas animadas na tela de pré-desafio. */
+  introShapes?: boolean;
+  /** Preferências de geração de variações por IA salvas junto da fase. */
+  variationSettings?: AiVariationOptions;
 }
 
 export interface QuizDraftPhase extends DraftPhaseBase {
@@ -314,11 +342,20 @@ export interface FillDraftPhase extends DraftPhaseBase {
 
 export type DraftPhase = QuizDraftPhase | CodeDraftPhase | TextDraftPhase | FillDraftPhase;
 
+export interface PhaseLimits {
+  maxQuestionLength: number;
+  maxOptionLength: number;
+  maxExpectedAnswerLength: number;
+  maxStarterCodeLength: number;
+  maxTestCasesLength: number;
+}
+
 export interface PhaseSetDraft {
   /** `null` num conjunto que ainda não foi salvo pela primeira vez. */
   id: string | null;
   title: string;
   phases: DraftPhase[];
+  limits?: PhaseLimits;
 }
 
 /** Dificuldade pedida na geração por IA. */
@@ -329,7 +366,78 @@ export interface AiPhaseRequest {
   topic: string;
   difficulty: AiDifficulty;
   /** Instruções adicionais do autor. Opcional. */
+  notes?: string;
+}
+
+export interface AiUsage {
+  plan: PlanId;
+  creditsUsed: number;
+  creditsLimit: number;
+  suggestionsUsedToday: number;
+  suggestionsDailyLimit: number;
+  resetsAt: string;
+  enabled: boolean;
+}
+
+export interface AiPhaseResult {
+  generationId: string;
+  phase: DraftPhase;
+  usage: AiUsage;
+}
+
+export type AiVariationAspect = 'wording' | 'values' | 'context' | 'distractors';
+export type AiDifficultyShift = 'same' | 'easier' | 'harder';
+
+export interface AiVariationOptions {
+  count: number;
+  aspects: AiVariationAspect[];
+  difficulty: AiDifficultyShift;
+  keepSettings: boolean;
+  notes?: string;
+}
+
+export interface AiVariationsResult {
+  generationId: string;
+  phases: DraftPhase[];
+  discarded: number;
+  usage: AiUsage;
+}
+
+export type QuizSuggestionMode = 'distractors' | 'correct' | 'any';
+
+export interface QuizOptionSuggestion {
+  label: string;
+  isCorrect: boolean;
+  rationale?: string;
+}
+
+export interface AiQuizOptionsResult {
+  generationId: string;
+  suggestions: QuizOptionSuggestion[];
+  usage: AiUsage;
+}
+
+export type AiDecision = 'accepted' | 'partial' | 'discarded';
+
+export interface PendingAiPhaseGeneration {
+  kind: PhaseKind;
+  topic: string;
+  difficulty: AiDifficulty;
   notes: string;
+  result: AiPhaseResult;
+}
+
+export interface PendingAiVariationsGeneration {
+  sourcePhaseId: string;
+  sourcePhaseName: string;
+  result: AiVariationsResult;
+  selectedIds: string[];
+}
+
+export interface PendingAiQuizSuggestions {
+  generationId: string;
+  suggestions: QuizOptionSuggestion[];
+  acceptedCount: number;
 }
 
 /* -------------------------------------------------------------------------- */
