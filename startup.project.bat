@@ -26,6 +26,7 @@ REM ===========================================================
 set "ROOT=%~dp0"
 set "API_DIR=%ROOT%.NET\src\Codex.Api"
 set "RT_DIR=%ROOT%realtime"
+set "REP_DIR=%ROOT%reports"
 set "WEB_DIR=%ROOT%nextjs"
 
 set "FORCE="
@@ -65,6 +66,9 @@ if not exist "%WEB_DIR%\package.json" (
 
 REM ---- dependencias dos projetos Node --------------------------------
 call :ensure_deps "%RT_DIR%" realtime
+if errorlevel 1 goto :fail
+
+call :ensure_deps "%REP_DIR%" reports
 if errorlevel 1 goto :fail
 
 call :ensure_deps "%WEB_DIR%" web
@@ -119,6 +123,15 @@ echo       Se for um orfao de uma execucao anterior, ele continua servindo o
 echo       codigo ANTIGO - rode "startup.project.bat /force" para trocar.
 echo       Conferir de quem e:  curl http://localhost:4001/health
 :after_rt
+
+call :port_free 4002
+if errorlevel 1 goto :skip_rep
+echo [rep] iniciando reports em http://localhost:4002 ...
+start "Codex Reports (Node)" cmd /k "cd /d "%REP_DIR%" && npm run dev"
+goto :after_rep
+:skip_rep
+echo [rep] porta 4002 ocupada pelo PID %PORT_PID% - reaproveitando o que ja esta no ar.
+:after_rep
 
 call :port_free 3000
 if errorlevel 1 goto :skip_web

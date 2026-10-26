@@ -11,6 +11,7 @@ using Codex.Api.Services;
 using Codex.Api.Services.Ai;
 using Codex.Api.Services.OAuth;
 using Codex.Api.Services.Realtime;
+using Codex.Api.Services.Reports;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -55,6 +56,7 @@ builder.Services.AddScoped<SubmissionService>();
 builder.Services.AddCodexRateLimiter(builder.Configuration);
 builder.Services.AddCodexRealtime(builder.Configuration);
 builder.Services.AddCodexDocuments(builder.Configuration);
+builder.Services.AddCodexReports(builder.Configuration);
 builder.Services.AddCodexAi(builder.Configuration);
 
 builder.Services
@@ -97,6 +99,7 @@ app.MapRoomQueueEndpoints();
 app.MapPhaseSetEndpoints();
 app.MapAiEndpoints();
 app.MapMatchEndpoints();
+app.MapReportEndpoints();
 app.MapRealtimeEndpoints();
 app.MapMetrics();
 

@@ -1,0 +1,710 @@
+.page {
+  min-height: 100vh;
+  background: var(--surface-page);
+  color: var(--text-primary);
+  padding: var(--space-6) var(--space-5);
+}
+
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-medium);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+
+.backLink:hover {
+  color: var(--text-primary);
+}
+
+.exportActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.hero {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-s);
+}
+
+.heroInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.badgePrimary {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--blue-50);
+  color: var(--blue-600);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+}
+
+.badgeNeutral {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-medium);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.kpiCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: var(--shadow-s);
+}
+
+.kpiLabel {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.kpiValue {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+
+.kpiScore {
+  color: var(--accent-primary);
+}
+
+.kpiUnit {
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-medium);
+  color: var(--text-secondary);
+}
+
+.kpiSub {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: var(--space-2);
+  overflow-x: auto;
+}
+
+.tabButton {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-l);
+  padding: 10px 16px;
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.tabButton:hover {
+  color: var(--text-primary);
+  background: var(--surface-sunken);
+}
+
+.tabButtonActive {
+  color: var(--accent-primary);
+  background: var(--surface-card);
+  border-color: var(--border-subtle);
+  font-weight: var(--fw-semibold);
+  box-shadow: var(--shadow-s);
+}
+
+.tabContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.phaseChartCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-heading);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.sectionHint {
+  margin: 4px 0 0;
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+}
+
+.phaseBars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  min-height: 150px;
+  padding-top: var(--space-3);
+  overflow-x: auto;
+}
+
+.phaseBarCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 48px;
+  flex: 1;
+}
+
+.phaseBarPct {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.phaseBarTrack {
+  width: 100%;
+  max-width: 42px;
+  height: 100px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-m);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.phaseBarFill {
+  width: 100%;
+  border-radius: var(--radius-m);
+  transition: height var(--dur-normal) var(--ease-out);
+}
+
+.phaseBarLabel {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.phaseList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.phaseCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow: var(--shadow-s);
+}
+
+.phaseHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.phaseTitleGroup {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.phaseNumBadge {
+  padding: 3px 9px;
+  border-radius: var(--radius-m);
+  background: var(--surface-sunken);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.phaseKindChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+}
+
+.phaseName {
+  margin: 0;
+  font-size: var(--text-body-l);
+  font-weight: var(--fw-semibold);
+}
+
+.phaseQuickStats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.phaseAccuracyPill {
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-bold);
+}
+
+.phaseStatText {
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+}
+
+.phaseQuestion {
+  margin: 0;
+  font-size: var(--text-body-m);
+  color: var(--text-primary);
+  background: var(--surface-sunken);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-l);
+}
+
+.phaseDetailsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-3);
+}
+
+.phaseAnswerBox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+}
+
+.detailLabel {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-weight: var(--fw-semibold);
+}
+
+.detailValue {
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-medium);
+  color: var(--text-primary);
+}
+
+.optionDistList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+}
+
+.optionDistRow {
+  padding: var(--space-3);
+  border-radius: var(--radius-l);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.optionDistCorrect {
+  border-color: var(--accent-success);
+  background: var(--tone-green-surface);
+}
+
+.optionDistHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-body-s);
+}
+
+.optionDistLabel {
+  font-weight: var(--fw-medium);
+}
+
+.optionDistCount {
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.optionDistTrack {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.optionDistFill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+}
+
+.tableCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  box-shadow: var(--shadow-s);
+}
+
+.tableHeaderDesc {
+  display: flex;
+  flex-direction: column;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.tableWrapperPdf {
+  overflow-x: visible;
+}
+
+.table,
+.matrixTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-body-s);
+}
+
+.matrixTablePdf {
+  table-layout: fixed;
+}
+
+.table th,
+.table td,
+.matrixTable th,
+.matrixTable td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.matrixTablePdf th,
+.matrixTablePdf td {
+  padding: 8px 10px;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.table th,
+.matrixTable th {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
+  white-space: nowrap;
+}
+
+.matrixTablePdf th {
+  white-space: normal;
+}
+
+.rankCell {
+  width: 60px;
+  font-weight: var(--fw-bold);
+}
+
+.rankBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  font-weight: var(--fw-bold);
+  font-size: var(--text-caption);
+}
+
+.rankFirst {
+  background: var(--tone-amber-surface);
+  color: var(--amber-600);
+}
+
+.rankSecond {
+  background: var(--blue-50);
+  color: var(--blue-600);
+}
+
+.rankThird {
+  background: var(--tone-pink-surface);
+  color: var(--pink-600);
+}
+
+.playerCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.playerName {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.playerMeta {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+.scoreStrong {
+  font-weight: var(--fw-bold);
+  color: var(--accent-primary);
+}
+
+.scoreMuted {
+  color: var(--text-secondary);
+}
+
+.accuracyStrong {
+  font-weight: var(--fw-bold);
+}
+
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.actionLinkBtn,
+.copyIconBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+
+.actionLinkBtn:hover,
+.copyIconBtn:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.matrixPlayerName {
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+
+.matrixTablePdf .matrixPlayerName {
+  white-space: normal;
+}
+
+.cellCorrect {
+  background: var(--tone-green-surface);
+}
+
+.cellWrong {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.cellPending {
+  background: var(--tone-amber-surface);
+}
+
+.cellUnanswered {
+  color: var(--text-secondary);
+}
+
+.cellMain {
+  display: block;
+  font-weight: var(--fw-semibold);
+  white-space: nowrap;
+}
+
+.matrixTablePdf .cellMain {
+  white-space: normal;
+}
+
+.cellSub {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.matrixTablePdf .cellSub {
+  max-width: none;
+  white-space: normal;
+}
+
+/* --- Container de Exportação HTML -> PDF (Tema Claro para Economia de Tinta) --- */
+
+.pdfOffscreenWrapper {
+  position: fixed;
+  left: -12000px;
+  top: 0;
+  width: 1080px;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.pdfExportRoot {
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-inverse: #ffffff;
+  --text-link: #1e56d1;
+  --surface-page: #ffffff;
+  --surface-card: #ffffff;
+  --surface-sunken: #f1f5f9;
+  --surface-inverse: #0f172a;
+  --border-subtle: #cbd5e1;
+  --border-strong: #94a3b8;
+  --accent-primary: #1e56d1;
+  --accent-primary-hover: #1642a6;
+  --accent-primary-active: #123380;
+  --accent-streak: #d97706;
+  --accent-success: #16a34a;
+  --accent-danger: #dc2626;
+  --tone-pink-surface: #fce7f3;
+  --tone-green-surface: #dcfce7;
+  --tone-amber-surface: #fef3c7;
+
+  width: 1080px;
+  max-width: 1080px;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 20px;
+}
+
+.pdfSectionDivider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 2px solid var(--border-subtle);
+  margin-top: var(--space-2);
+}
+
+.pdfSectionIndex {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--blue-50);
+  color: var(--blue-600);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pdfSectionHeading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+
+@media print {
+  .topBar,
+  .tabs,
+  .rowActions,
+  .pdfOffscreenWrapper {
+    display: none !important;
+  }
+
+  .page {
+    padding: 0;
+    background: #ffffff;
+    color: #0f172a;
+  }
+}

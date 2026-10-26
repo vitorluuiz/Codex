@@ -3,6 +3,7 @@ using Codex.Api.Domain.Entities;
 using Codex.Api.Domain;
 using Codex.Api.Services;
 using Codex.Api.Services.Redis;
+using Codex.Api.Services.Reports;
 using Microsoft.EntityFrameworkCore;
 
 namespace Codex.Api.Documents;
@@ -11,7 +12,8 @@ public class MatchDocumentWriter(
     IRoomRepository repo,
     IMatchDocumentStore store,
     ILogger<MatchDocumentWriter> logger,
-    Codex.Api.Services.Redis.IMatchRepository matchRepo)
+    Codex.Api.Services.Redis.IMatchRepository matchRepo,
+    IReportJobDispatcher? reportDispatcher = null)
 {
     public async Task CommitAsync(Match match, CancellationToken ct)
     {
@@ -20,6 +22,11 @@ public class MatchDocumentWriter(
             var document = await BuildAsync(match, ct);
             await store.CommitAsync(document, ct);
             logger.LogInformation("Snapshot salvo para a partida {MatchId}.", match.Id);
+
+            if (reportDispatcher is not null)
+            {
+                await reportDispatcher.EnqueueReportGenerationAsync(document, ct);
+            }
         }
         catch (Exception ex)
         {

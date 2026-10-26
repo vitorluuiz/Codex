@@ -34,13 +34,14 @@ const LEADER_ENTRIES: NavEntry[] = [
   // { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} />, href: '/conjuntos' },
   { key: 'salas', label: 'Minhas salas', icon: <Icon.Templates size={18} /> },
   { key: 'turmas', label: 'Minhas turmas', icon: <Icon.Users size={18} /> },
-  { key: 'relatorios', label: 'Relatórios', icon: <Icon.Reports size={18} /> },
+  { key: 'relatorios', label: 'Relatórios', icon: <Icon.Reports size={18} />, href: '/relatorios' },
   { key: 'notificacoes', label: 'Notificações', icon: <Icon.Bell size={18} /> },
   { key: 'configuracoes', label: 'Configurações', icon: <Icon.Settings size={18} /> },
 ];
 
 const PARTICIPANT_ENTRIES: NavEntry[] = [
   { key: 'perfil', label: 'Perfil', icon: <Icon.Person size={18} />, href: '/perfil' },
+  { key: 'relatorios', label: 'Meus relatórios', icon: <Icon.Reports size={18} />, href: '/relatorios' },
   { key: 'conquistas', label: 'Conquistas', icon: <Icon.Award size={18} /> },
   { key: 'ranking', label: 'Ranking', icon: <Icon.Trophy size={18} /> },
   { key: 'turmas-participo', label: 'Turmas em que participo', icon: <Icon.Users size={18} /> },

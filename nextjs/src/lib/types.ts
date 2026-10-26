@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Modelo de domínio do Codex.
  *
  * Este arquivo é o contrato: `contracts/api/api-rest-contract.md` e
@@ -634,4 +634,196 @@ export interface LeaderProfile {
   /** Conjuntos de autoria da pessoa, mais recentes primeiro. */
   sets: PhaseSetSummary[];
   matches: LeaderMatchSummary[];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Relatórios de Partidas                                                      */
+/* -------------------------------------------------------------------------- */
+
+export interface ReportOptionDistribution {
+  optionId: string;
+  label: string;
+  isCorrect: boolean;
+  count: number;
+  percentage: number;
+}
+
+export interface ReportPhaseAnalysis {
+  phaseId: string;
+  orderIndex: number;
+  phaseNumber: number;
+  setTitle: string;
+  kind: PhaseKind;
+  name: string;
+  question: string;
+  basePoints: number;
+  pointsMultiplier: number;
+  maxScore: number;
+  timeSeconds: number;
+  correctAnswerText: string;
+  submittedCount: number;
+  correctCount: number;
+  incorrectCount: number;
+  unansweredCount: number;
+  pendingCount: number;
+  accuracyRate: number;
+  avgScore: number;
+  avgElapsedSeconds: number;
+  mostCommonAnswerText: string | null;
+  optionDistribution: ReportOptionDistribution[];
+}
+
+export interface ReportParticipantAnswer {
+  phaseId: string;
+  phaseNumber: number;
+  phaseName: string;
+  kind: PhaseKind;
+  question: string;
+  submitted: boolean;
+  grading: 'graded' | 'pending' | 'unanswered';
+  correct: boolean | null;
+  score: number;
+  maxScore: number;
+  classAvgScore: number;
+  classAccuracyRate: number;
+  elapsedSeconds: number | null;
+  timeSeconds: number;
+  givenAnswerText: string;
+  correctAnswerText: string;
+  explanation: string | null;
+}
+
+export interface ReportParticipantAnalysis {
+  participantId: string;
+  userId: string | null;
+  displayName: string;
+  avatarIndex: AvatarIndex;
+  rank: number;
+  percentile: number;
+  accessToken: string;
+  joinedAt: string;
+  totalScore: number;
+  maxPossibleScore: number;
+  scorePercentage: number;
+  gradedCount: number;
+  correctCount: number;
+  incorrectCount: number;
+  unansweredCount: number;
+  pendingCount: number;
+  accuracyRate: number;
+  totalElapsedSeconds: number;
+  avgElapsedSeconds: number;
+  answers: ReportParticipantAnswer[];
+}
+
+export interface ReportOverview {
+  participantCount: number;
+  phaseCount: number;
+  avgScore: number;
+  maxPossibleScore: number;
+  maxAchievedScore: number;
+  minAchievedScore: number;
+  medianScore: number;
+  accuracyRate: number;
+  totalSubmissions: number;
+  totalGraded: number;
+  totalCorrect: number;
+  totalPending: number;
+  avgResponseSeconds: number;
+  durationSeconds: number;
+}
+
+export interface MatchReport {
+  id: string;
+  matchId: string;
+  schemaVersion: number;
+  status: 'processing' | 'ready' | 'failed';
+  shareToken: string;
+  roomCode: string;
+  roomId: string;
+  leaderUserId: string;
+  mode: MatchMode;
+  title: string;
+  startedAt: string;
+  finishedAt: string;
+  generatedAt: string;
+  durationSeconds: number;
+  overview: ReportOverview;
+  phases: ReportPhaseAnalysis[];
+  participants: ReportParticipantAnalysis[];
+}
+
+export interface IndividualReport {
+  matchId: string;
+  roomCode: string;
+  mode: MatchMode;
+  title: string;
+  startedAt: string;
+  finishedAt: string;
+  generatedAt: string;
+  durationSeconds: number;
+  classOverview: {
+    participantCount: number;
+    phaseCount: number;
+    avgScore: number;
+    maxPossibleScore: number;
+    maxAchievedScore: number;
+    accuracyRate: number;
+    avgResponseSeconds: number;
+  };
+  participant: ReportParticipantAnalysis;
+}
+
+export interface LeaderReportHistoryItem {
+  matchId: string;
+  shareToken: string;
+  roomCode: string;
+  title: string;
+  mode: MatchMode;
+  finishedAt: string;
+  generatedAt: string;
+  durationSeconds: number;
+  participantCount: number;
+  phaseCount: number;
+  avgScore: number;
+  maxPossibleScore: number;
+  accuracyRate: number;
+}
+
+export interface ParticipantReportHistoryItem {
+  matchId: string;
+  accessToken: string;
+  roomCode: string;
+  title: string;
+  mode: MatchMode;
+  finishedAt: string;
+  displayName: string;
+  avatarIndex: AvatarIndex;
+  rank: number;
+  participantCount: number;
+  totalScore: number;
+  maxPossibleScore: number;
+  accuracyRate: number;
+  correctCount: number;
+  phaseCount: number;
+}
+
+export interface UserReportsHistory {
+  leaderReports: LeaderReportHistoryItem[];
+  participantReports: ParticipantReportHistoryItem[];
+}
+
+export interface ReportStatusResponse {
+  matchId: string;
+  status: 'processing' | 'ready' | 'failed' | 'not_found';
+  shareToken?: string;
+  generatedAt?: string;
+}
+
+export interface RoomReportResolution {
+  matchId: string;
+  role: 'leader' | 'participant';
+  shareToken: string | null;
+  accessToken: string | null;
+
 }

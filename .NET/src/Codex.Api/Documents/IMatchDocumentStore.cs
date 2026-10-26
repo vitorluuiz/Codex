@@ -23,6 +23,12 @@ public interface IMatchDocumentStore
     /// <summary>A partida inteira, participantes e submissoes inclusos.</summary>
     Task<MatchDocument?> FindAsync(Guid matchId, CancellationToken ct);
 
+    /// <summary>Ultima partida encerrada naquela sala.</summary>
+    Task<MatchDocument?> FindLatestByRoomCodeAsync(string roomCode, CancellationToken ct);
+
+    /// <summary>Partidas em que a pessoa atuou como lider ou participante autenticado.</summary>
+    Task<IReadOnlyList<MatchDocument>> ListByUserAsync(Guid userId, int limit, CancellationToken ct);
+
     /// <summary>
     /// A matriz do relatorio: participantes x fases da partida, na ordem do podio em que foram
     /// gravados. Vazio se a partida nao existe.

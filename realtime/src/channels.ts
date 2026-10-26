@@ -116,6 +116,7 @@ const EVENTS_BY_KIND: Record<ChannelKind, ReadonlySet<string>> = {
     'phase.ended',
     'match.finished',
     'match.returned-to-lobby',
+    'report.ready',
   ]),
   leader: new Set(['stats.updated', 'player.activity']),
   // `participant.updated` aqui e a decisao do lider sobre a propria pessoa. Ela

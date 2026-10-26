@@ -99,7 +99,9 @@ export type ServerMessage =
   /** Contadores agregados — enviados com throttle (ver docs). */
   | { type: 'phase.progress'; phaseId: string; submittedCount: number; totalPlayers: number; readyCount: number }
   | { type: 'match.finished'; podium: PodiumEntry[] }
+  | { type: 'match.ReturnedToLobby' }
   | { type: 'match.returned-to-lobby' }
+  | { type: 'report.ready'; matchId: string; shareToken?: string }
 
   /* --- privado ao participante ------------------------------------------ */
   /** Chega quando a IA termina de corrigir texto/código. */

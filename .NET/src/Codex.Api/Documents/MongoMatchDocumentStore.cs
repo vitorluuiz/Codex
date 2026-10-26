@@ -68,6 +68,30 @@ public sealed class MongoMatchDocumentStore : IMatchDocumentStore
         return await matches.Find(m => m.Id == matchId).FirstOrDefaultAsync(ct);
     }
 
+    public async Task<MatchDocument?> FindLatestByRoomCodeAsync(string roomCode, CancellationToken ct)
+    {
+        var matches = await MatchesAsync(ct);
+
+        return await matches
+            .Find(m => m.RoomCode == roomCode)
+            .SortByDescending(m => m.FinishedAt)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<MatchDocument>> ListByUserAsync(Guid userId, int limit, CancellationToken ct)
+    {
+        var matches = await MatchesAsync(ct);
+        var filter = Builders<MatchDocument>.Filter.Or(
+            Builders<MatchDocument>.Filter.Eq(m => m.LeaderUserId, userId),
+            Builders<MatchDocument>.Filter.ElemMatch(m => m.Participants, p => p.UserId == userId));
+
+        return await matches
+            .Find(filter)
+            .SortByDescending(m => m.FinishedAt)
+            .Limit(limit)
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<MatchParticipantDocument>> ParticipantsAsync(Guid matchId, CancellationToken ct)
     {
         var matches = await MatchesAsync(ct);

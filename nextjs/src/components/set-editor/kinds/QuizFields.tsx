@@ -542,17 +542,6 @@ export function QuizFields({
                 </span>
               </div>
 
-              {phase.options.length > MIN_OPTIONS && (
-                <button
-                  type="button"
-                  className={styles.removeOptionButton}
-                  onClick={() => removeOptionAt(index)}
-                  title="Remover alternativa"
-                  aria-label={`Remover alternativa ${index + 1}`}
-                >
-                  <Icon.Close size={14} />
-                </button>
-              )}
 
               <div
                 draggable
