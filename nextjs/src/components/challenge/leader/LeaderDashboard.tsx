@@ -155,38 +155,39 @@ export function LeaderDashboard({
                   <div className={styles.bars}>
                     {phase.kind === 'quiz'
                       ? stats.answerDistribution.map((entry) => (
-                          <DistributionBar
-                            key={entry.optionId}
-                            label={entry.label}
-                            count={entry.count}
-                            max={maxOf(stats.answerDistribution.map((item) => item.count))}
-                            tone={entry.correct ? 'success' : 'info'}
-                            highlight={entry.correct}
-                          />
-                        ))
+                        <DistributionBar
+                          key={entry.optionId}
+                          label={entry.label}
+                          count={entry.count}
+                          max={maxOf(stats.answerDistribution.map((item) => item.count))}
+                          tone={entry.correct ? 'success' : 'info'}
+                          highlight={entry.correct}
+                        />
+                      ))
                       : stats.gradingDistribution.map((entry) => (
-                          <DistributionBar
-                            key={entry.status}
-                            label={GRADING_LABEL[entry.status]}
-                            count={entry.count}
-                            max={maxOf(stats.gradingDistribution.map((item) => item.count))}
-                            tone={GRADING_TONE[entry.status]}
-                            highlight={entry.status === 'correct'}
-                          />
-                        ))}
+                        <DistributionBar
+                          key={entry.status}
+                          label={GRADING_LABEL[entry.status]}
+                          count={entry.count}
+                          max={maxOf(stats.gradingDistribution.map((item) => item.count))}
+                          tone={GRADING_TONE[entry.status]}
+                          highlight={entry.status === 'correct'}
+                        />
+                      ))}
                   </div>
                 </section>
 
-                <section className={styles.panel}>
-                  <h2 className={styles.panelTitle}>Tempo de resposta por faixa</h2>
-                  <div className={styles.columns}>
-                    {(() => {
-                      const hasExpiredBucket = stats.responseTimeBuckets.some(
-                        (b) => b.label === 'Tempo esgotado',
-                      );
-                      const responseTimeBuckets = hasExpiredBucket
-                        ? stats.responseTimeBuckets
-                        : [
+                <div className={styles.superPanel}>
+                  <section className={styles.panel}>
+                    <h2 className={styles.panelTitle}>Tempo de resposta por faixa</h2>
+                    <div className={styles.columns}>
+                      {(() => {
+                        const hasExpiredBucket = stats.responseTimeBuckets.some(
+                          (b) => b.label === 'Tempo esgotado',
+                        );
+                        const responseTimeBuckets = hasExpiredBucket
+                          ? stats.responseTimeBuckets
+                          : [
                             ...stats.responseTimeBuckets,
                             {
                               label: 'Tempo esgotado',
@@ -195,39 +196,49 @@ export function LeaderDashboard({
                                 : 0,
                             },
                           ];
-                      const maxBucketCount = maxOf(responseTimeBuckets.map((item) => item.count));
+                        const maxBucketCount = maxOf(responseTimeBuckets.map((item) => item.count));
 
-                      return responseTimeBuckets.map((bucket) => {
-                        const isExpiredBucket = bucket.label === 'Tempo esgotado';
-                        return (
-                          <div key={bucket.label} className={styles.column}>
-                            <span className={styles.columnCount}>{bucket.count}</span>
-                            <div
-                              className={cx(
-                                styles.columnBar,
-                                isExpiredBucket && styles.columnBarExpired,
-                              )}
-                              style={cssVars({
-                                '--bar-height': `${Math.max(
-                                  8,
-                                  percent(bucket.count, maxBucketCount),
-                                )}%`,
-                              })}
-                            />
-                            <span
-                              className={cx(
-                                styles.columnLabel,
-                                isExpiredBucket && styles.columnLabelExpired,
-                              )}
-                            >
-                              {bucket.label}
-                            </span>
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
-                </section>
+                        return responseTimeBuckets.map((bucket) => {
+                          const isExpiredBucket = bucket.label === 'Tempo esgotado';
+                          return (
+                            <div key={bucket.label} className={styles.column}>
+                              <span className={styles.columnCount}>{bucket.count}</span>
+                              <div
+                                className={cx(
+                                  styles.columnBar,
+                                  isExpiredBucket && styles.columnBarExpired,
+                                )}
+                                style={cssVars({
+                                  '--bar-height': `${Math.max(
+                                    8,
+                                    percent(bucket.count, maxBucketCount),
+                                  )}%`,
+                                })}
+                              />
+                              <span
+                                className={cx(
+                                  styles.columnLabel,
+                                  isExpiredBucket && styles.columnLabelExpired,
+                                )}
+                              >
+                                {bucket.label}
+                              </span>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </section>
+                  {isLastPhase ? (
+                    <Button size="lg" onClick={onFinish}>
+                      Encerrar partida
+                    </Button>
+                  ) : (
+                    <Button size="lg" onClick={() => onAdvance('next')}>
+                      Próxima fase
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <section className={styles.tablePanel}>
@@ -322,21 +333,22 @@ export function LeaderDashboard({
               Fase anterior
             </Button>
           )}
+          {isLastPhase ? (
+                    <Button size="lg" onClick={onFinish}>
+                      Encerrar partida
+                    </Button>
+                  ) : (
+                    <Button size="lg" onClick={() => onAdvance('next')}>
+                      Próxima fase
+                    </Button>
+                  )}
           {/*
             Na última fase não há para onde avançar: a API responde
             `409 INVALID_DIRECTION` a um `advance`, e o caminho para terminar é
             `finish`. É a mesma troca que a tela do aluno já faz ("Ver pódio" no
             lugar de "Próxima fase") em CollectiveFeedbackScreen.
           */}
-          {isLastPhase ? (
-            <Button size="lg" onClick={onFinish}>
-              Encerrar partida
-            </Button>
-          ) : (
-            <Button size="lg" onClick={() => onAdvance('next')}>
-              Próxima fase
-            </Button>
-          )}
+
         </div>
       </div>
 

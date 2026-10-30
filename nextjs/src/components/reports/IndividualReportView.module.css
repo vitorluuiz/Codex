@@ -313,8 +313,9 @@
 
 .comparisonGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: var(--space-3);
+  width: 100%;
 }
 
 .answerBox {
@@ -324,6 +325,11 @@
   padding: var(--space-3);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-l);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .boxLabel {
@@ -331,12 +337,19 @@
   text-transform: uppercase;
   font-weight: var(--fw-semibold);
   color: var(--text-secondary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .boxValue {
   font-size: var(--text-body-s);
   font-weight: var(--fw-medium);
   color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .classFoot {

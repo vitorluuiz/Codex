@@ -28,8 +28,11 @@ function formatDuration(seconds: number): string {
 }
 
 function accuracyColor(value: number): string {
-  if (value >= 75) return '#16a34a';
+  if (value >= 85) return '#16a34a';
+  if (value >= 75) return '#0bca51';
+  if (value >= 60) return '#e9c112';
   if (value >= 50) return '#d97706';
+  if (value >= 33) return '#d95006';
   return '#dc2626';
 }
 
@@ -45,7 +48,7 @@ export function MatchReportExportDocument({ report, className }: MatchReportExpo
       <header className={styles.hero} data-pdf-keep-together>
         <div className={styles.heroTop}>
           <div className={styles.badges}>
-            <span className={styles.badgePrimary}>Relatório Consolidado da Turma</span>
+            <span className={styles.badgePrimary}>Relatório consolidado da Turma</span>
             <span className={styles.badgeNeutral}>Sala {report.roomCode}</span>
             <span className={styles.badgeNeutral}>{MODE_LABEL[report.mode]}</span>
           </div>
@@ -312,12 +315,16 @@ export function MatchReportExportDocument({ report, className }: MatchReportExpo
             <table className={styles.matrixTable}>
               <thead>
                 <tr>
-                  <th style={{ width: 50 }}>#</th>
-                  <th style={{ width: 170 }}>Participante</th>
-                  <th style={{ width: 85 }}>Total</th>
+                  <th className={styles.colRank} style={{ width: 44 }}>#</th>
+                  <th className={styles.colPlayer} style={{ width: 140 }}>Participante</th>
+                  <th className={styles.colTotal} style={{ width: 68 }}>Total</th>
                   {report.phases.map((ph) => (
-                    <th key={ph.phaseId} title={ph.name}>
-                      F{ph.phaseNumber}: {ph.name}
+                    <th
+                      key={ph.phaseId}
+                      className={styles.colPhase}
+                      title={`Fase ${ph.phaseNumber}: ${ph.name}`}
+                    >
+                      F{ph.phaseNumber}
                     </th>
                   ))}
                 </tr>
@@ -328,36 +335,45 @@ export function MatchReportExportDocument({ report, className }: MatchReportExpo
                   return (
                     <tr key={p.participantId} data-pdf-keep-together>
                       <td className={styles.rankCell}>#{p.rank}</td>
-                      <td className={styles.matrixPlayerName}>{p.displayName}</td>
-                      <td className={styles.scoreStrong}>{p.totalScore} pts</td>
+                      <td className={styles.matrixPlayerName} title={p.displayName}>
+                        {p.displayName}
+                      </td>
+                      <td className={styles.scoreStrong}>{p.totalScore}</td>
                       {report.phases.map((ph) => {
                         const ans = ansByPhase.get(ph.phaseId);
                         if (!ans || !ans.submitted) {
                           return (
-                            <td key={ph.phaseId} className={styles.cellUnanswered}>
+                            <td
+                              key={ph.phaseId}
+                              className={cx(styles.matrixCell, styles.cellUnanswered)}
+                              title="Em branco"
+                            >
                               <span className={styles.cellMain}>—</span>
-                              <span className={styles.cellSub}>Em branco</span>
                             </td>
                           );
                         }
                         if (ans.grading === 'pending') {
                           return (
-                            <td key={ph.phaseId} className={styles.cellPending}>
-                              <span className={styles.cellMain}>⏳ Pendente</span>
-                              <span className={styles.cellSub}>{ans.givenAnswerText}</span>
+                            <td
+                              key={ph.phaseId}
+                              className={cx(styles.matrixCell, styles.cellPending)}
+                              title={`Pendente: ${ans.givenAnswerText}`}
+                            >
+                              <span className={styles.cellMain}>⏳</span>
                             </td>
                           );
                         }
                         return (
                           <td
                             key={ph.phaseId}
-                            className={ans.correct ? styles.cellCorrect : styles.cellWrong}
+                            className={cx(
+                              styles.matrixCell,
+                              ans.correct ? styles.cellCorrect : styles.cellWrong,
+                            )}
+                            title={`${ans.correct ? 'Acertou' : 'Errou'} · ${ans.score} pts (${ans.elapsedSeconds}s) · Resposta: ${ans.givenAnswerText}`}
                           >
                             <span className={styles.cellMain}>
-                              {ans.correct ? '✓' : '✗'} {ans.score} pts ({ans.elapsedSeconds}s)
-                            </span>
-                            <span className={styles.cellSub} title={ans.givenAnswerText}>
-                              {ans.givenAnswerText}
+                              {ans.correct ? '✓' : '✗'} {ans.score}
                             </span>
                           </td>
                         );

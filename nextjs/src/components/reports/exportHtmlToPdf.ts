@@ -90,7 +90,9 @@ export async function exportHtmlElementToPdf(
   );
 
   const containerRect = element.getBoundingClientRect();
-  const containerWidthPx = Math.max(1, Math.round(element.scrollWidth || containerRect.width));
+  // Usa a largura de layout real do container (ex: 1040px no líder, 860px no individual)
+  // em vez de scrollWidth irrestrito para evitar distorção de proporção A4 por tabelas largas
+  const containerWidthPx = Math.max(1, Math.round(containerRect.width || element.clientWidth || 1040));
   const containerHeightPx = Math.max(1, Math.round(element.scrollHeight || containerRect.height));
 
   // Coleta as coordenadas de todos os blocos marcados para não quebrarem ao meio entre páginas
@@ -105,19 +107,6 @@ export async function exportHtmlElementToPdf(
     }
   });
   blocks.sort((a, b) => a.top - b.top);
-
-  const scale = 2;
-  const fullCanvas = await html2canvas(element, {
-    scale,
-    useCORS: true,
-    allowTaint: true,
-    backgroundColor: '#ffffff',
-    logging: false,
-    width: containerWidthPx,
-    height: containerHeightPx,
-    windowWidth: containerWidthPx,
-    windowHeight: containerHeightPx,
-  });
 
   // Dimensões da folha A4 retrato em milímetros
   const pdf = new jsPDF({
@@ -141,8 +130,12 @@ export async function exportHtmlElementToPdf(
   const maxPageHeightPx = Math.floor(usableHeightMm * pxPerMm);
 
   const slices = computePageSlices(containerHeightPx, maxPageHeightPx, blocks);
+  const scale = 2;
 
-  slices.forEach((slice, idx) => {
+  // Renderiza cada página (slice) de forma independente com html2canvas
+  // para NUNCA estourar o limite de altura/área máxima de canvas do navegador (16.384px / 32.767px)
+  for (let idx = 0; idx < slices.length; idx++) {
+    const slice = slices[idx]!;
     if (idx > 0) {
       pdf.addPage();
     }
@@ -150,29 +143,19 @@ export async function exportHtmlElementToPdf(
     const sliceHeightPx = Math.max(1, slice.endY - slice.startY);
     const sliceHeightMm = sliceHeightPx / pxPerMm;
 
-    const srcY = Math.max(0, Math.round(slice.startY * scale));
-    const srcH = Math.min(fullCanvas.height - srcY, Math.round(sliceHeightPx * scale));
-
-    const pageCanvas = document.createElement('canvas');
-    pageCanvas.width = fullCanvas.width;
-    pageCanvas.height = Math.max(1, srcH);
-
-    const ctx = pageCanvas.getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-      ctx.drawImage(
-        fullCanvas,
-        0,
-        srcY,
-        fullCanvas.width,
-        srcH,
-        0,
-        0,
-        fullCanvas.width,
-        srcH,
-      );
-    }
+    const pageCanvas = await html2canvas(element, {
+      scale,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      x: 0,
+      y: slice.startY,
+      width: containerWidthPx,
+      height: sliceHeightPx,
+      windowWidth: containerWidthPx,
+      windowHeight: containerHeightPx,
+    });
 
     const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
     pdf.addImage(imgData, 'JPEG', marginXMm, marginTopMm, usableWidthMm, sliceHeightMm);
@@ -187,7 +170,7 @@ export async function exportHtmlElementToPdf(
     const footerRight = `Página ${idx + 1} de ${slices.length}`;
     pdf.text(footerLeft, marginXMm, pageHeightMm - 5);
     pdf.text(footerRight, pageWidthMm - marginXMm, pageHeightMm - 5, { align: 'right' });
-  });
+  }
 
   const safeFilename = options.filename
     .trim()
