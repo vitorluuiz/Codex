@@ -1,0 +1,562 @@
+/* ==========================================================================
+   Documento de Exportação HTML -> PDF (Líder / Turma)
+   Estilizado para renderização A4 com tema claro e economia de tinta.
+   Edições feitas aqui são refletidas em tempo real na rota de preview (/relatorios/preview).
+   ========================================================================== */
+
+.exportDocument {
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --surface-page: #ffffff;
+  --surface-card: #ffffff;
+  --surface-sunken: #f8fafc;
+  --surface-alt: #f1f5f9;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --accent-primary: #1e56d1;
+  --tone-green-surface: #dcfce7;
+  --tone-amber-surface: #fef3c7;
+  --tone-pink-surface: #fce7f3;
+
+  width: 1040px;
+  max-width: 1040px;
+  margin: 0 auto;
+  background: #ffffff;
+  color: var(--text-primary);
+  font-family: var(--font-body), system-ui, -apple-system, sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-sizing: border-box;
+}
+
+/* --- Cabeçalho --- */
+.hero {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.heroTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badgePrimary {
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badgeNeutral {
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.brandMark {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* --- Grade de KPIs --- */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.kpiCard {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpiLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.kpiValue {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.kpiScore {
+  color: var(--accent-primary);
+}
+
+.kpiUnit {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.kpiSub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+/* --- Seções do Documento --- */
+.sectionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-subtle);
+}
+
+.sectionTag {
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* --- Gráfico de Barras --- */
+.phaseChartCard {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chartHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.cardHeading {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cardMuted {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.phaseBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  min-height: 110px;
+}
+
+.phaseBarCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.phaseBarPct {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.phaseBarTrack {
+  width: 100%;
+  max-width: 38px;
+  height: 80px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.phaseBarFill {
+  width: 100%;
+  border-radius: 6px;
+}
+
+.phaseBarLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* --- Lista de Fases --- */
+.phaseList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.phaseCard {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.phaseHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.phaseTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.phaseNumBadge {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.phaseKindChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.phaseName {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.phaseQuickStats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.phaseAccuracyPill {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.phaseStatText {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.phaseQuestion {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--surface-sunken);
+  padding: 10px 12px;
+  border-radius: 8px;
+  line-height: 1.4;
+}
+
+.phaseDetailsRow {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.phaseAnswerBox {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.detailLabel {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.detailValue {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.optionDistList {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.optionDistRow {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-sunken);
+}
+
+.optionDistCorrect {
+  border-color: #86efac;
+  background: var(--tone-green-surface);
+}
+
+.optionDistHeader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.optionDistLabel {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.optionDistCount {
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.optionDistTrack {
+  height: 5px;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.optionDistFill {
+  height: 100%;
+  border-radius: 9999px;
+}
+
+/* --- Tabelas (Classificação e Matriz) --- */
+.tableCard {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.tableWrapper,
+.matrixWrapper {
+  width: 100%;
+  overflow: visible;
+}
+
+.table,
+.matrixTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.matrixTable {
+  table-layout: fixed;
+}
+
+.table th,
+.table td,
+.matrixTable th,
+.matrixTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.matrixTable th,
+.matrixTable td {
+  padding: 8px 10px;
+  word-break: break-word;
+}
+
+.table th,
+.matrixTable th {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+  letter-spacing: 0.03em;
+}
+
+.rankCell {
+  font-weight: 700;
+}
+
+.rankBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.rankFirst {
+  background: var(--tone-amber-surface);
+  color: #b45309;
+}
+
+.rankSecond {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.rankThird {
+  background: var(--tone-pink-surface);
+  color: #db2777;
+}
+
+.playerCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.playerName {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.playerMeta {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.scoreStrong {
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
+.scoreMuted {
+  color: var(--text-muted);
+}
+
+.accuracyStrong {
+  font-weight: 700;
+}
+
+.matrixPlayerName {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cellCorrect {
+  background: var(--tone-green-surface);
+}
+
+.cellWrong {
+  background: #fee2e2;
+}
+
+.cellPending {
+  background: var(--tone-amber-surface);
+}
+
+.cellUnanswered {
+  color: var(--text-muted);
+}
+
+.cellMain {
+  display: block;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.cellSub {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted);
+}

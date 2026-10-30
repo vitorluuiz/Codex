@@ -10,6 +10,7 @@ import { KIND_META } from '@/components/set-editor/phaseKinds';
 import { cx } from '@/lib/cx';
 import type { IndividualReport } from '@/lib/types';
 import { exportHtmlElementToPdf } from './exportHtmlToPdf';
+import { IndividualReportExportDocument } from './IndividualReportExportDocument';
 import { saveVisitedReport } from './visitedReportsStorage';
 import styles from './IndividualReportView.module.css';
 
@@ -34,7 +35,7 @@ function IndividualReportBody({ report }: { report: IndividualReport }) {
 
   return (
     <>
-      <header className={styles.heroCard} data-pdf-keep-together>
+      <header className={styles.heroCard}>
         <div className={styles.identityRow}>
           <Avatar index={p.avatarIndex} size="lg" name={p.displayName} />
           <div className={styles.identityInfo}>
@@ -61,7 +62,7 @@ function IndividualReportBody({ report }: { report: IndividualReport }) {
         </div>
       </header>
 
-      <section className={styles.kpiGrid} data-pdf-keep-together>
+      <section className={styles.kpiGrid}>
         <div className={styles.kpiTile}>
           <span className={styles.kpiLabel}>Taxa de Acerto</span>
           <span
@@ -93,9 +94,7 @@ function IndividualReportBody({ report }: { report: IndividualReport }) {
       </section>
 
       <section className={styles.reviewSection}>
-        <h2 className={styles.sectionTitle} data-pdf-keep-together>
-          Revisão Compacta por Fase
-        </h2>
+        <h2 className={styles.sectionTitle}>Revisão Compacta por Fase</h2>
 
         <div className={styles.answerList}>
           {p.answers.map((ans) => {
@@ -117,11 +116,7 @@ function IndividualReportBody({ report }: { report: IndividualReport }) {
                   : 'Errou';
 
             return (
-              <article
-                key={ans.phaseId}
-                className={cx(styles.answerCard, stateClass)}
-                data-pdf-keep-together
-              >
+              <article key={ans.phaseId} className={cx(styles.answerCard, stateClass)}>
                 <div className={styles.answerHead}>
                   <div className={styles.answerTitleWrap}>
                     <span className={styles.phaseNum}>F{ans.phaseNumber}</span>
@@ -272,6 +267,13 @@ export function IndividualReportView({ report }: IndividualReportViewProps) {
           </Link>
 
           <div className={styles.actions}>
+            <Link
+              href={`/relatorios/preview?individualToken=${encodeURIComponent(p.accessToken)}`}
+              className={styles.devPreviewLink}
+              title="Abrir visualizador com Hot-Reload para editar o layout da folha A4"
+            >
+              Prévia A4 (Dev)
+            </Link>
             <Button variant="secondary" size="sm" onClick={() => void copyMyLink()}>
               <Icon.Copy size={15} />
               Copiar meu link permanente
@@ -290,11 +292,11 @@ export function IndividualReportView({ report }: IndividualReportViewProps) {
         <IndividualReportBody report={report} />
       </div>
 
-      {/* Superfície de exportação HTML -> PDF: renderiza os mesmos componentes da página em tema claro */}
+      {/* Superfície de exportação HTML -> PDF: renderiza IndividualReportExportDocument */}
       {isExportingPdf && (
         <div className={styles.pdfOffscreenWrapper} aria-hidden="true">
-          <div ref={pdfContainerRef} className={cx(styles.pdfExportRoot, styles.container)}>
-            <IndividualReportBody report={report} />
+          <div ref={pdfContainerRef}>
+            <IndividualReportExportDocument report={report} />
           </div>
         </div>
       )}

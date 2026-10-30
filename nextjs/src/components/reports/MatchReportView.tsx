@@ -10,6 +10,7 @@ import { KIND_META } from '@/components/set-editor/phaseKinds';
 import { cx } from '@/lib/cx';
 import type { MatchReport } from '@/lib/types';
 import { exportHtmlElementToPdf } from './exportHtmlToPdf';
+import { MatchReportExportDocument } from './MatchReportExportDocument';
 import { saveVisitedReport } from './visitedReportsStorage';
 import styles from './MatchReportView.module.css';
 
@@ -40,396 +41,6 @@ function accuracyColor(value: number): string {
   if (value >= 75) return 'var(--accent-success)';
   if (value >= 50) return 'var(--accent-streak)';
   return 'var(--accent-danger)';
-}
-
-interface ReportContentSectionProps {
-  report: MatchReport;
-  forPdf?: boolean;
-  onCopyIndividualLink?: (accessToken: string, name: string) => void;
-}
-
-function ReportHeroAndKpis({ report }: { report: MatchReport }) {
-  return (
-    <>
-      <header className={styles.hero} data-pdf-keep-together>
-        <div className={styles.heroInfo}>
-          <div className={styles.badges}>
-            <span className={styles.badgePrimary}>Relatório Consolidado da Turma</span>
-            <span className={styles.badgeNeutral}>Sala {report.roomCode}</span>
-            <span className={styles.badgeNeutral}>{MODE_LABEL[report.mode]}</span>
-          </div>
-          <h1 className={styles.title}>{report.title}</h1>
-          <p className={styles.subtitle}>
-            Concluída em {formatDateBr(report.finishedAt)} · Duração de{' '}
-            {formatDuration(report.durationSeconds)} · {report.overview.phaseCount} fases
-          </p>
-        </div>
-      </header>
-
-      <section
-        className={styles.kpiGrid}
-        aria-label="Indicadores gerais da partida"
-        data-pdf-keep-together
-      >
-        <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Participantes</span>
-          <span className={styles.kpiValue}>{report.overview.participantCount}</span>
-          <span className={styles.kpiSub}>
-            {report.overview.totalSubmissions} respostas enviadas
-          </span>
-        </div>
-
-        <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Pontuação Média</span>
-          <span className={cx(styles.kpiValue, styles.kpiScore)}>
-            {report.overview.avgScore}
-            <span className={styles.kpiUnit}> / {report.overview.maxPossibleScore} pts</span>
-          </span>
-          <span className={styles.kpiSub}>
-            Maior: {report.overview.maxAchievedScore} pts · Mediana: {report.overview.medianScore}{' '}
-            pts
-          </span>
-        </div>
-
-        <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Taxa de Acerto Global</span>
-          <span
-            className={styles.kpiValue}
-            style={{ color: accuracyColor(report.overview.accuracyRate) }}
-          >
-            {report.overview.accuracyRate}%
-          </span>
-          <span className={styles.kpiSub}>
-            {report.overview.totalCorrect} acertos em {report.overview.totalGraded} corrigidas
-          </span>
-        </div>
-
-        <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Tempo Médio / Fase</span>
-          <span className={styles.kpiValue}>{report.overview.avgResponseSeconds}s</span>
-          <span className={styles.kpiSub}>
-            Duração total: {formatDuration(report.durationSeconds)}
-          </span>
-        </div>
-      </section>
-    </>
-  );
-}
-
-function PhasesSection({ report, forPdf }: ReportContentSectionProps) {
-  return (
-    <section className={styles.tabContent}>
-      {forPdf && (
-        <div className={styles.pdfSectionDivider} data-pdf-keep-together>
-          <span className={styles.pdfSectionIndex}>Seção 1</span>
-          <h2 className={styles.pdfSectionHeading}>Análise Detalhada por Fase</h2>
-        </div>
-      )}
-
-      <div className={styles.phaseChartCard} data-pdf-keep-together>
-        <h2 className={styles.sectionTitle}>Curva de Acerto por Fase</h2>
-        <div className={styles.phaseBars}>
-          {report.phases.map((ph) => (
-            <div key={ph.phaseId} className={styles.phaseBarCol}>
-              <span className={styles.phaseBarPct}>{ph.accuracyRate}%</span>
-              <div className={styles.phaseBarTrack}>
-                <div
-                  className={styles.phaseBarFill}
-                  style={{
-                    height: `${Math.max(6, ph.accuracyRate)}%`,
-                    background: accuracyColor(ph.accuracyRate),
-                  }}
-                />
-              </div>
-              <span className={styles.phaseBarLabel} title={ph.name}>
-                F{ph.phaseNumber}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.phaseList}>
-        {report.phases.map((ph) => {
-          const meta = KIND_META[ph.kind];
-          return (
-            <article key={ph.phaseId} className={styles.phaseCard} data-pdf-keep-together>
-              <div className={styles.phaseHead}>
-                <div className={styles.phaseTitleGroup}>
-                  <span className={styles.phaseNumBadge}>Fase {ph.phaseNumber}</span>
-                  <span className={styles.phaseKindChip} style={{ color: meta.color }}>
-                    {meta.icon}
-                    {meta.label}
-                  </span>
-                  <h3 className={styles.phaseName}>{ph.name}</h3>
-                </div>
-
-                <div className={styles.phaseQuickStats}>
-                  <span
-                    className={styles.phaseAccuracyPill}
-                    style={{ color: accuracyColor(ph.accuracyRate) }}
-                  >
-                    {ph.accuracyRate}% de acerto
-                  </span>
-                  <span className={styles.phaseStatText}>
-                    Média: <strong>{ph.avgScore}</strong> / {ph.maxScore} pts
-                  </span>
-                  <span className={styles.phaseStatText}>
-                    Tempo médio: <strong>{ph.avgElapsedSeconds}s</strong>
-                  </span>
-                </div>
-              </div>
-
-              <p className={styles.phaseQuestion}>{ph.question}</p>
-
-              <div className={styles.phaseDetailsRow}>
-                <div className={styles.phaseAnswerBox}>
-                  <span className={styles.detailLabel}>Gabarito esperado</span>
-                  <span className={styles.detailValue}>{ph.correctAnswerText}</span>
-                </div>
-                <div className={styles.phaseAnswerBox}>
-                  <span className={styles.detailLabel}>Distribuição de entregas</span>
-                  <span className={styles.detailValue}>
-                    {ph.correctCount} acertos · {ph.incorrectCount} erros ·{' '}
-                    {ph.unansweredCount} em branco
-                    {ph.pendingCount > 0 ? ` · ${ph.pendingCount} pendentes` : ''}
-                  </span>
-                </div>
-              </div>
-
-              {ph.optionDistribution.length > 0 && (
-                <div className={styles.optionDistList}>
-                  {ph.optionDistribution.map((opt) => (
-                    <div
-                      key={opt.optionId}
-                      className={cx(
-                        styles.optionDistRow,
-                        opt.isCorrect && styles.optionDistCorrect,
-                      )}
-                    >
-                      <div className={styles.optionDistHeader}>
-                        <span className={styles.optionDistLabel}>
-                          {opt.isCorrect ? '✓ ' : ''}
-                          {opt.label}
-                        </span>
-                        <span className={styles.optionDistCount}>
-                          {opt.count} ({opt.percentage}%)
-                        </span>
-                      </div>
-                      <div className={styles.optionDistTrack}>
-                        <div
-                          className={styles.optionDistFill}
-                          style={{
-                            width: `${opt.percentage}%`,
-                            background: opt.isCorrect
-                              ? 'var(--accent-success)'
-                              : 'var(--blue-400)',
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </article>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function RankingSection({ report, forPdf, onCopyIndividualLink }: ReportContentSectionProps) {
-  return (
-    <section className={styles.tabContent}>
-      {forPdf && (
-        <div className={styles.pdfSectionDivider} data-pdf-keep-together>
-          <span className={styles.pdfSectionIndex}>Seção 2</span>
-          <h2 className={styles.pdfSectionHeading}>Classificação Geral dos Participantes</h2>
-        </div>
-      )}
-
-      <div className={styles.tableCard}>
-        <div className={styles.tableHeaderDesc} data-pdf-keep-together>
-          <h2 className={styles.sectionTitle}>Classificação Geral dos Participantes</h2>
-          <p className={styles.sectionHint}>
-            {forPdf
-              ? 'Desempenho consolidado da turma ordenado por pontuação e tempo de resposta.'
-              : 'Cada participante possui um link exclusivo protegido contra força bruta para consultar seu relatório individual compacto.'}
-          </p>
-        </div>
-
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
-            <thead data-pdf-keep-together>
-              <tr>
-                <th>Posição</th>
-                <th>Participante</th>
-                <th>Pontuação</th>
-                <th>Taxa de Acerto</th>
-                <th>Acertos / Fases</th>
-                <th>Tempo Total</th>
-                {!forPdf && <th>Relatório Individual</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {report.participants.map((p) => (
-                <tr key={p.participantId} data-pdf-keep-together>
-                  <td className={styles.rankCell}>
-                    <span
-                      className={cx(
-                        styles.rankBadge,
-                        p.rank === 1 && styles.rankFirst,
-                        p.rank === 2 && styles.rankSecond,
-                        p.rank === 3 && styles.rankThird,
-                      )}
-                    >
-                      #{p.rank}
-                    </span>
-                  </td>
-                  <td>
-                    <div className={styles.playerCell}>
-                      <Avatar index={p.avatarIndex} size="sm" name={p.displayName} />
-                      <div>
-                        <div className={styles.playerName}>{p.displayName}</div>
-                        <div className={styles.playerMeta}>
-                          {p.userId ? 'Conta cadastrada' : 'Convidado'}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span className={styles.scoreStrong}>{p.totalScore}</span>
-                    <span className={styles.scoreMuted}> / {p.maxPossibleScore} pts</span>
-                  </td>
-                  <td>
-                    <span
-                      className={styles.accuracyStrong}
-                      style={{ color: accuracyColor(p.accuracyRate) }}
-                    >
-                      {p.accuracyRate}%
-                    </span>
-                  </td>
-                  <td>
-                    {p.correctCount} acertos · {p.incorrectCount} erros
-                    {p.unansweredCount > 0 ? ` · ${p.unansweredCount} em branco` : ''}
-                  </td>
-                  <td>
-                    {p.totalElapsedSeconds}s (méd. {p.avgElapsedSeconds}s)
-                  </td>
-                  {!forPdf && (
-                    <td>
-                      <div className={styles.rowActions}>
-                        <Link
-                          href={`/relatorios/individual/${p.accessToken}`}
-                          className={styles.actionLinkBtn}
-                        >
-                          <Icon.Eye size={14} />
-                          Abrir
-                        </Link>
-                        <button
-                          type="button"
-                          className={styles.copyIconBtn}
-                          onClick={() => onCopyIndividualLink?.(p.accessToken, p.displayName)}
-                          title={`Copiar link individual de ${p.displayName}`}
-                        >
-                          <Icon.Copy size={14} />
-                          Copiar link
-                        </button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function MatrixSection({ report, forPdf }: ReportContentSectionProps) {
-  return (
-    <section className={styles.tabContent}>
-      {forPdf && (
-        <div className={styles.pdfSectionDivider} data-pdf-keep-together>
-          <span className={styles.pdfSectionIndex}>Seção 3</span>
-          <h2 className={styles.pdfSectionHeading}>Matriz Cruzada: Aluno × Fase</h2>
-        </div>
-      )}
-
-      <div className={styles.tableCard}>
-        <div className={styles.tableHeaderDesc} data-pdf-keep-together>
-          <h2 className={styles.sectionTitle}>Matriz Cruzada: Aluno × Fase</h2>
-          <p className={styles.sectionHint}>
-            Visão consolidada de todas as submissões da turma em cada fase da partida.
-          </p>
-        </div>
-
-        <div className={cx(styles.tableWrapper, forPdf && styles.tableWrapperPdf)}>
-          <table className={cx(styles.matrixTable, forPdf && styles.matrixTablePdf)}>
-            <thead data-pdf-keep-together>
-              <tr>
-                <th>#</th>
-                <th>Participante</th>
-                <th>Total</th>
-                {report.phases.map((ph) => (
-                  <th key={ph.phaseId} title={ph.name}>
-                    F{ph.phaseNumber}: {ph.name}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {report.participants.map((p) => {
-                const ansByPhase = new Map(p.answers.map((a) => [a.phaseId, a]));
-                return (
-                  <tr key={p.participantId} data-pdf-keep-together>
-                    <td className={styles.rankCell}>#{p.rank}</td>
-                    <td className={styles.matrixPlayerName}>{p.displayName}</td>
-                    <td className={styles.scoreStrong}>{p.totalScore} pts</td>
-                    {report.phases.map((ph) => {
-                      const ans = ansByPhase.get(ph.phaseId);
-                      if (!ans || !ans.submitted) {
-                        return (
-                          <td key={ph.phaseId} className={styles.cellUnanswered}>
-                            <span className={styles.cellMain}>—</span>
-                            <span className={styles.cellSub}>Em branco</span>
-                          </td>
-                        );
-                      }
-                      if (ans.grading === 'pending') {
-                        return (
-                          <td key={ph.phaseId} className={styles.cellPending}>
-                            <span className={styles.cellMain}>⏳ Pendente</span>
-                            <span className={styles.cellSub}>{ans.givenAnswerText}</span>
-                          </td>
-                        );
-                      }
-                      return (
-                        <td
-                          key={ph.phaseId}
-                          className={ans.correct ? styles.cellCorrect : styles.cellWrong}
-                        >
-                          <span className={styles.cellMain}>
-                            {ans.correct ? '✓' : '✗'} {ans.score} pts ({ans.elapsedSeconds}s)
-                          </span>
-                          <span className={styles.cellSub} title={ans.givenAnswerText}>
-                            {ans.givenAnswerText}
-                          </span>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-  );
 }
 
 interface MatchReportViewProps {
@@ -472,7 +83,7 @@ export function MatchReportView({
     setToast('Renderizando página HTML em tema claro e gerando PDF...');
   }, [isExportingPdf]);
 
-  // Quando `isExportingPdf` liga e o container offscreen com as 3 abas em tema claro é montado,
+  // Quando `isExportingPdf` liga e o container offscreen com o documento A4 é montado,
   // capturamos com html2canvas + jsPDF e baixamos o PDF.
   useEffect(() => {
     if (!isExportingPdf || !pdfContainerRef.current) return;
@@ -505,7 +116,7 @@ export function MatchReportView({
     };
   }, [isExportingPdf, report]);
 
-  // Dispara exportação automática se a página foi aberta com `?export=pdf` (ex.: atalho de /relatorios ou /perfil)
+  // Dispara exportação automática se a página foi aberta com `?export=pdf`
   useEffect(() => {
     if (autoExportTriggeredRef.current || typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -555,6 +166,13 @@ export function MatchReportView({
           </Link>
 
           <div className={styles.exportActions}>
+            <Link
+              href={`/relatorios/preview?token=${encodeURIComponent(report.shareToken)}`}
+              className={styles.devPreviewLink}
+              title="Abrir visualizador com Hot-Reload para editar o layout da folha A4"
+            >
+              Prévia A4 (Dev)
+            </Link>
             <Button variant="secondary" size="sm" onClick={() => void copyShareLink()}>
               <Icon.Copy size={15} />
               Copiar link seguro
@@ -575,7 +193,63 @@ export function MatchReportView({
           </div>
         </div>
 
-        <ReportHeroAndKpis report={report} />
+        <header className={styles.hero}>
+          <div className={styles.heroInfo}>
+            <div className={styles.badges}>
+              <span className={styles.badgePrimary}>Relatório Consolidado da Turma</span>
+              <span className={styles.badgeNeutral}>Sala {report.roomCode}</span>
+              <span className={styles.badgeNeutral}>{MODE_LABEL[report.mode]}</span>
+            </div>
+            <h1 className={styles.title}>{report.title}</h1>
+            <p className={styles.subtitle}>
+              Concluída em {formatDateBr(report.finishedAt)} · Duração de{' '}
+              {formatDuration(report.durationSeconds)} · {report.overview.phaseCount} fases
+            </p>
+          </div>
+        </header>
+
+        <section className={styles.kpiGrid} aria-label="Indicadores gerais da partida">
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiLabel}>Participantes</span>
+            <span className={styles.kpiValue}>{report.overview.participantCount}</span>
+            <span className={styles.kpiSub}>
+              {report.overview.totalSubmissions} respostas enviadas
+            </span>
+          </div>
+
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiLabel}>Pontuação Média</span>
+            <span className={cx(styles.kpiValue, styles.kpiScore)}>
+              {report.overview.avgScore}
+              <span className={styles.kpiUnit}> / {report.overview.maxPossibleScore} pts</span>
+            </span>
+            <span className={styles.kpiSub}>
+              Maior: {report.overview.maxAchievedScore} pts · Mediana: {report.overview.medianScore}{' '}
+              pts
+            </span>
+          </div>
+
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiLabel}>Taxa de Acerto Global</span>
+            <span
+              className={styles.kpiValue}
+              style={{ color: accuracyColor(report.overview.accuracyRate) }}
+            >
+              {report.overview.accuracyRate}%
+            </span>
+            <span className={styles.kpiSub}>
+              {report.overview.totalCorrect} acertos em {report.overview.totalGraded} corrigidas
+            </span>
+          </div>
+
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiLabel}>Tempo Médio / Fase</span>
+            <span className={styles.kpiValue}>{report.overview.avgResponseSeconds}s</span>
+            <span className={styles.kpiSub}>
+              Duração total: {formatDuration(report.durationSeconds)}
+            </span>
+          </div>
+        </section>
 
         <div className={styles.tabs} role="tablist">
           <button
@@ -607,23 +281,298 @@ export function MatchReportView({
           </button>
         </div>
 
-        {activeTab === 'phases' && <PhasesSection report={report} />}
+        {activeTab === 'phases' && (
+          <section className={styles.tabContent}>
+            <div className={styles.phaseChartCard}>
+              <h2 className={styles.sectionTitle}>Curva de Acerto por Fase</h2>
+              <div className={styles.phaseBars}>
+                {report.phases.map((ph) => (
+                  <div key={ph.phaseId} className={styles.phaseBarCol}>
+                    <span className={styles.phaseBarPct}>{ph.accuracyRate}%</span>
+                    <div className={styles.phaseBarTrack}>
+                      <div
+                        className={styles.phaseBarFill}
+                        style={{
+                          height: `${Math.max(6, ph.accuracyRate)}%`,
+                          background: accuracyColor(ph.accuracyRate),
+                        }}
+                      />
+                    </div>
+                    <span className={styles.phaseBarLabel} title={ph.name}>
+                      F{ph.phaseNumber}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-        {activeTab === 'ranking' && (
-          <RankingSection report={report} onCopyIndividualLink={copyIndividualLink} />
+            <div className={styles.phaseList}>
+              {report.phases.map((ph) => {
+                const meta = KIND_META[ph.kind];
+                return (
+                  <article key={ph.phaseId} className={styles.phaseCard}>
+                    <div className={styles.phaseHead}>
+                      <div className={styles.phaseTitleGroup}>
+                        <span className={styles.phaseNumBadge}>Fase {ph.phaseNumber}</span>
+                        <span className={styles.phaseKindChip} style={{ color: meta.color }}>
+                          {meta.icon}
+                          {meta.label}
+                        </span>
+                        <h3 className={styles.phaseName}>{ph.name}</h3>
+                      </div>
+
+                      <div className={styles.phaseQuickStats}>
+                        <span
+                          className={styles.phaseAccuracyPill}
+                          style={{ color: accuracyColor(ph.accuracyRate) }}
+                        >
+                          {ph.accuracyRate}% de acerto
+                        </span>
+                        <span className={styles.phaseStatText}>
+                          Média: <strong>{ph.avgScore}</strong> / {ph.maxScore} pts
+                        </span>
+                        <span className={styles.phaseStatText}>
+                          Tempo médio: <strong>{ph.avgElapsedSeconds}s</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className={styles.phaseQuestion}>{ph.question}</p>
+
+                    <div className={styles.phaseDetailsRow}>
+                      <div className={styles.phaseAnswerBox}>
+                        <span className={styles.detailLabel}>Gabarito esperado</span>
+                        <span className={styles.detailValue}>{ph.correctAnswerText}</span>
+                      </div>
+                      <div className={styles.phaseAnswerBox}>
+                        <span className={styles.detailLabel}>Distribuição de entregas</span>
+                        <span className={styles.detailValue}>
+                          {ph.correctCount} acertos · {ph.incorrectCount} erros ·{' '}
+                          {ph.unansweredCount} em branco
+                          {ph.pendingCount > 0 ? ` · ${ph.pendingCount} pendentes` : ''}
+                        </span>
+                      </div>
+                    </div>
+
+                    {ph.optionDistribution.length > 0 && (
+                      <div className={styles.optionDistList}>
+                        {ph.optionDistribution.map((opt) => (
+                          <div
+                            key={opt.optionId}
+                            className={cx(
+                              styles.optionDistRow,
+                              opt.isCorrect && styles.optionDistCorrect,
+                            )}
+                          >
+                            <div className={styles.optionDistHeader}>
+                              <span className={styles.optionDistLabel}>
+                                {opt.isCorrect ? '✓ ' : ''}
+                                {opt.label}
+                              </span>
+                              <span className={styles.optionDistCount}>
+                                {opt.count} ({opt.percentage}%)
+                              </span>
+                            </div>
+                            <div className={styles.optionDistTrack}>
+                              <div
+                                className={styles.optionDistFill}
+                                style={{
+                                  width: `${opt.percentage}%`,
+                                  background: opt.isCorrect
+                                    ? 'var(--accent-success)'
+                                    : 'var(--blue-400)',
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
         )}
 
-        {activeTab === 'matrix' && <MatrixSection report={report} />}
+        {activeTab === 'ranking' && (
+          <section className={styles.tabContent}>
+            <div className={styles.tableCard}>
+              <div className={styles.tableHeaderDesc}>
+                <h2 className={styles.sectionTitle}>Classificação Geral dos Participantes</h2>
+                <p className={styles.sectionHint}>
+                  Cada participante possui um link exclusivo protegido contra força bruta para
+                  consultar seu relatório individual compacto.
+                </p>
+              </div>
+
+              <div className={styles.tableWrapper}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Posição</th>
+                      <th>Participante</th>
+                      <th>Pontuação</th>
+                      <th>Taxa de Acerto</th>
+                      <th>Acertos / Fases</th>
+                      <th>Tempo Total</th>
+                      <th>Relatório Individual</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.participants.map((p) => (
+                      <tr key={p.participantId}>
+                        <td className={styles.rankCell}>
+                          <span
+                            className={cx(
+                              styles.rankBadge,
+                              p.rank === 1 && styles.rankFirst,
+                              p.rank === 2 && styles.rankSecond,
+                              p.rank === 3 && styles.rankThird,
+                            )}
+                          >
+                            #{p.rank}
+                          </span>
+                        </td>
+                        <td>
+                          <div className={styles.playerCell}>
+                            <Avatar index={p.avatarIndex} size="sm" name={p.displayName} />
+                            <div>
+                              <div className={styles.playerName}>{p.displayName}</div>
+                              <div className={styles.playerMeta}>
+                                {p.userId ? 'Conta cadastrada' : 'Convidado'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={styles.scoreStrong}>{p.totalScore}</span>
+                          <span className={styles.scoreMuted}> / {p.maxPossibleScore} pts</span>
+                        </td>
+                        <td>
+                          <span
+                            className={styles.accuracyStrong}
+                            style={{ color: accuracyColor(p.accuracyRate) }}
+                          >
+                            {p.accuracyRate}%
+                          </span>
+                        </td>
+                        <td>
+                          {p.correctCount} acertos · {p.incorrectCount} erros
+                          {p.unansweredCount > 0 ? ` · ${p.unansweredCount} em branco` : ''}
+                        </td>
+                        <td>
+                          {p.totalElapsedSeconds}s (méd. {p.avgElapsedSeconds}s)
+                        </td>
+                        <td>
+                          <div className={styles.rowActions}>
+                            <Link
+                              href={`/relatorios/individual/${p.accessToken}`}
+                              className={styles.actionLinkBtn}
+                            >
+                              <Icon.Eye size={14} />
+                              Abrir
+                            </Link>
+                            <button
+                              type="button"
+                              className={styles.copyIconBtn}
+                              onClick={() => void copyIndividualLink(p.accessToken, p.displayName)}
+                              title={`Copiar link individual de ${p.displayName}`}
+                            >
+                              <Icon.Copy size={14} />
+                              Copiar link
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'matrix' && (
+          <section className={styles.tabContent}>
+            <div className={styles.tableCard}>
+              <div className={styles.tableHeaderDesc}>
+                <h2 className={styles.sectionTitle}>Matriz Cruzada: Aluno × Fase</h2>
+                <p className={styles.sectionHint}>
+                  Visão consolidada de todas as submissões da turma em cada fase da partida.
+                </p>
+              </div>
+
+              <div className={styles.tableWrapper}>
+                <table className={styles.matrixTable}>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Participante</th>
+                      <th>Total</th>
+                      {report.phases.map((ph) => (
+                        <th key={ph.phaseId} title={ph.name}>
+                          F{ph.phaseNumber}: {ph.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.participants.map((p) => {
+                      const ansByPhase = new Map(p.answers.map((a) => [a.phaseId, a]));
+                      return (
+                        <tr key={p.participantId}>
+                          <td className={styles.rankCell}>#{p.rank}</td>
+                          <td className={styles.matrixPlayerName}>{p.displayName}</td>
+                          <td className={styles.scoreStrong}>{p.totalScore} pts</td>
+                          {report.phases.map((ph) => {
+                            const ans = ansByPhase.get(ph.phaseId);
+                            if (!ans || !ans.submitted) {
+                              return (
+                                <td key={ph.phaseId} className={styles.cellUnanswered}>
+                                  <span className={styles.cellMain}>—</span>
+                                  <span className={styles.cellSub}>Em branco</span>
+                                </td>
+                              );
+                            }
+                            if (ans.grading === 'pending') {
+                              return (
+                                <td key={ph.phaseId} className={styles.cellPending}>
+                                  <span className={styles.cellMain}>⏳ Pendente</span>
+                                  <span className={styles.cellSub}>{ans.givenAnswerText}</span>
+                                </td>
+                              );
+                            }
+                            return (
+                              <td
+                                key={ph.phaseId}
+                                className={ans.correct ? styles.cellCorrect : styles.cellWrong}
+                              >
+                                <span className={styles.cellMain}>
+                                  {ans.correct ? '✓' : '✗'} {ans.score} pts ({ans.elapsedSeconds}s)
+                                </span>
+                                <span className={styles.cellSub} title={ans.givenAnswerText}>
+                                  {ans.givenAnswerText}
+                                </span>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        )}
       </div>
 
-      {/* Superfície de exportação HTML -> PDF: renderiza os mesmos componentes da página em tema claro com as 3 abas expandidas */}
+      {/* Superfície de exportação HTML -> PDF: renderiza o MatchReportExportDocument */}
       {isExportingPdf && (
         <div className={styles.pdfOffscreenWrapper} aria-hidden="true">
-          <div ref={pdfContainerRef} className={cx(styles.pdfExportRoot, styles.container)}>
-            <ReportHeroAndKpis report={report} />
-            <PhasesSection report={report} forPdf />
-            <RankingSection report={report} forPdf />
-            <MatrixSection report={report} forPdf />
+          <div ref={pdfContainerRef}>
+            <MatchReportExportDocument report={report} />
           </div>
         </div>
       )}
