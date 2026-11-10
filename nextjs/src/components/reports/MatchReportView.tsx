@@ -6,9 +6,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar } from '@/components/avatar/Avatar';
 import { Button, Toast, ToastViewport } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
+import { AppSidebar } from '@/components/nav/AppSidebar';
 import { KIND_META } from '@/components/set-editor/phaseKinds';
 import { cx } from '@/lib/cx';
-import type { MatchReport, ReportAiReview } from '@/lib/types';
+import type { MatchReport, ReportAiReview, User } from '@/lib/types';
 import { exportHtmlElementToPdf } from './exportHtmlToPdf';
 import {
   AI_VERDICT_META,
@@ -61,6 +62,7 @@ interface MatchReportViewProps {
   isLeader?: boolean;
   backHref?: string;
   backLabel?: string;
+  user?: User | null;
 }
 
 export function MatchReportView({
@@ -68,6 +70,7 @@ export function MatchReportView({
   isLeader = false,
   backHref = '/relatorios',
   backLabel = 'Histórico de relatórios',
+  user = null,
 }: MatchReportViewProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('phases');
   const [aiReviewOverride, setAiReviewOverride] = useState<ReportAiReview | null>(null);
@@ -233,13 +236,16 @@ export function MatchReportView({
   }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.container}>
-        <div className={styles.topBar}>
-          <Link href={backHref} className={styles.backLink}>
-            <Icon.ArrowLeft size={16} />
-            {backLabel}
-          </Link>
+    <div className={styles.layout}>
+      <AppSidebar user={user} active="relatorios" />
+
+      <main className={styles.content}>
+        <div className={styles.container}>
+          <div className={styles.topBar}>
+            <Link href={backHref} className={styles.backLink}>
+              <Icon.ArrowLeft size={16} />
+              {backLabel}
+            </Link>
 
           <div className={styles.exportActions}>
             <Link
@@ -764,8 +770,9 @@ export function MatchReportView({
           </section>
         )}
       </div>
+    </main>
 
-      {/* Modal pré-exportação de PDF com templates, switches e preview animado */}
+    {/* Modal pré-exportação de PDF com templates, switches e preview animado */}
       <PdfExportModal
         open={isPdfModalOpen}
         report={effectiveReport}

@@ -1,16 +1,28 @@
-.page {
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
   min-height: 100vh;
   background: var(--surface-page);
-  color: var(--text-primary);
+  font-family: var(--font-body);
+}
+
+.content {
   padding: var(--space-6) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  color: var(--text-primary);
 }
 
 .container {
   max-width: 1000px;
+  width: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+  min-width: 0;
 }
 
 .topNav {
@@ -196,4 +208,10 @@
 .secondaryAction:hover {
   border-color: var(--accent-primary);
   color: var(--accent-primary);
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
 }

@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 
 import { IndividualReportView } from '@/components/reports/IndividualReportView';
 import { getIndividualReportByToken } from '@/lib/api/reports';
+import { getSession } from '@/lib/api/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,8 +14,11 @@ export default async function RelatorioIndividualPage({ params }: RelatorioIndiv
   const { token } = await params;
   const decoded = decodeURIComponent(token).trim();
 
-  const report = await getIndividualReportByToken(decoded);
+  const [report, session] = await Promise.all([
+    getIndividualReportByToken(decoded),
+    getSession(),
+  ]);
   if (!report) notFound();
 
-  return <IndividualReportView report={report} />;
+  return <IndividualReportView report={report} user={session?.user ?? null} />;
 }

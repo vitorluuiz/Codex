@@ -28,7 +28,7 @@ export default async function RelatorioPage({ params }: RelatorioPageProps) {
     const isLeader = Boolean(
       session?.user && byId.leaderUserId && session.user.id === byId.leaderUserId,
     );
-    return <MatchReportView report={byId} isLeader={isLeader} />;
+    return <MatchReportView report={byId} isLeader={isLeader} user={session?.user ?? null} />;
   }
 
   const [report, session] = await Promise.all([
@@ -41,5 +41,5 @@ export default async function RelatorioPage({ params }: RelatorioPageProps) {
     session?.user && report.leaderUserId && session.user.id === report.leaderUserId,
   );
 
-  return <MatchReportView report={report} isLeader={isLeader} />;
+  return <MatchReportView report={report} isLeader={isLeader} user={session?.user ?? null} />;
 }

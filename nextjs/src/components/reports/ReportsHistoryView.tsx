@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 
 import { Button, Toast, ToastViewport } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
+import { AppSidebar } from '@/components/nav/AppSidebar';
 import type { User, UserReportsHistory } from '@/lib/types';
 import { loadVisitedReports, type VisitedReportEntry } from './visitedReportsStorage';
 import styles from './ReportsHistoryView.module.css';
@@ -76,22 +77,25 @@ export function ReportsHistoryView({ user, serverHistory }: ReportsHistoryViewPr
   }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.container}>
-        <div className={styles.topNav}>
-          <Link href={user ? `/perfil/${user.id}` : '/'} className={styles.backLink}>
-            <Icon.ArrowLeft size={16} />
-            {user ? 'Voltar ao perfil' : 'Início'}
-          </Link>
-        </div>
+    <div className={styles.layout}>
+      <AppSidebar user={user} active="relatorios" />
 
-        <header className={styles.header}>
-          <h1 className={styles.title}>Central de Relatórios</h1>
-          <p className={styles.subtitle}>
-            Consulte relatórios completos de partidas conduzidas como líder, seus relatórios
-            individuais compactos e exporte a página HTML em PDF ou planilha Excel (.xlsx).
-          </p>
-        </header>
+      <main className={styles.content}>
+        <div className={styles.container}>
+          <div className={styles.topNav}>
+            <Link href={user ? `/perfil/${user.id}` : '/'} className={styles.backLink}>
+              <Icon.ArrowLeft size={16} />
+              {user ? 'Voltar ao perfil' : 'Início'}
+            </Link>
+          </div>
+
+          <header className={styles.header}>
+            <h1 className={styles.title}>Central de Relatórios</h1>
+            <p className={styles.subtitle}>
+              Consulte relatórios completos de partidas conduzidas como líder, seus relatórios
+              individuais compactos e exporte a página HTML em PDF ou planilha Excel (.xlsx).
+            </p>
+          </header>
 
         <form className={styles.lookupBar} onSubmit={openByInput}>
           <input
@@ -327,8 +331,9 @@ export function ReportsHistoryView({ user, serverHistory }: ReportsHistoryViewPr
           </section>
         )}
       </div>
+    </main>
 
-      {toast && (
+    {toast && (
         <ToastViewport>
           <Toast
             tone="success"

@@ -6,9 +6,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Avatar } from '@/components/avatar/Avatar';
 import { Button, Toast, ToastViewport } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
+import { AppSidebar } from '@/components/nav/AppSidebar';
 import { KIND_META } from '@/components/set-editor/phaseKinds';
 import { cx } from '@/lib/cx';
-import type { IndividualReport } from '@/lib/types';
+import type { IndividualReport, User } from '@/lib/types';
 import { exportHtmlElementToPdf } from './exportHtmlToPdf';
 import { IndividualReportExportDocument } from './IndividualReportExportDocument';
 import { saveVisitedReport } from './visitedReportsStorage';
@@ -166,9 +167,10 @@ function IndividualReportBody({ report }: { report: IndividualReport }) {
 
 interface IndividualReportViewProps {
   report: IndividualReport;
+  user?: User | null;
 }
 
-export function IndividualReportView({ report }: IndividualReportViewProps) {
+export function IndividualReportView({ report, user = null }: IndividualReportViewProps) {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const pdfContainerRef = useRef<HTMLDivElement | null>(null);
@@ -258,39 +260,43 @@ export function IndividualReportView({ report }: IndividualReportViewProps) {
   }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.container}>
-        <div className={styles.topBar}>
-          <Link href="/relatorios" className={styles.backLink}>
-            <Icon.ArrowLeft size={16} />
-            Meus relatórios
-          </Link>
+    <div className={styles.layout}>
+      <AppSidebar user={user} active="relatorios" />
 
-          <div className={styles.actions}>
-            <Link
-              href={`/relatorios/preview?individualToken=${encodeURIComponent(p.accessToken)}`}
-              className={styles.devPreviewLink}
-              title="Abrir visualizador com Hot-Reload para editar o layout da folha A4"
-            >
-              Prévia A4 (Dev)
+      <main className={styles.content}>
+        <div className={styles.container}>
+          <div className={styles.topBar}>
+            <Link href="/relatorios" className={styles.backLink}>
+              <Icon.ArrowLeft size={16} />
+              Meus relatórios
             </Link>
-            <Button variant="secondary" size="sm" onClick={() => void copyMyLink()}>
-              <Icon.Copy size={15} />
-              Copiar meu link permanente
-            </Button>
-            <Button
-              size="sm"
-              disabled={isExportingPdf}
-              onClick={() => void exportPdfFromHtml()}
-            >
-              <Icon.Download size={15} />
-              {isExportingPdf ? 'Gerando PDF...' : 'Baixar PDF Individual'}
-            </Button>
-          </div>
-        </div>
 
-        <IndividualReportBody report={report} />
-      </div>
+            <div className={styles.actions}>
+              <Link
+                href={`/relatorios/preview?individualToken=${encodeURIComponent(p.accessToken)}`}
+                className={styles.devPreviewLink}
+                title="Abrir visualizador com Hot-Reload para editar o layout da folha A4"
+              >
+                Prévia A4 (Dev)
+              </Link>
+              <Button variant="secondary" size="sm" onClick={() => void copyMyLink()}>
+                <Icon.Copy size={15} />
+                Copiar meu link permanente
+              </Button>
+              <Button
+                size="sm"
+                disabled={isExportingPdf}
+                onClick={() => void exportPdfFromHtml()}
+              >
+                <Icon.Download size={15} />
+                {isExportingPdf ? 'Gerando PDF...' : 'Baixar PDF Individual'}
+              </Button>
+            </div>
+          </div>
+
+          <IndividualReportBody report={report} />
+        </div>
+      </main>
 
       {/* Superfície de exportação HTML -> PDF: renderiza IndividualReportExportDocument */}
       {isExportingPdf && (
