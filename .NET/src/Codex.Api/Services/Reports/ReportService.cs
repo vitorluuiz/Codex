@@ -318,19 +318,8 @@ public sealed class ReportService(
     public Task<JsonElement> GetIndividualByAccessTokenAsync(string accessToken, CancellationToken ct)
         => GetJsonFromReportsAsync($"/reports/individual/{Uri.EscapeDataString(accessToken)}", ct);
 
-    public async Task<JsonElement> GetUserHistoryAsync(string userId, CancellationToken ct)
-    {
-        if (Guid.TryParse(userId, out var id))
-        {
-            var userMatches = await store.ListByUserAsync(id, 30, ct);
-            foreach (var m in userMatches)
-            {
-                await SyncMatchSnapshotIfAvailableAsync(m.Id, ct);
-            }
-        }
-
-        return await GetJsonFromReportsAsync($"/reports/users/{Uri.EscapeDataString(userId)}/history", ct);
-    }
+    public Task<JsonElement> GetUserHistoryAsync(string userId, CancellationToken ct)
+        => GetJsonFromReportsAsync($"/reports/users/{Uri.EscapeDataString(userId)}/history", ct);
 
     public async Task<(byte[] Bytes, string ContentType, string FileName)> ExportByMatchIdAsync(
         string matchId,

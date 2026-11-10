@@ -228,6 +228,15 @@ assert.deepEqual(sheetNames, [
   'Indícios de Cola',
 ]);
 
+// 5.1. Consulta histórico de relatórios do usuário diretamente via MongoDB
+const historyRes = await fetch(`${baseUrl}/reports/users/${sampleMatch.leaderUserId}/history`, { headers });
+assert.equal(historyRes.status, 200);
+const history = await historyRes.json();
+assert.ok(Array.isArray(history.leaderReports), 'leaderReports deve ser um array');
+assert.ok(history.leaderReports.length >= 1, 'Deve conter ao menos 1 relatorio como lider');
+assert.equal(history.leaderReports[0].matchId, sampleMatch.id);
+assert.equal(history.leaderReports[0].shareToken, report.shareToken);
+
 // 6. Partida sintetica completa para validar heuristicas psicometricas, chute, cola e IA
 const longQuestionText = Array.from(
   { length: 75 },

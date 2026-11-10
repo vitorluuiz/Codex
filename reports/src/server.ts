@@ -303,7 +303,6 @@ export function createReportsServer(
       const historyRoute = /^\/reports\/users\/([^/]+)\/history$/.exec(path);
       if (method === 'GET' && historyRoute) {
         const userId = decodeURIComponent(historyRoute[1]!);
-        await worker.ensureUserReportsProcessed(userId);
         const history = await store.getUserHistory(userId);
         sendJson(res, 200, history);
         return;
