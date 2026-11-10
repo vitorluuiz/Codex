@@ -106,4 +106,5 @@ public class AiCostsOptions
     public int Phase { get; set; } = 1;
     public int Variation { get; set; } = 1;
     public int QuizOptions { get; set; } = 0;
+    public int ReportReview { get; set; } = 1;
 }

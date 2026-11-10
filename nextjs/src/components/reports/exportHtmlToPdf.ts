@@ -5,6 +5,12 @@ export interface ExportHtmlToPdfOptions {
   filename: string;
   /** Título exibido no rodapé de paginação */
   footerTitle?: string;
+  /** Texto personalizado adicional para o rodapé de todas as páginas */
+  footerText?: string;
+  /** Data URL PNG opcional do logo da instituição para o rodapé */
+  footerLogoDataUrl?: string | null;
+  /** Se verdadeiro, respeita quebras de página explícitas em `[data-pdf-page-break-before]` */
+  honorForcedBreaks?: boolean;
 }
 
 interface BlockBounds {
@@ -14,12 +20,14 @@ interface BlockBounds {
 
 /**
  * Calcula as faixas verticais (em pixels do elemento original) para cada página A4,
- * evitando cortar ao meio elementos marcados com `[data-pdf-keep-together]`.
+ * evitando cortar ao meio elementos marcados com `[data-pdf-keep-together]` e
+ * respeitando quebras de seção forçadas em `[data-pdf-page-break-before]`.
  */
 function computePageSlices(
   totalHeightPx: number,
   maxPageHeightPx: number,
   blocks: BlockBounds[],
+  forcedBreakYs: number[],
 ): Array<{ startY: number; endY: number }> {
   const slices: Array<{ startY: number; endY: number }> = [];
   const minSliceRatio = 0.35;
@@ -27,6 +35,18 @@ function computePageSlices(
 
   while (currentY < totalHeightPx - 2) {
     const idealEndY = currentY + maxPageHeightPx;
+
+    // 1. Verifica se há uma quebra de página explícita (ex.: Uma seção por página) dentro desta folha
+    const nextForcedBreak = forcedBreakYs.find(
+      (y) => y > currentY + 32 && y <= idealEndY - 4,
+    );
+    if (nextForcedBreak !== undefined) {
+      const forcedCut = Math.max(currentY + 16, Math.floor(nextForcedBreak - 6));
+      slices.push({ startY: currentY, endY: forcedCut });
+      currentY = forcedCut;
+      continue;
+    }
+
     if (idealEndY >= totalHeightPx - 2) {
       slices.push({ startY: currentY, endY: totalHeightPx });
       break;
@@ -34,7 +54,7 @@ function computePageSlices(
 
     let cutY = idealEndY;
 
-    // Procura o primeiro bloco indivisível que é atravessado pela linha de corte ideal
+    // 2. Procura o primeiro bloco indivisível que é atravessado pela linha de corte ideal
     for (const block of blocks) {
       const straddlesCut = block.top < idealEndY - 2 && block.bottom > idealEndY + 2;
       if (!straddlesCut) continue;
@@ -92,7 +112,10 @@ export async function exportHtmlElementToPdf(
   const containerRect = element.getBoundingClientRect();
   // Usa a largura de layout real do container (ex: 1040px no líder, 860px no individual)
   // em vez de scrollWidth irrestrito para evitar distorção de proporção A4 por tabelas largas
-  const containerWidthPx = Math.max(1, Math.round(containerRect.width || element.clientWidth || 1040));
+  const containerWidthPx = Math.max(
+    1,
+    Math.round(containerRect.width || element.clientWidth || 1040),
+  );
   const containerHeightPx = Math.max(1, Math.round(element.scrollHeight || containerRect.height));
 
   // Coleta as coordenadas de todos os blocos marcados para não quebrarem ao meio entre páginas
@@ -107,6 +130,20 @@ export async function exportHtmlElementToPdf(
     }
   });
   blocks.sort((a, b) => a.top - b.top);
+
+  // Coleta as coordenadas das quebras de página explícitas por seção
+  const forcedBreakYs: number[] = [];
+  if (options.honorForcedBreaks !== false) {
+    const breakNodes = element.querySelectorAll<HTMLElement>('[data-pdf-page-break-before]');
+    breakNodes.forEach((node) => {
+      const rect = node.getBoundingClientRect();
+      const top = rect.top - containerRect.top;
+      if (top > 40) {
+        forcedBreakYs.push(top);
+      }
+    });
+    forcedBreakYs.sort((a, b) => a - b);
+  }
 
   // Dimensões da folha A4 retrato em milímetros
   const pdf = new jsPDF({
@@ -129,7 +166,7 @@ export async function exportHtmlElementToPdf(
   const pxPerMm = containerWidthPx / usableWidthMm;
   const maxPageHeightPx = Math.floor(usableHeightMm * pxPerMm);
 
-  const slices = computePageSlices(containerHeightPx, maxPageHeightPx, blocks);
+  const slices = computePageSlices(containerHeightPx, maxPageHeightPx, blocks, forcedBreakYs);
   const scale = 2;
 
   // Renderiza cada página (slice) de forma independente com html2canvas
@@ -160,15 +197,29 @@ export async function exportHtmlElementToPdf(
     const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
     pdf.addImage(imgData, 'JPEG', marginXMm, marginTopMm, usableWidthMm, sliceHeightMm);
 
-    // Rodapé discreto com paginação
+    // Rodapé com suporte a texto personalizado e paginação
     pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(8);
     pdf.setTextColor(100, 116, 139);
-    const footerLeft = options.footerTitle
+
+    let textStartX = marginXMm;
+    if (options.footerLogoDataUrl && options.footerLogoDataUrl.startsWith('data:image/png')) {
+      try {
+        pdf.addImage(options.footerLogoDataUrl, 'PNG', marginXMm, pageHeightMm - 8.5, 8, 4.5);
+        textStartX = marginXMm + 10;
+      } catch {
+        textStartX = marginXMm;
+      }
+    }
+
+    const customFooter = options.footerText?.trim();
+    const baseFooter = options.footerTitle
       ? `Codex · ${options.footerTitle}`
       : 'Codex · Relatório de Partida';
+    const footerLeft = customFooter ? `${customFooter}  |  ${baseFooter}` : baseFooter;
     const footerRight = `Página ${idx + 1} de ${slices.length}`;
-    pdf.text(footerLeft, marginXMm, pageHeightMm - 5);
+
+    pdf.text(footerLeft.slice(0, 135), textStartX, pageHeightMm - 5);
     pdf.text(footerRight, pageWidthMm - marginXMm, pageHeightMm - 5, { align: 'right' });
   }
 

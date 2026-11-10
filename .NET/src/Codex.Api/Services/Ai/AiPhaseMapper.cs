@@ -153,6 +153,136 @@ public static class AiPhaseMapper
         return results;
     }
 
+    public static IReadOnlyList<AiPhaseReviewDto> MapAndValidateReportReview(
+        string rawJson,
+        IReadOnlyList<ReportPhaseInputItem> inputPhases)
+    {
+        RawAiReportReviewEnvelope envelope;
+        try
+        {
+            envelope = JsonSerializer.Deserialize<RawAiReportReviewEnvelope>(rawJson, JsonOptions)
+                       ?? throw InvalidFormat("O modelo retornou um JSON nulo para revisao do relatorio.");
+        }
+        catch (JsonException ex)
+        {
+            throw InvalidFormat($"O modelo retornou um JSON invalido para revisao do relatorio: {ex.Message}");
+        }
+
+        if (envelope.Phases is not { Count: > 0 })
+        {
+            throw InvalidFormat("O modelo nao retornou nenhuma fase em 'phases' na revisao do relatorio.");
+        }
+
+        var byPhaseId = inputPhases.ToDictionary(p => p.PhaseId, p => p, StringComparer.OrdinalIgnoreCase);
+        var byNumber = inputPhases.ToDictionary(p => p.PhaseNumber, p => p);
+        var results = new List<AiPhaseReviewDto>(inputPhases.Count);
+        var seenIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var raw in envelope.Phases)
+        {
+            ReportPhaseInputItem? matched = null;
+            if (!string.IsNullOrWhiteSpace(raw.PhaseId) && byPhaseId.TryGetValue(raw.PhaseId.Trim(), out var foundById))
+            {
+                matched = foundById;
+            }
+            else if (raw.PhaseNumber is { } num && byNumber.TryGetValue(num, out var foundByNum))
+            {
+                matched = foundByNum;
+            }
+
+            if (matched is null || !seenIds.Add(matched.PhaseId))
+            {
+                continue;
+            }
+
+            var spelling = (raw.Spelling ?? [])
+                .Where(s => !string.IsNullOrWhiteSpace(s.Excerpt) && !string.IsNullOrWhiteSpace(s.Suggestion))
+                .Select(s => new AiSpellingIssueDto(
+                    Truncate(s.Excerpt!.Trim(), 200)!,
+                    Truncate(s.Suggestion!.Trim(), 200)!))
+                .Take(6)
+                .ToList();
+
+            var conceptual = (raw.Conceptual ?? [])
+                .Where(c => !string.IsNullOrWhiteSpace(c.Description))
+                .Select(c => new AiConceptualIssueDto(
+                    Truncate(c.Description!.Trim(), 300)!,
+                    NormalizeSeverity(c.Severity)))
+                .Take(6)
+                .ToList();
+
+            var clarity = (raw.Clarity ?? [])
+                .Where(c => !string.IsNullOrWhiteSpace(c.Description))
+                .Select(c => new AiClarityIssueDto(
+                    Truncate(c.Description!.Trim(), 300)!,
+                    string.IsNullOrWhiteSpace(c.Suggestion) ? null : Truncate(c.Suggestion.Trim(), 300)))
+                .Take(6)
+                .ToList();
+
+            var answerKey = NormalizeAnswerKey(raw.AnswerKey);
+            var verdict = NormalizeVerdict(raw.Verdict, spelling.Count, conceptual.Count, clarity.Count, answerKey);
+            var answerKeyNote = string.IsNullOrWhiteSpace(raw.AnswerKeyNote)
+                ? null
+                : Truncate(raw.AnswerKeyNote.Trim(), 300);
+            var suggestedRewrite = string.IsNullOrWhiteSpace(raw.SuggestedRewrite)
+                ? null
+                : Truncate(raw.SuggestedRewrite.Trim(), 500);
+
+            results.Add(new AiPhaseReviewDto(
+                PhaseId: matched.PhaseId,
+                PhaseNumber: matched.PhaseNumber,
+                Verdict: verdict,
+                Spelling: spelling,
+                Conceptual: conceptual,
+                Clarity: clarity,
+                AnswerKey: answerKey,
+                AnswerKeyNote: answerKeyNote,
+                SuggestedRewrite: suggestedRewrite));
+        }
+
+        if (results.Count == 0)
+        {
+            throw InvalidFormat("Nenhuma das fases revisadas correspondeu aos IDs da partida.");
+        }
+
+        return results;
+    }
+
+    private static string NormalizeSeverity(string? raw) => raw?.Trim().ToLowerInvariant() switch
+    {
+        "high" => "high",
+        "medium" => "medium",
+        _ => "low",
+    };
+
+    private static string NormalizeAnswerKey(string? raw) => raw?.Trim().ToLowerInvariant() switch
+    {
+        "wrong" => "wrong",
+        "suspect" => "suspect",
+        "not_applicable" => "not_applicable",
+        _ => "ok",
+    };
+
+    private static string NormalizeVerdict(
+        string? raw,
+        int spellingCount,
+        int conceptualCount,
+        int clarityCount,
+        string answerKey)
+    {
+        if (answerKey == "wrong" || conceptualCount > 0) return "problem";
+        var clean = raw?.Trim().ToLowerInvariant();
+        if (clean is "problem" or "attention" or "ok")
+        {
+            if (clean == "ok" && (spellingCount > 0 || clarityCount > 0 || answerKey == "suspect"))
+            {
+                return "attention";
+            }
+            return clean;
+        }
+        return (spellingCount > 0 || clarityCount > 0 || answerKey == "suspect") ? "attention" : "ok";
+    }
+
     private static DraftPhaseDto NormalizeAndValidate(
         RawAiPhase raw,
         PhaseKind kind,
@@ -441,5 +571,41 @@ public static class AiPhaseMapper
         public string? Label { get; set; }
         public bool? IsCorrect { get; set; }
         public string? Rationale { get; set; }
+    }
+
+    private sealed class RawAiReportReviewEnvelope
+    {
+        public List<RawAiPhaseReview>? Phases { get; set; }
+    }
+
+    private sealed class RawAiPhaseReview
+    {
+        public string? PhaseId { get; set; }
+        public int? PhaseNumber { get; set; }
+        public string? Verdict { get; set; }
+        public List<RawAiSpelling>? Spelling { get; set; }
+        public List<RawAiConceptual>? Conceptual { get; set; }
+        public List<RawAiClarity>? Clarity { get; set; }
+        public string? AnswerKey { get; set; }
+        public string? AnswerKeyNote { get; set; }
+        public string? SuggestedRewrite { get; set; }
+    }
+
+    private sealed class RawAiSpelling
+    {
+        public string? Excerpt { get; set; }
+        public string? Suggestion { get; set; }
+    }
+
+    private sealed class RawAiConceptual
+    {
+        public string? Description { get; set; }
+        public string? Severity { get; set; }
+    }
+
+    private sealed class RawAiClarity
+    {
+        public string? Description { get; set; }
+        public string? Suggestion { get; set; }
     }
 }

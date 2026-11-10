@@ -22,6 +22,7 @@ function makePhase(
   correctCount: number,
   incorrectCount: number,
   options: ReportOptionDistribution[] = [],
+  unansweredCount = 0,
 ): ReportPhaseAnalysis {
   return {
     phaseId: id,
@@ -36,10 +37,10 @@ function makePhase(
     maxScore: 100,
     timeSeconds: 60,
     correctAnswerText,
-    submittedCount: 5,
+    submittedCount: 5 - unansweredCount,
     correctCount,
     incorrectCount,
-    unansweredCount: 0,
+    unansweredCount,
     pendingCount: 0,
     accuracyRate,
     avgScore,
@@ -53,8 +54,9 @@ function makeAnswer(
   phase: ReportPhaseAnalysis,
   correct: boolean,
   score: number,
-  elapsed: number,
+  elapsed: number | null,
   givenAnswer: string,
+  submitted = true,
 ): ReportParticipantAnswer {
   return {
     phaseId: phase.phaseId,
@@ -62,16 +64,16 @@ function makeAnswer(
     phaseName: phase.name,
     kind: phase.kind,
     question: phase.question,
-    submitted: true,
-    grading: 'graded',
-    correct,
-    score,
+    submitted,
+    grading: submitted ? 'graded' : 'unanswered',
+    correct: submitted ? correct : false,
+    score: submitted ? score : 0,
     maxScore: phase.maxScore,
     classAvgScore: phase.avgScore,
     classAccuracyRate: phase.accuracyRate,
-    elapsedSeconds: elapsed,
+    elapsedSeconds: submitted ? elapsed : null,
     timeSeconds: phase.timeSeconds,
-    givenAnswerText: givenAnswer,
+    givenAnswerText: submitted ? givenAnswer : 'Não respondeu',
     correctAnswerText: phase.correctAnswerText,
     explanation: null,
   };
@@ -130,11 +132,13 @@ const mockPhases: ReportPhaseAnalysis[] = [
     'text',
     'Explique de forma sucinta como a memória é compartilhada entre threads vs processos.',
     'Threads compartilham memória; processos têm espaços isolados.',
-    60,
-    45,
-    36,
-    3,
+    50,
+    41,
+    35.4,
     2,
+    2,
+    [],
+    1,
   ),
 ];
 
@@ -148,8 +152,16 @@ function makeParticipant(
   score: number,
   correctCount: number,
   elapsed: number,
-  answersDef: Array<{ correct: boolean; score: number; elapsed: number; text: string }>,
+  answersDef: Array<{
+    correct: boolean;
+    score: number;
+    elapsed: number | null;
+    text: string;
+    submitted?: boolean;
+  }>,
 ): ReportParticipantAnalysis {
+  const unansweredCount = answersDef.filter((a) => a.submitted === false).length;
+  const gradedCount = 4 - unansweredCount;
   return {
     participantId: id,
     userId,
@@ -162,17 +174,17 @@ function makeParticipant(
     totalScore: score,
     maxPossibleScore: 400,
     scorePercentage: Math.round((score / 400) * 100),
-    gradedCount: 4,
+    gradedCount,
     correctCount,
-    incorrectCount: 4 - correctCount,
-    unansweredCount: 0,
+    incorrectCount: gradedCount - correctCount,
+    unansweredCount,
     pendingCount: 0,
-    accuracyRate: Math.round((correctCount / 4) * 100),
+    accuracyRate: gradedCount > 0 ? Math.round((correctCount / gradedCount) * 100) : 0,
     totalElapsedSeconds: elapsed,
-    avgElapsedSeconds: Math.round(elapsed / 4),
+    avgElapsedSeconds: Math.round((elapsed / 4) * 10) / 10,
     answers: mockPhases.map((phase, idx) => {
       const a = answersDef[idx]!;
-      return makeAnswer(phase, a.correct, a.score, a.elapsed, a.text);
+      return makeAnswer(phase, a.correct, a.score, a.elapsed, a.text, a.submitted ?? true);
     }),
   };
 }
@@ -202,18 +214,18 @@ const mockParticipants: ReportParticipantAnalysis[] = [
     { correct: true, score: 65, elapsed: 52, text: 'Recursão com substrings' },
     { correct: false, score: 15, elapsed: 32, text: 'Não soube detalhar.' },
   ]),
-  makeParticipant('p-5', null, 'Gabriel Martins (Convidado)', 5, 'token-gabriel-202', 5, 160, 2, 135, [
+  makeParticipant('p-5', null, 'Gabriel Martins (Convidado)', 5, 'token-gabriel-202', 5, 130, 1, 150, [
     { correct: false, score: 0, elapsed: 14, text: 'O(log n)' },
     { correct: true, score: 100, elapsed: 18, text: 'LIFO' },
     { correct: false, score: 30, elapsed: 58, text: 'Loop incompleto' },
-    { correct: true, score: 30, elapsed: 45, text: 'Processos são mais pesados.' },
+    { correct: false, score: 0, elapsed: null, text: 'Não respondeu', submitted: false },
   ]),
 ];
 
 export const MOCK_DEV_MATCH_REPORT: MatchReport = {
   id: '01a06cc4-cf85-7f92-b5c1-f099545b0268',
   matchId: '01a06cc4-cf85-7f92-b5c1-f099545b0268',
-  schemaVersion: 1,
+  schemaVersion: 2,
   status: 'ready',
   shareToken: 'dev-preview-share-token-1234567890abcdef',
   roomCode: '742918',
@@ -243,6 +255,259 @@ export const MOCK_DEV_MATCH_REPORT: MatchReport = {
   },
   phases: mockPhases,
   participants: mockParticipants,
+  insights: {
+    thresholdsVersion: 1,
+    questions: [
+      {
+        phaseId: 'phase-1-quiz',
+        phaseNumber: 1,
+        difficulty: 'easy',
+        accuracyRate: 80,
+        discriminationIndex: 0.45,
+        unansweredRate: 0,
+        lateSubmissionRate: 0,
+        lateWrongRate: 0,
+        avgTimeUsageRate: 23,
+        questionWordCount: 13,
+        questionCharCount: 79,
+        avgOptionCharCount: 10,
+        maxOptionCharCount: 20,
+        estimatedReadingSeconds: 8,
+        topDistractor: {
+          label: 'O(log n)',
+          percentage: 20,
+          upperGroupPercentage: 0,
+        },
+        flags: ['time_too_long'],
+      },
+      {
+        phaseId: 'phase-2-fill',
+        phaseNumber: 2,
+        difficulty: 'very_easy',
+        accuracyRate: 100,
+        discriminationIndex: 0.0,
+        unansweredRate: 0,
+        lateSubmissionRate: 0,
+        lateWrongRate: 0,
+        avgTimeUsageRate: 30,
+        questionWordCount: 15,
+        questionCharCount: 85,
+        avgOptionCharCount: null,
+        maxOptionCharCount: null,
+        estimatedReadingSeconds: 7,
+        topDistractor: null,
+        flags: ['low_discrimination'],
+      },
+      {
+        phaseId: 'phase-3-code',
+        phaseNumber: 3,
+        difficulty: 'medium',
+        accuracyRate: 60,
+        discriminationIndex: 0.55,
+        unansweredRate: 0,
+        lateSubmissionRate: 40,
+        lateWrongRate: 25,
+        avgTimeUsageRate: 75,
+        questionWordCount: 12,
+        questionCharCount: 83,
+        avgOptionCharCount: null,
+        maxOptionCharCount: null,
+        estimatedReadingSeconds: 6,
+        topDistractor: null,
+        flags: ['time_too_short'],
+      },
+      {
+        phaseId: 'phase-4-text',
+        phaseNumber: 4,
+        difficulty: 'hard',
+        accuracyRate: 50,
+        discriminationIndex: -0.15,
+        unansweredRate: 20,
+        lateSubmissionRate: 20,
+        lateWrongRate: 20,
+        avgTimeUsageRate: 59,
+        questionWordCount: 68,
+        questionCharCount: 425,
+        avgOptionCharCount: null,
+        maxOptionCharCount: null,
+        estimatedReadingSeconds: 28,
+        topDistractor: null,
+        flags: ['long_question', 'negative_discrimination'],
+      },
+    ],
+    guessing: {
+      eligible: true,
+      reason: null,
+      participants: [
+        {
+          participantId: 'p-5',
+          displayName: 'Gabriel Martins (Convidado)',
+          avatarIndex: 5,
+          gradedCount: 4,
+          fastWrongCount: 1,
+          lateWrongCount: 1,
+          guessRate: 50,
+          severity: 'high',
+          events: [
+            {
+              phaseId: 'phase-1-quiz',
+              phaseNumber: 1,
+              phaseName: 'Complexidade de Tempo (Big-O)',
+              type: 'fast_wrong',
+              elapsedSeconds: 2,
+              timeSeconds: 60,
+              givenAnswerText: 'O(log n)',
+            },
+            {
+              phaseId: 'phase-3-code',
+              phaseNumber: 3,
+              phaseName: 'Função de Inversão de String',
+              type: 'late_wrong',
+              elapsedSeconds: 58,
+              timeSeconds: 60,
+              givenAnswerText: 'Loop incompleto',
+            },
+          ],
+        },
+      ],
+    },
+    collusion: {
+      eligible: true,
+      reason: null,
+      pairs: [
+        {
+          participantAId: 'p-2',
+          participantAName: 'Carlos Eduardo Ramos',
+          participantBId: 'p-4',
+          participantBName: 'Lucas Nogueira',
+          commonPhases: 4,
+          identicalAnswers: 3,
+          agreementRate: 75,
+          sharedWrongCount: 2,
+          weightedRareSharedWrong: 1.6,
+          sequentialCount: 3,
+          dominantFollowerId: 'p-4',
+          score: 8.5,
+          severity: 'high',
+          evidence: [
+            {
+              phaseId: 'phase-1-quiz',
+              phaseNumber: 1,
+              phaseName: 'Complexidade de Tempo (Big-O)',
+              type: 'sequential_same',
+              answerText: 'O(1) tempo constante',
+              rarity: null,
+              deltaMs: 1100,
+              followerParticipantId: 'p-4',
+            },
+            {
+              phaseId: 'phase-4-text',
+              phaseNumber: 4,
+              phaseName: 'Diferença entre Processos e Threads',
+              type: 'shared_wrong',
+              answerText: 'Ambos isolam memória.',
+              rarity: 0.6,
+              deltaMs: 1400,
+              followerParticipantId: 'p-4',
+            },
+          ],
+        },
+      ],
+      groups: [
+        {
+          participantIds: ['p-2', 'p-4'],
+          displayNames: ['Carlos Eduardo Ramos', 'Lucas Nogueira'],
+          maxSeverity: 'high',
+        },
+      ],
+    },
+    highlights: {
+      easiest: ['phase-2-fill', 'phase-1-quiz'],
+      hardest: ['phase-4-text'],
+      flaggedQuestionCount: 4,
+      flaggedGuessers: 1,
+      flaggedPairs: 1,
+    },
+  },
+  aiReview: {
+    generatedAt: new Date(Date.now() - 1000 * 60 * 3).toISOString(),
+    requestedByUserId: '01a069ee-9029-76e7-b874-9508fa1a2f13',
+    provider: 'cloud',
+    model: 'gemini-2.5-flash',
+    phases: [
+      {
+        phaseId: 'phase-1-quiz',
+        phaseNumber: 1,
+        verdict: 'attention',
+        spelling: [],
+        conceptual: [
+          {
+            description:
+              'O termo "Hash Table balanceada" mistura conceitos de Árvore Binária Balanceada com Tabela Hash (que usa fator de carga e espalhamento).',
+            severity: 'medium',
+          },
+        ],
+        clarity: [
+          {
+            description: 'Especifique "com função de espalhamento uniforme e baixo fator de carga".',
+            suggestion:
+              'Qual é a complexidade de tempo média de busca em uma Tabela Hash bem dimensionada?',
+          },
+        ],
+        answerKey: 'ok',
+        answerKeyNote: null,
+        suggestedRewrite:
+          'Qual é a complexidade de tempo no caso médio para buscar uma chave em uma Tabela Hash (Hash Table) com dispersão uniforme?',
+      },
+      {
+        phaseId: 'phase-2-fill',
+        phaseNumber: 2,
+        verdict: 'ok',
+        spelling: [],
+        conceptual: [],
+        clarity: [],
+        answerKey: 'ok',
+        answerKeyNote: null,
+        suggestedRewrite: null,
+      },
+      {
+        phaseId: 'phase-3-code',
+        phaseNumber: 3,
+        verdict: 'attention',
+        spelling: [
+          {
+            excerpt: 'métodos nativos reversos',
+            suggestion: 'métodos nativos de inversão (como .reverse())',
+          },
+        ],
+        conceptual: [],
+        clarity: [],
+        answerKey: 'ok',
+        answerKeyNote: null,
+        suggestedRewrite: null,
+      },
+      {
+        phaseId: 'phase-4-text',
+        phaseNumber: 4,
+        verdict: 'problem',
+        spelling: [],
+        conceptual: [],
+        clarity: [
+          {
+            description:
+              'O enunciado não define se a resposta deve abordar pilha de execução (stack) ou apenas heap/endereçamento.',
+            suggestion:
+              'Explique como o espaço de endereçamento de memória (heap e variáveis globais) é tratado entre threads de um mesmo processo em comparação a processos distintos.',
+          },
+        ],
+        answerKey: 'suspect',
+        answerKeyNote:
+          'O gabarito esperado é excessivamente curto e pode penalizar respostas corretas que mencionam que cada thread possui sua própria stack.',
+        suggestedRewrite:
+          'Explique como a memória (heap vs. stack) é compartilhada ou isolada entre threads de um mesmo processo e entre processos distintos.',
+      },
+    ],
+  },
 };
 
 export const MOCK_DEV_INDIVIDUAL_REPORT: IndividualReport = {

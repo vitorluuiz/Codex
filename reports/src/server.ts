@@ -6,6 +6,7 @@ import type { Config } from './config.js';
 import { generateMatchReportExcel } from './excel.js';
 import type { Logger } from './logger.js';
 import type { ReportStore } from './store.js';
+import type { ReportAiReview } from './types.js';
 import type { ReportJobPayload, ReportWorker } from './worker.js';
 
 function verifyToken(expected: string, actual: string | undefined): boolean {
@@ -118,6 +119,43 @@ export function createReportsServer(
         return;
       }
 
+      // PUT /internal/reports/matches/:matchId/ai-review — Persiste revisao de IA no relatorio
+      const aiReviewMatch = /^\/internal\/reports\/matches\/([^/]+)\/ai-review$/.exec(path);
+      if (method === 'PUT' && aiReviewMatch) {
+        const matchId = decodeURIComponent(aiReviewMatch[1]!);
+        const body = await readJsonBody<ReportAiReview>(req);
+        if (!body || !Array.isArray(body.phases)) {
+          sendError(res, 400, 'VALIDATION_ERROR', 'Payload de revisão por IA inválido.');
+          return;
+        }
+
+        // Garante que o relatorio ja existe antes de anexar a revisao
+        const existing =
+          (await store.getReportByMatchId(matchId)) ??
+          (await worker.processMatch(matchId, { notifyRealtime: false }));
+        if (!existing) {
+          sendError(res, 404, 'REPORT_NOT_FOUND', 'Relatório da partida não encontrado.');
+          return;
+        }
+
+        const normalizedReview: ReportAiReview = {
+          generatedAt: body.generatedAt || new Date().toISOString(),
+          requestedByUserId: String(body.requestedByUserId ?? ''),
+          provider: String(body.provider ?? 'ai'),
+          model: String(body.model ?? 'default'),
+          phases: body.phases,
+        };
+
+        const updated = await store.saveAiReview(existing.matchId, normalizedReview);
+        if (!updated) {
+          sendError(res, 404, 'REPORT_NOT_FOUND', 'Relatório da partida não encontrado.');
+          return;
+        }
+
+        sendJson(res, 200, updated.aiReview);
+        return;
+      }
+
       // GET /reports/matches/:matchId/status
       const statusMatch = /^\/reports\/matches\/([^/]+)\/status$/.exec(path);
       if (method === 'GET' && statusMatch) {
@@ -150,13 +188,14 @@ export function createReportsServer(
       const matchXlsx = /^\/reports\/matches\/([^/]+)\/export\/xlsx$/.exec(path);
       if (method === 'GET' && matchXlsx) {
         const matchId = decodeURIComponent(matchXlsx[1]!);
-        const report =
+        const baseReport =
           (await store.getReportByMatchId(matchId)) ??
           (await worker.processMatch(matchId, { notifyRealtime: false }));
-        if (!report) {
+        if (!baseReport) {
           sendError(res, 404, 'REPORT_NOT_FOUND', 'Relatório da partida não encontrado.');
           return;
         }
+        const report = await worker.ensureCurrent(baseReport);
         const buf = await generateMatchReportExcel(report);
         sendBinary(
           res,
@@ -171,11 +210,12 @@ export function createReportsServer(
       const shareXlsx = /^\/reports\/share\/([^/]+)\/export\/xlsx$/.exec(path);
       if (method === 'GET' && shareXlsx) {
         const shareToken = decodeURIComponent(shareXlsx[1]!);
-        const report = await store.getReportByShareToken(shareToken);
-        if (!report) {
+        const baseReport = await store.getReportByShareToken(shareToken);
+        if (!baseReport) {
           sendError(res, 404, 'REPORT_NOT_FOUND', 'Relatório não encontrado.');
           return;
         }
+        const report = await worker.ensureCurrent(baseReport);
         const buf = await generateMatchReportExcel(report);
         sendBinary(
           res,
@@ -220,13 +260,14 @@ export function createReportsServer(
       const matchReportRoute = /^\/reports\/matches\/([^/]+)$/.exec(path);
       if (method === 'GET' && matchReportRoute) {
         const matchId = decodeURIComponent(matchReportRoute[1]!);
-        const report =
+        const baseReport =
           (await store.getReportByMatchId(matchId)) ??
           (await worker.processMatch(matchId, { notifyRealtime: false }));
-        if (!report) {
+        if (!baseReport) {
           sendError(res, 404, 'REPORT_NOT_FOUND', 'Relatório da partida não encontrado.');
           return;
         }
+        const report = await worker.ensureCurrent(baseReport);
         sendJson(res, 200, report);
         return;
       }
@@ -235,11 +276,12 @@ export function createReportsServer(
       const shareRoute = /^\/reports\/share\/([^/]+)$/.exec(path);
       if (method === 'GET' && shareRoute) {
         const shareToken = decodeURIComponent(shareRoute[1]!);
-        const report = await store.getReportByShareToken(shareToken);
-        if (!report) {
+        const baseReport = await store.getReportByShareToken(shareToken);
+        if (!baseReport) {
           sendError(res, 404, 'REPORT_NOT_FOUND', 'Relatório compartilhado não encontrado.');
           return;
         }
+        const report = await worker.ensureCurrent(baseReport);
         sendJson(res, 200, report);
         return;
       }

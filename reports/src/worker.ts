@@ -2,9 +2,14 @@ import { Redis } from 'ioredis';
 
 import { buildMatchReport } from './builder.js';
 import type { Config } from './config.js';
+import { THRESHOLDS_VERSION } from './insights/thresholds.js';
 import type { Logger } from './logger.js';
 import { normalizeRawMatch, type ReportStore } from './store.js';
-import type { MatchReportDocument, RawMatchDocument } from './types.js';
+import {
+  CURRENT_REPORT_SCHEMA_VERSION,
+  type MatchReportDocument,
+  type RawMatchDocument,
+} from './types.js';
 
 export const REDIS_REPORTS_QUEUE = 'codex:reports:queue';
 export const REDIS_REPORTS_JOBS_CHANNEL = 'codex:reports:jobs';
@@ -152,7 +157,12 @@ export class ReportWorker {
     const promise = (async (): Promise<MatchReportDocument | null> => {
       try {
         const existing = await this.store.getReportByMatchId(matchId);
-        if (existing && existing.status === 'ready') {
+        if (
+          existing &&
+          existing.status === 'ready' &&
+          (existing.schemaVersion ?? 1) >= CURRENT_REPORT_SCHEMA_VERSION &&
+          Boolean(existing.insights)
+        ) {
           if (options.notifyRealtime) {
             await this.publishReportReady(existing);
           }
@@ -161,11 +171,18 @@ export class ReportWorker {
 
         const rawMatch = await this.store.getRawMatch(matchId);
         if (!rawMatch) {
+          if (existing) {
+            return this.withFallbackInsights(existing);
+          }
           this.logger.warn('partida nao encontrada em matches para gerar relatorio', { matchId });
           return null;
         }
 
-        const report = buildMatchReport(rawMatch, this.config.reportTokenSecret);
+        const rebuilt = buildMatchReport(rawMatch, this.config.reportTokenSecret);
+        const report: MatchReportDocument = {
+          ...rebuilt,
+          aiReview: existing?.aiReview ?? rebuilt.aiReview ?? null,
+        };
         await this.store.saveReport(report);
 
         this.logger.info('relatorio de partida processado com sucesso', {
@@ -173,6 +190,7 @@ export class ReportWorker {
           roomCode: report.roomCode,
           participants: report.overview.participantCount,
           phases: report.overview.phaseCount,
+          schemaVersion: report.schemaVersion,
         });
 
         if (options.notifyRealtime) {
@@ -195,12 +213,75 @@ export class ReportWorker {
     return promise;
   }
 
+  async ensureCurrent(report: MatchReportDocument): Promise<MatchReportDocument> {
+    if (
+      (report.schemaVersion ?? 1) >= CURRENT_REPORT_SCHEMA_VERSION &&
+      Boolean(report.insights)
+    ) {
+      return report;
+    }
+    const upgraded = await this.processMatch(report.matchId, { notifyRealtime: false });
+    return upgraded ?? this.withFallbackInsights(report);
+  }
+
+  private withFallbackInsights(report: MatchReportDocument): MatchReportDocument {
+    if (report.insights) return report;
+    return {
+      ...report,
+      schemaVersion: CURRENT_REPORT_SCHEMA_VERSION,
+      aiReview: report.aiReview ?? null,
+      insights: {
+        thresholdsVersion: THRESHOLDS_VERSION,
+        questions: report.phases.map((ph) => ({
+          phaseId: ph.phaseId,
+          phaseNumber: ph.phaseNumber,
+          difficulty: 'insufficient',
+          accuracyRate: ph.accuracyRate,
+          discriminationIndex: null,
+          unansweredRate: 0,
+          lateSubmissionRate: 0,
+          lateWrongRate: 0,
+          avgTimeUsageRate: 0,
+          questionWordCount: 0,
+          questionCharCount: ph.question.length,
+          avgOptionCharCount: null,
+          maxOptionCharCount: null,
+          estimatedReadingSeconds: 5,
+          topDistractor: null,
+          flags: [],
+        })),
+        guessing: {
+          eligible: false,
+          reason: 'Relatório legado sem snapshot bruto para recálculo de tempos.',
+          participants: [],
+        },
+        collusion: {
+          eligible: false,
+          reason: 'Relatório legado sem snapshot bruto para recálculo de pares.',
+          pairs: [],
+          groups: [],
+        },
+        highlights: {
+          easiest: [],
+          hardest: [],
+          flaggedQuestionCount: 0,
+          flaggedGuessers: 0,
+          flaggedPairs: 0,
+        },
+      },
+    };
+  }
+
   async ensureUserReportsProcessed(userId: string): Promise<void> {
     const rawMatches = await this.store.listRawMatchesByUser(userId, 30);
     for (const raw of rawMatches) {
       await this.store.saveRawMatchSnapshot(raw);
       const existing = await this.store.getReportByMatchId(raw.id);
-      if (!existing) {
+      if (
+        !existing ||
+        (existing.schemaVersion ?? 1) < CURRENT_REPORT_SCHEMA_VERSION ||
+        !existing.insights
+      ) {
         await this.processMatch(raw.id, { notifyRealtime: false });
       }
     }

@@ -1,12 +1,44 @@
 import ExcelJS from 'exceljs';
 
-import type { MatchReportDocument, PhaseKind } from './types.js';
+import type {
+  DifficultyLevel,
+  InsightSeverity,
+  MatchReportDocument,
+  PhaseKind,
+  QuestionFlag,
+} from './types.js';
 
 const KIND_LABELS: Record<PhaseKind, string> = {
   quiz: 'Quiz (Múltipla Escolha)',
   fill: 'Completar Lacunas',
   text: 'Dissertativa',
   code: 'Desafio de Código',
+};
+
+const DIFFICULTY_LABELS: Record<DifficultyLevel, string> = {
+  very_easy: 'Muito fácil',
+  easy: 'Fácil',
+  medium: 'Equilibrada',
+  hard: 'Difícil',
+  very_hard: 'Muito difícil',
+  insufficient: 'Amostra insuficiente',
+};
+
+const FLAG_LABELS: Record<QuestionFlag, string> = {
+  time_too_short: 'Tempo curto demais',
+  time_too_long: 'Tempo ocioso/longo',
+  long_question: 'Enunciado muito longo',
+  long_options: 'Alternativas muito longas',
+  reading_exceeds_time: 'Leitura excede 50% do tempo',
+  low_discrimination: 'Baixa discriminação',
+  negative_discrimination: 'Discriminação negativa (inverte nota)',
+  suspect_answer_key: 'Gabarito suspeito (distrator dominante)',
+};
+
+const SEVERITY_LABELS: Record<InsightSeverity, string> = {
+  low: 'Baixa',
+  medium: 'Média',
+  high: 'Alta',
 };
 
 function formatDateBr(iso: string): string {
@@ -302,6 +334,361 @@ export async function generateMatchReportExcel(report: MatchReportDocument): Pro
       }
     });
   });
+
+  /* ======================================================================== */
+  /* ABA 5: Diagnóstico das Questões                                          */
+  /* ======================================================================== */
+  const qualitySheet = workbook.addWorksheet('Diagnóstico das Questões', {
+    views: [{ state: 'frozen', ySplit: 1 }],
+  });
+
+  qualitySheet.columns = [
+    { header: 'Fase', key: 'phaseNumber', width: 8 },
+    { header: 'Título da Fase', key: 'name', width: 24 },
+    { header: 'Dificuldade', key: 'difficulty', width: 18 },
+    { header: 'Acerto (%)', key: 'accuracy', width: 13 },
+    { header: 'Discriminação (D)', key: 'discrimination', width: 17 },
+    { header: 'Sem Resposta (%)', key: 'unansweredRate', width: 17 },
+    { header: 'Envios no Fim (%)', key: 'lateSubmissionRate', width: 17 },
+    { header: 'Erros no Fim (%)', key: 'lateWrongRate', width: 16 },
+    { header: 'Uso do Tempo (%)', key: 'avgTimeUsageRate', width: 17 },
+    { header: 'Palavras Enunciado', key: 'words', width: 18 },
+    { header: 'Leitura Est. (s)', key: 'readingSec', width: 16 },
+    { header: 'Distrator Principal', key: 'topDistractor', width: 28 },
+    { header: 'Alertas Heurísticos', key: 'flags', width: 42 },
+    { header: 'Veredito IA', key: 'aiVerdict', width: 16 },
+  ];
+  styleHeaderRow(qualitySheet.getRow(1));
+
+  const phaseById = new Map(report.phases.map((p) => [p.phaseId, p]));
+  const aiByPhaseId = new Map((report.aiReview?.phases ?? []).map((r) => [r.phaseId, r]));
+
+  (report.insights?.questions ?? []).forEach((q, idx) => {
+    const ph = phaseById.get(q.phaseId);
+    const ai = aiByPhaseId.get(q.phaseId);
+    const flagsText =
+      q.flags.length > 0 ? q.flags.map((f) => FLAG_LABELS[f] ?? f).join(' · ') : 'Sem alertas';
+    const aiVerdictText = !ai
+      ? 'Não executada'
+      : ai.verdict === 'ok'
+        ? '✓ Adequada'
+        : ai.verdict === 'attention'
+          ? '⚠ Atenção'
+          : '✗ Problema';
+
+    const row = qualitySheet.addRow({
+      phaseNumber: `F${q.phaseNumber}`,
+      name: ph?.name ?? `Fase ${q.phaseNumber}`,
+      difficulty: DIFFICULTY_LABELS[q.difficulty] ?? q.difficulty,
+      accuracy: `${q.accuracyRate}%`,
+      discrimination: q.discriminationIndex !== null ? q.discriminationIndex.toFixed(2) : '—',
+      unansweredRate: `${q.unansweredRate}%`,
+      lateSubmissionRate: `${q.lateSubmissionRate}%`,
+      lateWrongRate: `${q.lateWrongRate}%`,
+      avgTimeUsageRate: `${q.avgTimeUsageRate}%`,
+      words: q.questionWordCount,
+      readingSec: `${q.estimatedReadingSeconds}s / ${ph?.timeSeconds ?? 0}s`,
+      topDistractor: q.topDistractor
+        ? `${q.topDistractor.label} (${q.topDistractor.percentage}% geral, ${q.topDistractor.upperGroupPercentage}% topo)`
+        : '—',
+      flags: flagsText,
+      aiVerdict: aiVerdictText,
+    });
+    styleDataRow(row, idx % 2 === 1);
+    row.getCell('phaseNumber').alignment = { vertical: 'middle', horizontal: 'center' };
+    row.getCell('phaseNumber').font = { bold: true, size: 10 };
+
+    const diffCell = row.getCell('difficulty');
+    if (q.difficulty === 'very_hard' || q.difficulty === 'hard') {
+      diffCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+      diffCell.font = { size: 9, bold: true, color: { argb: 'FF991B1B' } };
+    } else if (q.difficulty === 'very_easy' || q.difficulty === 'easy') {
+      diffCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
+      diffCell.font = { size: 9, bold: true, color: { argb: 'FF166534' } };
+    }
+  });
+
+  /* ======================================================================== */
+  /* ABA 6: Revisão por IA                                                    */
+  /* ======================================================================== */
+  const aiSheet = workbook.addWorksheet('Revisão por IA', {
+    views: [{ state: 'frozen', ySplit: 1 }],
+  });
+
+  aiSheet.columns = [
+    { header: 'Fase', key: 'phaseNumber', width: 8 },
+    { header: 'Título da Fase', key: 'name', width: 24 },
+    { header: 'Veredito', key: 'verdict', width: 15 },
+    { header: 'Categoria', key: 'category', width: 20 },
+    { header: 'Trecho / Observação', key: 'description', width: 44 },
+    { header: 'Sugestão / Correção', key: 'suggestion', width: 44 },
+    { header: 'Severidade / Status', key: 'severity', width: 18 },
+  ];
+  styleHeaderRow(aiSheet.getRow(1));
+
+  if (!report.aiReview || report.aiReview.phases.length === 0) {
+    const emptyRow = aiSheet.addRow({
+      phaseNumber: '—',
+      name: 'Revisão por IA ainda não executada',
+      verdict: '—',
+      category: 'Info',
+      description:
+        'O líder da partida pode acionar a revisão de ortografia, conceitos e redação com IA diretamente no relatório web.',
+      suggestion: '—',
+      severity: '—',
+    });
+    styleDataRow(emptyRow, false);
+  } else {
+    let rowIdx = 0;
+    for (const review of report.aiReview.phases) {
+      const ph = phaseById.get(review.phaseId);
+      const phaseTitle = ph?.name ?? `Fase ${review.phaseNumber}`;
+      const verdictLabel =
+        review.verdict === 'ok'
+          ? '✓ Adequada'
+          : review.verdict === 'attention'
+            ? '⚠ Atenção'
+            : '✗ Problema';
+
+      let addedAny = false;
+
+      for (const sp of review.spelling) {
+        addedAny = true;
+        const row = aiSheet.addRow({
+          phaseNumber: `F${review.phaseNumber}`,
+          name: phaseTitle,
+          verdict: verdictLabel,
+          category: 'Ortografia / Gramática',
+          description: sp.excerpt,
+          suggestion: sp.suggestion,
+          severity: 'Média',
+        });
+        styleDataRow(row, rowIdx++ % 2 === 1);
+      }
+
+      for (const conc of review.conceptual) {
+        addedAny = true;
+        const row = aiSheet.addRow({
+          phaseNumber: `F${review.phaseNumber}`,
+          name: phaseTitle,
+          verdict: verdictLabel,
+          category: 'Conceitual / Factual',
+          description: conc.description,
+          suggestion: review.suggestedRewrite ?? 'Revisar conceito no enunciado/alternativas.',
+          severity: SEVERITY_LABELS[conc.severity] ?? conc.severity,
+        });
+        styleDataRow(row, rowIdx++ % 2 === 1);
+      }
+
+      for (const cl of review.clarity) {
+        addedAny = true;
+        const row = aiSheet.addRow({
+          phaseNumber: `F${review.phaseNumber}`,
+          name: phaseTitle,
+          verdict: verdictLabel,
+          category: 'Clareza / Redação',
+          description: cl.description,
+          suggestion: cl.suggestion ?? review.suggestedRewrite ?? '—',
+          severity: 'Baixa',
+        });
+        styleDataRow(row, rowIdx++ % 2 === 1);
+      }
+
+      if (review.answerKey === 'suspect' || review.answerKey === 'wrong' || review.answerKeyNote) {
+        addedAny = true;
+        const row = aiSheet.addRow({
+          phaseNumber: `F${review.phaseNumber}`,
+          name: phaseTitle,
+          verdict: verdictLabel,
+          category: 'Gabarito',
+          description: review.answerKeyNote ?? `Gabarito avaliado como ${review.answerKey}`,
+          suggestion: review.suggestedRewrite ?? 'Conferir alternativa correta marcada.',
+          severity: review.answerKey === 'wrong' ? 'Alta' : 'Média',
+        });
+        styleDataRow(row, rowIdx++ % 2 === 1);
+      }
+
+      if (!addedAny) {
+        const row = aiSheet.addRow({
+          phaseNumber: `F${review.phaseNumber}`,
+          name: phaseTitle,
+          verdict: verdictLabel,
+          category: 'Geral',
+          description: 'Nenhum problema ortográfico, conceitual ou de clareza identificado.',
+          suggestion: review.suggestedRewrite ?? '—',
+          severity: 'OK',
+        });
+        styleDataRow(row, rowIdx++ % 2 === 1);
+      }
+    }
+  }
+
+  /* ======================================================================== */
+  /* ABA 7: Indícios de Chute                                                 */
+  /* ======================================================================== */
+  const guessingSheet = workbook.addWorksheet('Indícios de Chute', {
+    views: [{ state: 'frozen', ySplit: 2 }],
+  });
+
+  guessingSheet.columns = [
+    { header: 'Participante', key: 'displayName', width: 26 },
+    { header: 'Fases Corrigidas', key: 'gradedCount', width: 17 },
+    { header: 'Erros Rápidos', key: 'fastWrongCount', width: 16 },
+    { header: 'Erros no Fim', key: 'lateWrongCount', width: 16 },
+    { header: 'Taxa de Chute (%)', key: 'guessRate', width: 18 },
+    { header: 'Severidade', key: 'severity', width: 15 },
+    { header: 'Detalhamento das Ocorrências', key: 'events', width: 58 },
+  ];
+
+  // Linha 1: Aviso de responsabilidade pedagógica
+  guessingSheet.spliceRows(1, 0, [
+    'AVISO PEDAGÓGICO: Estes são indícios estatísticos (respostas erradas muito rápidas ou nos últimos segundos), não provas. Converse com os participantes antes de qualquer conclusão.',
+  ]);
+  guessingSheet.mergeCells('A1:G1');
+  const guessNoticeCell = guessingSheet.getCell('A1');
+  guessNoticeCell.font = { bold: true, size: 10, color: { argb: 'FF854D0E' } };
+  guessNoticeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9C3' } };
+  guessNoticeCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+  guessingSheet.getRow(1).height = 24;
+
+  styleHeaderRow(guessingSheet.getRow(2));
+
+  const guessParticipants = report.insights?.guessing?.participants ?? [];
+  if (guessParticipants.length === 0) {
+    const emptyRow = guessingSheet.addRow({
+      displayName: 'Nenhum participante sinalizado',
+      gradedCount: '—',
+      fastWrongCount: 0,
+      lateWrongCount: 0,
+      guessRate: '0%',
+      severity: '—',
+      events: report.insights?.guessing?.reason ?? 'Nenhum padrão recorrente de chute detectado.',
+    });
+    styleDataRow(emptyRow, false);
+  } else {
+    guessParticipants.forEach((g, idx) => {
+      const eventsSummary = g.events
+        .map(
+          (ev) =>
+            `F${ev.phaseNumber} (${ev.type === 'fast_wrong' ? 'rápido' : 'no fim'}: ${ev.elapsedSeconds}s/${ev.timeSeconds}s · "${ev.givenAnswerText}")`,
+        )
+        .join(' | ');
+
+      const row = guessingSheet.addRow({
+        displayName: g.displayName,
+        gradedCount: g.gradedCount,
+        fastWrongCount: g.fastWrongCount,
+        lateWrongCount: g.lateWrongCount,
+        guessRate: `${g.guessRate}%`,
+        severity: SEVERITY_LABELS[g.severity] ?? g.severity,
+        events: eventsSummary,
+      });
+      styleDataRow(row, idx % 2 === 1);
+
+      const sevCell = row.getCell('severity');
+      if (g.severity === 'high') {
+        sevCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+        sevCell.font = { size: 9, bold: true, color: { argb: 'FF991B1B' } };
+      } else {
+        sevCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9C3' } };
+        sevCell.font = { size: 9, bold: true, color: { argb: 'FF854D0E' } };
+      }
+    });
+  }
+
+  /* ======================================================================== */
+  /* ABA 8: Indícios de Cola                                                  */
+  /* ======================================================================== */
+  const collusionSheet = workbook.addWorksheet('Indícios de Cola', {
+    views: [{ state: 'frozen', ySplit: 2 }],
+  });
+
+  collusionSheet.columns = [
+    { header: 'Participante A', key: 'partA', width: 22 },
+    { header: 'Participante B', key: 'partB', width: 22 },
+    { header: 'Fases em Comum', key: 'commonPhases', width: 16 },
+    { header: 'Concordância (%)', key: 'agreementRate', width: 17 },
+    { header: 'Erros Idênticos', key: 'sharedWrong', width: 16 },
+    { header: 'Erros Raros (Pond.)', key: 'rareWeighted', width: 19 },
+    { header: 'Envios Sincronizados (≤3s)', key: 'sequential', width: 23 },
+    { header: 'Seguidor Dominante', key: 'follower', width: 22 },
+    { header: 'Score', key: 'score', width: 10 },
+    { header: 'Severidade', key: 'severity', width: 14 },
+    { header: 'Evidências por Fase', key: 'evidence', width: 52 },
+  ];
+
+  collusionSheet.spliceRows(1, 0, [
+    'AVISO PEDAGÓGICO: Estes são indícios estatísticos de coincidência em erros raros e envios quase simultâneos, não provas cabais de cola.',
+  ]);
+  collusionSheet.mergeCells('A1:K1');
+  const collNoticeCell = collusionSheet.getCell('A1');
+  collNoticeCell.font = { bold: true, size: 10, color: { argb: 'FF854D0E' } };
+  collNoticeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9C3' } };
+  collNoticeCell.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+  collusionSheet.getRow(1).height = 24;
+
+  styleHeaderRow(collusionSheet.getRow(2));
+
+  const collusionPairs = report.insights?.collusion?.pairs ?? [];
+  if (collusionPairs.length === 0) {
+    const emptyRow = collusionSheet.addRow({
+      partA: 'Nenhum par sinalizado',
+      partB: '—',
+      commonPhases: '—',
+      agreementRate: '—',
+      sharedWrong: 0,
+      rareWeighted: 0,
+      sequential: 0,
+      follower: '—',
+      score: 0,
+      severity: '—',
+      evidence:
+        report.insights?.collusion?.reason ??
+        'Nenhuma coincidência anômala de respostas erradas ou sincronia detectada.',
+    });
+    styleDataRow(emptyRow, false);
+  } else {
+    collusionPairs.forEach((pair, idx) => {
+      const followerName =
+        pair.dominantFollowerId === pair.participantAId
+          ? pair.participantAName
+          : pair.dominantFollowerId === pair.participantBId
+            ? pair.participantBName
+            : 'Alternado / Indefinido';
+
+      const evSummary = pair.evidence
+        .map((ev) => {
+          const tag = ev.type === 'shared_wrong' ? 'Erro idêntico' : 'Sincronizado';
+          const delta = ev.deltaMs !== null ? ` Δ${(ev.deltaMs / 1000).toFixed(1)}s` : '';
+          return `F${ev.phaseNumber} (${tag}${delta}: "${ev.answerText}")`;
+        })
+        .join(' | ');
+
+      const row = collusionSheet.addRow({
+        partA: pair.participantAName,
+        partB: pair.participantBName,
+        commonPhases: pair.commonPhases,
+        agreementRate: `${pair.agreementRate}%`,
+        sharedWrong: pair.sharedWrongCount,
+        rareWeighted: pair.weightedRareSharedWrong,
+        sequential: pair.sequentialCount,
+        follower: followerName,
+        score: pair.score,
+        severity: SEVERITY_LABELS[pair.severity] ?? pair.severity,
+        evidence: evSummary,
+      });
+      styleDataRow(row, idx % 2 === 1);
+
+      const sevCell = row.getCell('severity');
+      if (pair.severity === 'high') {
+        sevCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+        sevCell.font = { size: 9, bold: true, color: { argb: 'FF991B1B' } };
+      } else if (pair.severity === 'medium') {
+        sevCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9C3' } };
+        sevCell.font = { size: 9, bold: true, color: { argb: 'FF854D0E' } };
+      }
+    });
+  }
 
   const arrayBuffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(arrayBuffer);

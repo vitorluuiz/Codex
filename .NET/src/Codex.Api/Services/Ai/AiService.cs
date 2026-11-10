@@ -257,6 +257,77 @@ public class AiService(
             Usage: currentUsage.After(cost, suggestionsDelta: 1));
     }
 
+    public async Task<AiReportReviewResponse> ReviewReportQuestionsAsync(
+        string matchId,
+        IReadOnlyList<ReportPhaseInputItem> phases,
+        ClaimsPrincipal principal,
+        CancellationToken ct,
+        DateTimeOffset? now = null)
+    {
+        var user = await RequireUserAsync(principal, ct);
+
+        if (phases is not { Count: > 0 })
+        {
+            throw Validation("A partida nao possui fases para revisao por IA.");
+        }
+
+        await using var _ = await inflightLock.AcquireAsync(user.Id, ct);
+
+        var (providerName, provider) = router.Resolve(user.Plan);
+        var cost = Math.Max(0, options.Costs.ReportReview);
+        var currentUsage = await quota.EnsureAvailableAsync(user, AiOperation.ReportReview, cost, ct, now);
+
+        var systemPrompt = AiPrompts.BuildReportReviewSystemPrompt();
+        var allReviewed = new List<AiPhaseReviewDto>(phases.Count);
+        AiGeneration? lastGeneration = null;
+
+        const int batchSize = 15;
+        for (var offset = 0; offset < phases.Count; offset += batchSize)
+        {
+            var batch = phases.Skip(offset).Take(batchSize).ToList();
+            var batchCost = offset == 0 ? cost : 0;
+            var userPrompt = AiPrompts.BuildReportReviewUserPrompt(batch);
+            var schema = AiSchemas.ForReportReview(batch.Count);
+            var inputJson = JsonSerializer.Serialize(new
+            {
+                matchId,
+                batchOffset = offset,
+                phasesCount = batch.Count,
+            }, JsonOptions);
+
+            var (batchResult, generation) = await ExecuteAndRecordAsync<IReadOnlyList<AiPhaseReviewDto>>(
+                user: user,
+                operation: AiOperation.ReportReview,
+                kind: PhaseKind.Quiz,
+                cost: batchCost,
+                inputJson: inputJson,
+                initialProviderName: providerName,
+                initialProvider: provider,
+                systemPrompt: systemPrompt,
+                userPrompt: userPrompt,
+                schema: schema,
+                parseAndValidate: json => AiPhaseMapper.MapAndValidateReportReview(json, batch),
+                serializeResult: list => JsonSerializer.Serialize(new { phases = list }, JsonOptions),
+                now: now,
+                ct: ct);
+
+            allReviewed.AddRange(batchResult);
+            lastGeneration = generation;
+        }
+
+        var reviewDto = new ReportAiReviewDto(
+            GeneratedAt: (now ?? DateTimeOffset.UtcNow).UtcDateTime.ToString("O"),
+            RequestedByUserId: user.Id.ToString(),
+            Provider: lastGeneration?.Provider ?? providerName,
+            Model: lastGeneration?.Model ?? provider.Model,
+            Phases: allReviewed.OrderBy(p => p.PhaseNumber).ToList());
+
+        return new AiReportReviewResponse(
+            GenerationId: lastGeneration?.Id ?? Guid.NewGuid(),
+            AiReview: reviewDto,
+            Usage: currentUsage.After(cost));
+    }
+
     public async Task RecordDecisionAsync(
         Guid generationId,
         AiDecisionRequest request,

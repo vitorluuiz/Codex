@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 
 import { MatchReportView } from '@/components/reports/MatchReportView';
 import { getMatchReportById, getReportByShareToken } from '@/lib/api/reports';
+import { getSession } from '@/lib/api/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,11 +24,22 @@ export default async function RelatorioPage({ params }: RelatorioPageProps) {
     if (byId.shareToken && byId.shareToken !== decoded) {
       redirect(`/relatorios/${byId.shareToken}`);
     }
-    return <MatchReportView report={byId} />;
+    const session = await getSession();
+    const isLeader = Boolean(
+      session?.user && byId.leaderUserId && session.user.id === byId.leaderUserId,
+    );
+    return <MatchReportView report={byId} isLeader={isLeader} />;
   }
 
-  const report = await getReportByShareToken(decoded);
+  const [report, session] = await Promise.all([
+    getReportByShareToken(decoded),
+    getSession(),
+  ]);
   if (!report) notFound();
 
-  return <MatchReportView report={report} />;
+  const isLeader = Boolean(
+    session?.user && report.leaderUserId && session.user.id === report.leaderUserId,
+  );
+
+  return <MatchReportView report={report} isLeader={isLeader} />;
 }

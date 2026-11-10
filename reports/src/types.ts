@@ -201,6 +201,145 @@ export interface ReportOverview {
   durationSeconds: number;
 }
 
+export const CURRENT_REPORT_SCHEMA_VERSION = 2;
+
+export type InsightSeverity = 'low' | 'medium' | 'high';
+export type DifficultyLevel = 'very_easy' | 'easy' | 'medium' | 'hard' | 'very_hard' | 'insufficient';
+
+export type QuestionFlag =
+  | 'time_too_short'
+  | 'time_too_long'
+  | 'long_question'
+  | 'long_options'
+  | 'reading_exceeds_time'
+  | 'low_discrimination'
+  | 'negative_discrimination'
+  | 'suspect_answer_key';
+
+export interface QuestionInsight {
+  phaseId: string;
+  phaseNumber: number;
+  difficulty: DifficultyLevel;
+  accuracyRate: number;
+  discriminationIndex: number | null;
+  unansweredRate: number;
+  lateSubmissionRate: number;
+  lateWrongRate: number;
+  avgTimeUsageRate: number;
+  questionWordCount: number;
+  questionCharCount: number;
+  avgOptionCharCount: number | null;
+  maxOptionCharCount: number | null;
+  estimatedReadingSeconds: number;
+  topDistractor: {
+    label: string;
+    percentage: number;
+    upperGroupPercentage: number;
+  } | null;
+  flags: QuestionFlag[];
+}
+
+export interface GuessingEvent {
+  phaseId: string;
+  phaseNumber: number;
+  phaseName: string;
+  type: 'fast_wrong' | 'late_wrong';
+  elapsedSeconds: number;
+  timeSeconds: number;
+  givenAnswerText: string;
+}
+
+export interface GuessingInsight {
+  participantId: string;
+  displayName: string;
+  avatarIndex: number;
+  gradedCount: number;
+  fastWrongCount: number;
+  lateWrongCount: number;
+  guessRate: number;
+  severity: InsightSeverity;
+  events: GuessingEvent[];
+}
+
+export interface CollusionEvidence {
+  phaseId: string;
+  phaseNumber: number;
+  phaseName: string;
+  type: 'shared_wrong' | 'sequential_same';
+  answerText: string;
+  rarity: number | null;
+  deltaMs: number | null;
+  followerParticipantId: string | null;
+}
+
+export interface CollusionPair {
+  participantAId: string;
+  participantAName: string;
+  participantBId: string;
+  participantBName: string;
+  commonPhases: number;
+  identicalAnswers: number;
+  agreementRate: number;
+  sharedWrongCount: number;
+  weightedRareSharedWrong: number;
+  sequentialCount: number;
+  dominantFollowerId: string | null;
+  score: number;
+  severity: InsightSeverity;
+  evidence: CollusionEvidence[];
+}
+
+export interface CollusionGroup {
+  participantIds: string[];
+  displayNames: string[];
+  maxSeverity: InsightSeverity;
+}
+
+export interface ReportInsights {
+  thresholdsVersion: number;
+  questions: QuestionInsight[];
+  guessing: {
+    eligible: boolean;
+    reason: string | null;
+    participants: GuessingInsight[];
+  };
+  collusion: {
+    eligible: boolean;
+    reason: string | null;
+    pairs: CollusionPair[];
+    groups: CollusionGroup[];
+  };
+  highlights: {
+    easiest: string[];
+    hardest: string[];
+    flaggedQuestionCount: number;
+    flaggedGuessers: number;
+    flaggedPairs: number;
+  };
+}
+
+export type AiVerdict = 'ok' | 'attention' | 'problem';
+
+export interface AiPhaseReview {
+  phaseId: string;
+  phaseNumber: number;
+  verdict: AiVerdict;
+  spelling: { excerpt: string; suggestion: string }[];
+  conceptual: { description: string; severity: InsightSeverity }[];
+  clarity: { description: string; suggestion: string | null }[];
+  answerKey: 'ok' | 'suspect' | 'wrong' | 'not_applicable';
+  answerKeyNote: string | null;
+  suggestedRewrite: string | null;
+}
+
+export interface ReportAiReview {
+  generatedAt: string;
+  requestedByUserId: string;
+  provider: string;
+  model: string;
+  phases: AiPhaseReview[];
+}
+
 export interface MatchReportDocument {
   id: string;
   matchId: string;
@@ -220,6 +359,8 @@ export interface MatchReportDocument {
   overview: ReportOverview;
   phases: ReportPhaseAnalysis[];
   participants: ReportParticipantAnalysis[];
+  insights: ReportInsights;
+  aiReview: ReportAiReview | null;
 }
 
 /** Relatorio compacto e individual para um participante. */

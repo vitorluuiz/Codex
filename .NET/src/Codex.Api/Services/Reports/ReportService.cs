@@ -5,7 +5,9 @@ using System.Text.Json;
 using Codex.Api.Common.Auth;
 using Codex.Api.Common.Errors;
 using Codex.Api.Common.Json;
+using Codex.Api.Contracts.Ai;
 using Codex.Api.Documents;
+using Codex.Api.Services.Ai;
 using Codex.Api.Services.Realtime;
 using StackExchange.Redis;
 
@@ -113,6 +115,137 @@ public sealed class ReportService(
         }
 
         return await GetJsonFromReportsAsync($"/reports/matches/{id}", ct);
+    }
+
+    public async Task<AiReportReviewResponse> RunAiReviewAsync(
+        string matchId,
+        ClaimsPrincipal principal,
+        AiService ai,
+        CancellationToken ct)
+    {
+        if (!Guid.TryParse(matchId, out var id))
+        {
+            throw new ApiException(StatusCodes.Status404NotFound, ErrorCodes.MatchNotFound, "Partida não encontrada.");
+        }
+
+        var userId = principal.GetUserId()
+            ?? throw new ApiException(StatusCodes.Status401Unauthorized, ErrorCodes.Unauthenticated, "Autenticação necessária.");
+
+        var doc = await store.FindAsync(id, ct);
+        if (doc is not null)
+        {
+            if (doc.LeaderUserId != userId)
+            {
+                throw new ApiException(StatusCodes.Status403Forbidden, ErrorCodes.NotRoomLeader, "Apenas o líder da partida pode solicitar a revisão pedagógica por IA.");
+            }
+            await SyncMatchSnapshotIfAvailableAsync(id, ct);
+        }
+
+        var reportJson = await GetJsonFromReportsAsync($"/reports/matches/{id}", ct);
+        if (doc is null &&
+            reportJson.TryGetProperty("leaderUserId", out var leaderEl) &&
+            Guid.TryParse(leaderEl.GetString(), out var reportLeaderId) &&
+            reportLeaderId != userId)
+        {
+            throw new ApiException(StatusCodes.Status403Forbidden, ErrorCodes.NotRoomLeader, "Apenas o líder da partida pode solicitar a revisão pedagógica por IA.");
+        }
+
+        var phaseInputs = ExtractPhaseInputItems(reportJson);
+        var response = await ai.ReviewReportQuestionsAsync(id.ToString(), phaseInputs, principal, ct);
+
+        await PutJsonToReportsAsync(
+            $"/internal/reports/matches/{id}/ai-review",
+            response.AiReview,
+            ct);
+
+        return response;
+    }
+
+    private static IReadOnlyList<ReportPhaseInputItem> ExtractPhaseInputItems(JsonElement reportJson)
+    {
+        var hintByPhaseId = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (reportJson.TryGetProperty("insights", out var insightsEl) &&
+            insightsEl.ValueKind == JsonValueKind.Object &&
+            insightsEl.TryGetProperty("questions", out var questionsEl) &&
+            questionsEl.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var q in questionsEl.EnumerateArray())
+            {
+                var pId = q.TryGetProperty("phaseId", out var pidEl) ? pidEl.GetString() : null;
+                if (string.IsNullOrWhiteSpace(pId)) continue;
+
+                var hints = new List<string>();
+                if (q.TryGetProperty("flags", out var flagsEl) && flagsEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var fl in flagsEl.EnumerateArray())
+                    {
+                        var flagStr = fl.GetString();
+                        if (!string.IsNullOrWhiteSpace(flagStr)) hints.Add(flagStr);
+                    }
+                }
+                if (q.TryGetProperty("topDistractor", out var tdEl) && tdEl.ValueKind == JsonValueKind.Object)
+                {
+                    var lbl = tdEl.TryGetProperty("label", out var lEl) ? lEl.GetString() : null;
+                    var pct = tdEl.TryGetProperty("percentage", out var pEl) && pEl.TryGetInt32(out var pv) ? pv : 0;
+                    var upPct = tdEl.TryGetProperty("upperGroupPercentage", out var uEl) && uEl.TryGetInt32(out var uv) ? uv : 0;
+                    if (!string.IsNullOrWhiteSpace(lbl))
+                    {
+                        hints.Add($"distrator mais escolhido: \"{lbl}\" ({pct}% da turma, {upPct}% dos melhores alunos)");
+                    }
+                }
+
+                if (hints.Count > 0)
+                {
+                    hintByPhaseId[pId] = string.Join("; ", hints);
+                }
+            }
+        }
+
+        var items = new List<ReportPhaseInputItem>();
+        if (reportJson.TryGetProperty("phases", out var phasesEl) && phasesEl.ValueKind == JsonValueKind.Array)
+        {
+            var idx = 1;
+            foreach (var ph in phasesEl.EnumerateArray())
+            {
+                var phaseId = ph.TryGetProperty("phaseId", out var idEl) ? idEl.GetString() ?? $"phase-{idx}" : $"phase-{idx}";
+                var phaseNumber = ph.TryGetProperty("phaseNumber", out var numEl) && numEl.TryGetInt32(out var nv) ? nv : idx;
+                var kind = ph.TryGetProperty("kind", out var kEl) ? kEl.GetString() ?? "quiz" : "quiz";
+                var name = ph.TryGetProperty("name", out var nEl) ? nEl.GetString() ?? $"Fase {phaseNumber}" : $"Fase {phaseNumber}";
+                var question = ph.TryGetProperty("question", out var qEl) ? qEl.GetString() ?? name : name;
+                var correctAnswerText = ph.TryGetProperty("correctAnswerText", out var cEl) ? cEl.GetString() ?? "—" : "—";
+                var accuracyRate = ph.TryGetProperty("accuracyRate", out var aEl) && aEl.TryGetInt32(out var av) ? av : 0;
+
+                var optionsList = new List<string>();
+                if (ph.TryGetProperty("optionDistribution", out var optDistEl) && optDistEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var opt in optDistEl.EnumerateArray())
+                    {
+                        var label = opt.TryGetProperty("label", out var lEl) ? lEl.GetString() : null;
+                        var isCorrect = opt.TryGetProperty("isCorrect", out var icEl) && icEl.ValueKind == JsonValueKind.True;
+                        if (!string.IsNullOrWhiteSpace(label))
+                        {
+                            optionsList.Add(isCorrect ? $"[CORRETA] {label}" : $"[DISTRATOR] {label}");
+                        }
+                    }
+                }
+
+                hintByPhaseId.TryGetValue(phaseId, out var hint);
+                items.Add(new ReportPhaseInputItem(
+                    PhaseId: phaseId,
+                    PhaseNumber: phaseNumber,
+                    Kind: kind,
+                    Name: name,
+                    Question: question,
+                    CorrectAnswerText: correctAnswerText,
+                    AccuracyRate: accuracyRate,
+                    Options: optionsList,
+                    StatisticalHint: hint));
+
+                idx++;
+            }
+        }
+
+        return items;
     }
 
     public async Task<JsonElement> GetMyIndividualReportAsync(string matchId, ClaimsPrincipal principal, CancellationToken ct)
@@ -261,6 +394,30 @@ public sealed class ReportService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Erro ao consultar servico de relatorios em {Path}", path);
+            throw new ApiException(StatusCodes.Status503ServiceUnavailable, "REPORTS_UNAVAILABLE", "O serviço de relatórios está temporariamente indisponível.");
+        }
+    }
+
+    private async Task PutJsonToReportsAsync<T>(string path, T payload, CancellationToken ct)
+    {
+        try
+        {
+            using var req = CreateRequest(HttpMethod.Put, path);
+            req.Content = JsonContent.Create(payload, options: JsonOptions);
+            using var res = await http.SendAsync(req, ct);
+            if (res.StatusCode == HttpStatusCode.NotFound)
+            {
+                throw new ApiException(StatusCodes.Status404NotFound, ErrorCodes.MatchNotFound, "Relatório não encontrado.");
+            }
+            res.EnsureSuccessStatusCode();
+        }
+        catch (ApiException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Erro ao gravar no servico de relatorios em {Path}", path);
             throw new ApiException(StatusCodes.Status503ServiceUnavailable, "REPORTS_UNAVAILABLE", "O serviço de relatórios está temporariamente indisponível.");
         }
     }

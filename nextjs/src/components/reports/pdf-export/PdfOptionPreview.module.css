@@ -1,0 +1,461 @@
+/* ==========================================================================
+   Miniaturas de Templates (estilo PhaseThumb) + Stage Animado de Preview
+   ========================================================================== */
+
+.templateThumb {
+  width: 100%;
+  height: 78px;
+  border-radius: var(--radius-m, 10px);
+  background: var(--surface-sunken, #f1f5f9);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: all var(--dur-fast, 150ms) var(--ease-out, ease-out);
+}
+
+.templateThumbActive {
+  background: var(--blue-50, #eff6ff);
+  border-color: var(--blue-400, #60a5fa);
+}
+
+.miniPage {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.miniPageInkSaver {
+  background: #ffffff;
+  border-style: dashed;
+}
+
+.miniPageDim {
+  opacity: 0.35;
+  background: transparent;
+  border-style: dotted;
+  box-shadow: none;
+}
+
+.miniBarHeader {
+  height: 4px;
+  width: 75%;
+  border-radius: 2px;
+  background: #3b82f6;
+}
+
+.miniKpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+}
+
+.miniKpiCell {
+  height: 7px;
+  border-radius: 2px;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+}
+
+.miniChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+  padding: 2px;
+  background: #f8fafc;
+  border-radius: 2px;
+}
+
+.miniChartCol {
+  flex: 1;
+  background: #22c55e;
+  border-radius: 1px;
+}
+
+.miniLines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.miniLine {
+  height: 3px;
+  border-radius: 2px;
+  background: #cbd5e1;
+}
+
+.miniLineShort {
+  width: 60%;
+}
+
+.miniMatrix {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+}
+
+.miniMatrixCellOk {
+  height: 5px;
+  border-radius: 1px;
+  background: #86efac;
+}
+
+.miniMatrixCellErr {
+  height: 5px;
+  border-radius: 1px;
+  background: #fca5a5;
+}
+
+.miniBadgeRow {
+  display: flex;
+  gap: 2px;
+}
+
+.miniBadgeAmber {
+  height: 5px;
+  flex: 1;
+  border-radius: 999px;
+  background: #fde68a;
+}
+
+.miniBadgeBlue {
+  height: 5px;
+  flex: 1;
+  border-radius: 999px;
+  background: #bfdbfe;
+}
+
+/* ==========================================================================
+   Animated Live Preview Stage (Painel Direito do Modal)
+   ========================================================================== */
+
+.previewStage {
+  background: var(--surface-sunken, #f1f5f9);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: var(--radius-xl, 16px);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stageBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--blue-100, #dbeafe);
+  color: var(--blue-700, #1d4ed8);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stagePagesTag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary, #475569);
+}
+
+.canvasArea {
+  position: relative;
+  height: 220px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #e2e8f0 0%, #cbd5e1 100%);
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+@keyframes floatPulse {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes barGrow {
+  0% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+  100% {
+    transform: scaleY(0.85);
+  }
+}
+
+@keyframes scanSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.a4Sheet {
+  width: 168px;
+  height: 192px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #94a3b8;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.16);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  animation: floatPulse 3.2s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.a4SheetInkSaver {
+  box-shadow: none;
+  border: 1.5px solid #475569;
+}
+
+.a4TopHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.a4TitleLines {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 65%;
+}
+
+.a4TitleBar {
+  height: 5px;
+  border-radius: 3px;
+  background: #1e293b;
+}
+
+.a4SubBar {
+  height: 3px;
+  width: 75%;
+  border-radius: 2px;
+  background: #94a3b8;
+}
+
+.a4LogoThumb {
+  max-width: 38px;
+  max-height: 18px;
+  object-fit: contain;
+}
+
+.a4BrandDot {
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.a4Body {
+  flex: 1;
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  justify-content: center;
+}
+
+.a4Footer {
+  padding-top: 4px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 7px;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* --- Specific Option Illustrations inside A4 Body --- */
+.animKpiGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+}
+
+.animKpiCard {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 5px;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.animKpiValue {
+  height: 7px;
+  width: 55%;
+  border-radius: 2px;
+  background: #2563eb;
+}
+
+.animKpiSub {
+  height: 3px;
+  width: 85%;
+  border-radius: 2px;
+  background: #93c5fd;
+}
+
+.animBarChart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 52px;
+  padding: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  gap: 5px;
+}
+
+.animBar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  transform-origin: bottom;
+  animation: barGrow 2.2s ease-in-out infinite;
+}
+
+.animRankList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.animRankRow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.animRankMedal {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.animMatrixGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+  padding: 5px;
+  background: #f8fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.animMatrixCell {
+  height: 12px;
+  border-radius: 3px;
+}
+
+.animAiBox {
+  position: relative;
+  padding: 7px;
+  border-radius: 6px;
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.animAiShimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(59, 130, 246, 0.18) 50%,
+    transparent 100%
+  );
+  animation: scanSweep 2s linear infinite;
+}
+
+.dualSheets {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.miniSplitSheet {
+  width: 102px;
+  height: 158px;
+  background: #ffffff;
+  border-radius: 6px;
+  border: 1px solid #94a3b8;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.14);
+  padding: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.breakDivider {
+  border-top: 1.5px dashed #ef4444;
+  margin: 4px 0;
+  position: relative;
+}
+
+.stageCaption {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.stageCaptionTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.stageCaptionText {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary, #475569);
+  line-height: 1.4;
+}

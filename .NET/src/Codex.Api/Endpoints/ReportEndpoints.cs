@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Codex.Api.Services.Ai;
 using Codex.Api.Services.Reports;
 
 namespace Codex.Api.Endpoints;
@@ -21,6 +22,13 @@ public static class ReportEndpoints
             ClaimsPrincipal principal,
             ReportService reports,
             CancellationToken ct) => Results.Ok(await reports.GetMatchReportAsync(matchId, principal, ct)));
+
+        matchReport.MapPost("/ai-review", async (
+            string matchId,
+            ClaimsPrincipal principal,
+            ReportService reports,
+            AiService ai,
+            CancellationToken ct) => Results.Ok(await reports.RunAiReviewAsync(matchId, principal, ai, ct)));
 
         matchReport.MapGet("/me", async (
             string matchId,

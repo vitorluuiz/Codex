@@ -245,6 +245,8 @@
 .phaseBarFill {
   width: 100%;
   border-radius: 6px;
+  background: var(--bar-color, #2563eb);
+  box-sizing: border-box;
 }
 
 .phaseBarLabel {
@@ -446,6 +448,8 @@
 .optionDistFill {
   height: 100%;
   border-radius: 9999px;
+  background: var(--opt-color, #3b82f6);
+  box-sizing: border-box;
 }
 
 /* --- Tabelas (Classificação e Matriz) --- */
@@ -637,3 +641,258 @@
   font-size: 9px;
   color: var(--text-muted);
 }
+
+/* --- Identidade da Escola & Modos de Exportação --- */
+.brandGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.schoolLogo {
+  max-height: 44px;
+  max-width: 150px;
+  object-fit: contain;
+}
+
+/* --- Modos de Economia de Tinta (eco = bordas coloridas / max = monocromático) --- */
+.inkSaverEco,
+.inkSaverMax {
+  --surface-sunken: #ffffff;
+  --surface-alt: #ffffff;
+  --border-subtle: #94a3b8;
+  --border-strong: #475569;
+  --tone-green-surface: #ffffff;
+  --tone-amber-surface: #ffffff;
+  --tone-pink-surface: #ffffff;
+}
+
+.inkSaverEco .kpiCard,
+.inkSaverEco .phaseChartCard,
+.inkSaverEco .phaseCard,
+.inkSaverEco .tableCard,
+.inkSaverMax .kpiCard,
+.inkSaverMax .phaseChartCard,
+.inkSaverMax .phaseCard,
+.inkSaverMax .tableCard {
+  background: #ffffff !important;
+  box-shadow: none !important;
+  border-color: #94a3b8 !important;
+}
+
+/* 1. Retira o background das barras do gráfico de curva de desempenho */
+.inkSaverEco .phaseBarTrack,
+.inkSaverMax .phaseBarTrack {
+  background: transparent !important;
+  border-radius: 0;
+  border-bottom: 1.5px solid #cbd5e1;
+  overflow: visible;
+}
+
+.inkSaverEco .phaseBarFill {
+  background: transparent !important;
+  border-radius: 5px 5px 0 0;
+  border: 2px solid var(--bar-color, #2563eb);
+  border-bottom: none;
+  border-top-width: 3px;
+}
+
+.inkSaverMax .phaseBarFill {
+  background: transparent !important;
+  border-radius: 5px 5px 0 0;
+  border: 1.5px solid #0f172a;
+  border-bottom: none;
+  border-top-width: 3px;
+}
+
+/* 2. Linhas de distribuição de respostas substituídas por marcador vertical no fim da linha */
+.inkSaverEco .optionDistRow,
+.inkSaverMax .optionDistRow {
+  background: #ffffff !important;
+}
+
+.inkSaverEco .optionDistTrack,
+.inkSaverMax .optionDistTrack {
+  background: transparent !important;
+  border-radius: 0;
+  height: 10px;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px dashed #cbd5e1;
+}
+
+.inkSaverEco .optionDistFill {
+  background: transparent !important;
+  border-radius: 0;
+  height: 12px;
+  min-width: 2px;
+  border-right: 3px solid var(--opt-color, #3b82f6);
+}
+
+.inkSaverMax .optionDistFill {
+  background: transparent !important;
+  border-radius: 0;
+  height: 12px;
+  min-width: 2px;
+  border-right: 2.5px solid #334155;
+}
+
+.inkSaverMax .optionDistCorrect .optionDistFill {
+  border-right: 3.5px solid #0f172a;
+}
+
+/* 3. Remove a cor de fundo do perfil (Avatar) e badges de ranking */
+.inkSaverEco .playerCell [role='img'],
+.inkSaverMax .playerCell [role='img'] {
+  background: transparent !important;
+  border: 1.5px solid #64748b;
+  --avatar-fg: #334155;
+  box-sizing: border-box;
+}
+
+.inkSaverEco .rankBadge {
+  background: transparent !important;
+  border: 1.5px solid currentColor;
+}
+
+.inkSaverMax .rankBadge {
+  background: transparent !important;
+  color: #0f172a !important;
+  border: 1.5px solid #475569;
+}
+
+/* 4. Matriz Aluno x Fase: apenas borda e número/símbolo coloridos no modo economia normal (eco) */
+.inkSaverEco .matrixTable,
+.inkSaverMax .matrixTable {
+  border-collapse: separate;
+  border-spacing: 3px;
+}
+
+.inkSaverEco .matrixTable th,
+.inkSaverMax .matrixTable th {
+  background: #ffffff !important;
+  border-bottom: 1.5px solid #94a3b8;
+}
+
+.inkSaverEco .matrixTable td,
+.inkSaverMax .matrixTable td {
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.inkSaverEco .matrixTable td.cellCorrect {
+  background: #ffffff !important;
+  border: 1.5px solid #16a34a !important;
+  border-radius: 5px;
+  color: #15803d !important;
+  font-weight: 800;
+}
+
+.inkSaverEco .matrixTable td.cellCorrect .cellMain {
+  color: #15803d !important;
+}
+
+.inkSaverEco .matrixTable td.cellWrong {
+  background: #ffffff !important;
+  border: 1.5px solid #dc2626 !important;
+  border-radius: 5px;
+  color: #dc2626 !important;
+}
+
+.inkSaverEco .matrixTable td.cellWrong .cellMain {
+  color: #dc2626 !important;
+}
+
+.inkSaverEco .matrixTable td.cellPending {
+  background: #ffffff !important;
+  border: 1.5px solid #d97706 !important;
+  border-radius: 5px;
+  color: #b45309 !important;
+}
+
+.inkSaverEco .matrixTable td.cellPending .cellMain {
+  color: #b45309 !important;
+}
+
+.inkSaverEco .matrixTable td.cellUnanswered {
+  background: #ffffff !important;
+  border: 1px dashed #cbd5e1 !important;
+  border-radius: 5px;
+  color: #64748b !important;
+}
+
+/* 5. Economia Máxima (max): totalmente sem cor / monocromático de alto contraste */
+.inkSaverMax .badgePrimary,
+.inkSaverMax .badgeNeutral,
+.inkSaverMax .sectionTag,
+.inkSaverMax .phaseNumBadge {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #475569;
+}
+
+.inkSaverMax .kpiValue,
+.inkSaverMax .kpiScore,
+.inkSaverMax .scoreStrong,
+.inkSaverMax .accuracyStrong,
+.inkSaverMax .phaseAccuracyPill,
+.inkSaverMax .phaseKindChip {
+  color: #0f172a !important;
+}
+
+.inkSaverMax .optionDistCorrect {
+  border-color: #0f172a !important;
+  border-width: 1.5px;
+}
+
+.inkSaverMax .matrixTable td.cellCorrect {
+  background: #ffffff !important;
+  border: 1.5px solid #0f172a !important;
+  border-radius: 5px;
+  color: #0f172a !important;
+  font-weight: 800;
+}
+
+.inkSaverMax .matrixTable td.cellCorrect .cellMain {
+  color: #0f172a !important;
+}
+
+.inkSaverMax .matrixTable td.cellWrong {
+  background: #ffffff !important;
+  border: 1px dashed #475569 !important;
+  border-radius: 5px;
+  color: #0f172a !important;
+  text-decoration: underline;
+}
+
+.inkSaverMax .matrixTable td.cellWrong .cellMain {
+  color: #0f172a !important;
+}
+
+.inkSaverMax .matrixTable td.cellPending,
+.inkSaverMax .matrixTable td.cellUnanswered {
+  background: #ffffff !important;
+  border: 1px dotted #94a3b8 !important;
+  border-radius: 5px;
+  color: #334155 !important;
+}
+
+.compact {
+  padding: 16px;
+  gap: 16px;
+}
+
+.compact .hero {
+  padding: 16px;
+}
+
+.compact .kpiCard {
+  padding: 12px;
+}
+
+.compact .phaseCard {
+  padding: 12px;
+  gap: 8px;
+}
+

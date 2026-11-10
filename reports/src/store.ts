@@ -8,6 +8,7 @@ import type {
   MatchReportDocument,
   ParticipantReportHistoryItem,
   RawMatchDocument,
+  ReportAiReview,
   UserReportsHistoryDto,
 } from './types.js';
 import { toIndividualReport } from './builder.js';
@@ -99,6 +100,7 @@ export interface ReportStore {
   listUnprocessedMatchIds(limit: number): Promise<string[]>;
   listRawMatchesByUser(userId: string, limit: number): Promise<RawMatchDocument[]>;
   saveReport(report: MatchReportDocument): Promise<void>;
+  saveAiReview(matchId: string, review: ReportAiReview): Promise<MatchReportDocument | null>;
   getReportByMatchId(matchId: string): Promise<MatchReportDocument | null>;
   getReportByShareToken(shareToken: string): Promise<MatchReportDocument | null>;
   getIndividualByAccessToken(accessToken: string): Promise<IndividualReportDto | null>;
@@ -335,6 +337,34 @@ export class HybridReportStore implements ReportStore {
         error: (error as Error).message,
       });
     }
+  }
+
+  async saveAiReview(matchId: string, review: ReportAiReview): Promise<MatchReportDocument | null> {
+    const existing = await this.getReportByMatchId(matchId);
+    if (!existing) return null;
+
+    const updated: MatchReportDocument = {
+      ...existing,
+      aiReview: review,
+    };
+    this.memoryReports.set(existing.matchId.toLowerCase(), updated);
+
+    const db = await this.getDb();
+    if (db) {
+      try {
+        await this.reportsCol(db).updateOne(
+          { _id: existing.matchId.toLowerCase() },
+          { $set: { aiReview: review } },
+        );
+      } catch (error) {
+        this.logger.error('erro ao atualizar aiReview no MongoDB', {
+          matchId: existing.matchId,
+          error: (error as Error).message,
+        });
+      }
+    }
+
+    return updated;
   }
 
   async getReportByMatchId(matchId: string): Promise<MatchReportDocument | null> {

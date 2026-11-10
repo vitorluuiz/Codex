@@ -77,6 +77,7 @@ public enum AiOperation
     Phase,
     Variations,
     QuizOptions,
+    ReportReview,
 }
 
 public enum AiGenerationStatus

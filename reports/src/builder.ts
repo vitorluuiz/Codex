@@ -1,14 +1,16 @@
+import { buildReportInsights } from './insights/index.js';
 import { generateAccessToken, generateShareToken } from './tokens.js';
-import type {
-  IndividualReportDto,
-  MatchReportDocument,
-  RawAnswerPayload,
-  RawMatchDocument,
-  RawMatchPhase,
-  ReportOptionDistribution,
-  ReportParticipantAnalysis,
-  ReportParticipantAnswer,
-  ReportPhaseAnalysis,
+import {
+  CURRENT_REPORT_SCHEMA_VERSION,
+  type IndividualReportDto,
+  type MatchReportDocument,
+  type RawAnswerPayload,
+  type RawMatchDocument,
+  type RawMatchPhase,
+  type ReportOptionDistribution,
+  type ReportParticipantAnalysis,
+  type ReportParticipantAnswer,
+  type ReportPhaseAnalysis,
 } from './types.js';
 
 function toIso(date: string | Date | undefined | null): string {
@@ -148,9 +150,13 @@ export function buildMatchReport(match: RawMatchDocument, tokenSecret: string): 
     const totalPhaseScore = subs.reduce((acc, s) => acc + (s.score ?? 0), 0);
     const avgScore = participantCount > 0 ? Math.round(totalPhaseScore / participantCount) : 0;
 
-    const totalElapsed = subs.reduce((acc, s) => acc + (s.elapsedSeconds ?? 0), 0);
+    // Nao envios (em branco) sao considerados como 100% do tempo limite da fase
+    const phaseTimeLimit = Math.max(0, phase.timeSeconds ?? 0);
+    const totalElapsed =
+      subs.reduce((acc, s) => acc + (s.elapsedSeconds ?? 0), 0) +
+      unansweredCount * phaseTimeLimit;
     const avgElapsedSeconds =
-      submittedCount > 0 ? Math.round((totalElapsed / submittedCount) * 10) / 10 : 0;
+      participantCount > 0 ? Math.round((totalElapsed / participantCount) * 10) / 10 : 0;
 
     const optionDistribution: ReportOptionDistribution[] = [];
     let mostCommonAnswerText: string | null = null;
@@ -282,20 +288,25 @@ export function buildMatchReport(match: RawMatchDocument, tokenSecret: string): 
       };
     });
 
-    const submittedAnswers = answers.filter((a) => a.submitted);
     const gradedAnswers = answers.filter((a) => a.grading === 'graded');
     const correctCount = gradedAnswers.filter((a) => a.correct === true).length;
     const incorrectCount = gradedAnswers.filter((a) => a.correct === false).length;
     const pendingCount = answers.filter((a) => a.grading === 'pending').length;
     const unansweredCount = answers.filter((a) => !a.submitted).length;
 
+    // Nao envios contam como 100% do tempo limite da respectiva fase
+    const unansweredElapsedSeconds = answers
+      .filter((a) => !a.submitted)
+      .reduce((acc, a) => acc + Math.max(0, a.timeSeconds ?? 0), 0);
+    const effectiveTotalElapsedSeconds = p.totalElapsedSeconds + unansweredElapsedSeconds;
+
     const accuracyRate =
       gradedAnswers.length > 0 ? Math.round((correctCount / gradedAnswers.length) * 100) : 0;
     const scorePercentage =
       maxPossibleScore > 0 ? Math.round((p.totalScore / maxPossibleScore) * 100) : 0;
     const avgElapsedSeconds =
-      submittedAnswers.length > 0
-        ? Math.round((p.totalElapsedSeconds / submittedAnswers.length) * 10) / 10
+      answers.length > 0
+        ? Math.round((effectiveTotalElapsedSeconds / answers.length) * 10) / 10
         : 0;
 
     return {
@@ -316,7 +327,7 @@ export function buildMatchReport(match: RawMatchDocument, tokenSecret: string): 
       unansweredCount,
       pendingCount,
       accuracyRate,
-      totalElapsedSeconds: p.totalElapsedSeconds,
+      totalElapsedSeconds: effectiveTotalElapsedSeconds,
       avgElapsedSeconds,
       answers,
     };
@@ -331,6 +342,7 @@ export function buildMatchReport(match: RawMatchDocument, tokenSecret: string): 
   const totalCorrect = participantsAnalysis.reduce((acc, p) => acc + p.correctCount, 0);
   const totalPending = participantsAnalysis.reduce((acc, p) => acc + p.pendingCount, 0);
   const totalElapsedAll = participantsAnalysis.reduce((acc, p) => acc + p.totalElapsedSeconds, 0);
+  const totalParticipantPhases = participantCount * phaseCount;
 
   const avgScore =
     participantCount > 0
@@ -344,12 +356,16 @@ export function buildMatchReport(match: RawMatchDocument, tokenSecret: string): 
       ? Math.round((totalCorrect / totalGraded) * 100)
       : (match.stats?.accuracyRate ?? 0);
   const avgResponseSeconds =
-    totalSubmissions > 0 ? Math.round((totalElapsedAll / totalSubmissions) * 10) / 10 : 0;
+    totalParticipantPhases > 0
+      ? Math.round((totalElapsedAll / totalParticipantPhases) * 10) / 10
+      : 0;
+
+  const insights = buildReportInsights(match, phasesAnalysis, participantsAnalysis);
 
   return {
     id: matchId,
     matchId,
-    schemaVersion: 1,
+    schemaVersion: CURRENT_REPORT_SCHEMA_VERSION,
     status: 'ready',
     shareToken,
     roomCode: match.roomCode,
@@ -380,6 +396,8 @@ export function buildMatchReport(match: RawMatchDocument, tokenSecret: string): 
     },
     phases: phasesAnalysis,
     participants: participantsAnalysis,
+    insights,
+    aiReview: null,
   };
 }
 

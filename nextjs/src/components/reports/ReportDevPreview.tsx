@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Button, Toast, ToastViewport } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
@@ -10,6 +10,12 @@ import type { IndividualReport, MatchReport } from '@/lib/types';
 import { exportHtmlElementToPdf } from './exportHtmlToPdf';
 import { IndividualReportExportDocument } from './IndividualReportExportDocument';
 import { MatchReportExportDocument } from './MatchReportExportDocument';
+import { PdfExportModal } from './pdf-export/PdfExportModal';
+import {
+  DEFAULT_PDF_EXPORT_OPTIONS,
+  type PdfExportOptions,
+} from './pdf-export/pdfExportOptions';
+import { loadPdfExportOptions } from './pdf-export/pdfExportStorage';
 import { MOCK_DEV_INDIVIDUAL_REPORT, MOCK_DEV_MATCH_REPORT } from './reportMockData';
 import styles from './ReportDevPreview.module.css';
 
@@ -29,6 +35,8 @@ export function ReportDevPreview({
 }: ReportDevPreviewProps) {
   const [docKind, setDocKind] = useState<DocumentKind>('match');
   const [viewMode, setViewMode] = useState<ViewMode>('continuous');
+  const [pdfOptions, setPdfOptions] = useState<PdfExportOptions>(DEFAULT_PDF_EXPORT_OPTIONS);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -37,16 +45,30 @@ export function ReportDevPreview({
   const matchReport = initialReport ?? MOCK_DEV_MATCH_REPORT;
   const individualReport = initialIndividualReport ?? MOCK_DEV_INDIVIDUAL_REPORT;
 
-  async function handleDownloadPdf() {
+  useEffect(() => {
+    setPdfOptions(loadPdfExportOptions());
+  }, []);
+
+  async function handleDownloadPdf(optionsOverride?: PdfExportOptions) {
     if (!documentRef.current || isDownloading) return;
+    const activeOpts = optionsOverride ?? pdfOptions;
+    if (optionsOverride) {
+      setPdfOptions(optionsOverride);
+      setIsModalOpen(false);
+    }
+
     setIsDownloading(true);
     setToast('Capturando documento e gerando PDF A4...');
 
     try {
+      await new Promise((r) => setTimeout(r, 80));
       if (docKind === 'match') {
         await exportHtmlElementToPdf(documentRef.current, {
           filename: `relatorio-${matchReport.roomCode}-dev-preview.pdf`,
           footerTitle: `${matchReport.title} (Sala ${matchReport.roomCode})`,
+          footerText: activeOpts.footerText,
+          footerLogoDataUrl: activeOpts.logoDataUrl,
+          honorForcedBreaks: activeOpts.sectionPerPage,
         });
       } else {
         await exportHtmlElementToPdf(documentRef.current, {
@@ -132,6 +154,54 @@ export function ReportDevPreview({
             </button>
           </div>
 
+          {docKind === 'match' && (
+            <>
+              <div className={styles.segmentedControl} title="Alternar modo de economia de tinta">
+                <button
+                  type="button"
+                  className={cx(
+                    styles.segmentBtn,
+                    pdfOptions.inkSaverMode === 'original' && styles.segmentBtnActive,
+                  )}
+                  onClick={() =>
+                    setPdfOptions((prev) => ({ ...prev, inkSaverMode: 'original' }))
+                  }
+                >
+                  Original
+                </button>
+                <button
+                  type="button"
+                  className={cx(
+                    styles.segmentBtn,
+                    pdfOptions.inkSaverMode === 'eco' && styles.segmentBtnActive,
+                  )}
+                  onClick={() => setPdfOptions((prev) => ({ ...prev, inkSaverMode: 'eco' }))}
+                >
+                  Economia de tinta
+                </button>
+                <button
+                  type="button"
+                  className={cx(
+                    styles.segmentBtn,
+                    pdfOptions.inkSaverMode === 'max' && styles.segmentBtnActive,
+                  )}
+                  onClick={() => setPdfOptions((prev) => ({ ...prev, inkSaverMode: 'max' }))}
+                >
+                  Economia máx.
+                </button>
+              </div>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsModalOpen(true)}
+              >
+                <Icon.Settings size={15} />
+                Personalizar PDF
+              </Button>
+            </>
+          )}
+
           <Button
             size="sm"
             disabled={isDownloading}
@@ -164,12 +234,22 @@ export function ReportDevPreview({
           )}
         >
           {docKind === 'match' ? (
-            <MatchReportExportDocument report={matchReport} />
+            <MatchReportExportDocument report={matchReport} options={pdfOptions} />
           ) : (
             <IndividualReportExportDocument report={individualReport} />
           )}
         </div>
       </main>
+
+      <PdfExportModal
+        open={isModalOpen}
+        report={matchReport}
+        initialOptions={pdfOptions}
+        isExporting={isDownloading}
+        onClose={() => setIsModalOpen(false)}
+        onOptionsChange={setPdfOptions}
+        onConfirmExport={(opts) => void handleDownloadPdf(opts)}
+      />
 
       {toast && (
         <ToastViewport>

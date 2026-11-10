@@ -69,3 +69,49 @@ public record AiQuizOptionsResponse(
 public record AiDecisionRequest(
     AiDecision Decision,
     int? AcceptedCount = null);
+
+public record AiSpellingIssueDto(
+    string Excerpt,
+    string Suggestion);
+
+public record AiConceptualIssueDto(
+    string Description,
+    string Severity);
+
+public record AiClarityIssueDto(
+    string Description,
+    string? Suggestion = null);
+
+public record AiPhaseReviewDto(
+    string PhaseId,
+    int PhaseNumber,
+    string Verdict,
+    IReadOnlyList<AiSpellingIssueDto> Spelling,
+    IReadOnlyList<AiConceptualIssueDto> Conceptual,
+    IReadOnlyList<AiClarityIssueDto> Clarity,
+    string AnswerKey,
+    string? AnswerKeyNote = null,
+    string? SuggestedRewrite = null);
+
+public record ReportAiReviewDto(
+    string GeneratedAt,
+    string RequestedByUserId,
+    string Provider,
+    string Model,
+    IReadOnlyList<AiPhaseReviewDto> Phases);
+
+public record AiReportReviewResponse(
+    Guid GenerationId,
+    ReportAiReviewDto AiReview,
+    AiUsageDto Usage);
+
+public record ReportPhaseInputItem(
+    string PhaseId,
+    int PhaseNumber,
+    string Kind,
+    string Name,
+    string Question,
+    string CorrectAnswerText,
+    int AccuracyRate,
+    IReadOnlyList<string> Options,
+    string? StatisticalHint = null);

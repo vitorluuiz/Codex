@@ -401,6 +401,92 @@ public class AiServiceTests
         Assert.Equal(ErrorCodes.AiBusy, ex.Code);
     }
 
+    [Fact]
+    public async Task Reviews_report_questions_in_batches_charges_one_credit_and_ignores_unknown_phases()
+    {
+        var ctx = new AiTestContext();
+
+        // 16 fases -> 2 lotes (15 + 1), mas deve cobrar apenas 1 credito total
+        var inputPhases = Enumerable.Range(1, 16)
+            .Select(i => new ReportPhaseInputItem(
+                PhaseId: $"phase-{i}",
+                PhaseNumber: i,
+                Kind: "quiz",
+                Name: $"Fase {i}",
+                Question: $"Pergunta {i}?",
+                CorrectAnswerText: "Opcao A",
+                AccuracyRate: 50,
+                Options: ["[CORRETA] Opcao A", "[DISTRATOR] Opcao B"],
+                StatisticalHint: i == 5 ? "suspect_answer_key" : null))
+            .ToList();
+
+        ctx.ChatClient.Enqueue("""
+        {
+          "phases": [
+            {
+              "phaseId": "phase-1",
+              "phaseNumber": 1,
+              "verdict": "ok",
+              "spelling": [{ "excerpt": "Perguntaa", "suggestion": "Pergunta" }],
+              "conceptual": [],
+              "clarity": [],
+              "answerKey": "ok",
+              "answerKeyNote": "",
+              "suggestedRewrite": ""
+            },
+            {
+              "phaseId": "unknown-phase-999",
+              "phaseNumber": 999,
+              "verdict": "problem",
+              "spelling": [],
+              "conceptual": [{ "description": "Deve ser ignorada", "severity": "high" }],
+              "clarity": [],
+              "answerKey": "wrong",
+              "answerKeyNote": "",
+              "suggestedRewrite": ""
+            }
+          ]
+        }
+        """);
+
+        ctx.ChatClient.Enqueue("""
+        {
+          "phases": [
+            {
+              "phaseId": "phase-16",
+              "phaseNumber": 16,
+              "verdict": "ok",
+              "spelling": [],
+              "conceptual": [{ "description": "Erro conceitual grave", "severity": "high" }],
+              "clarity": [],
+              "answerKey": "wrong",
+              "answerKeyNote": "Gabarito invertido",
+              "suggestedRewrite": "Reescreva o enunciado."
+            }
+          ]
+        }
+        """);
+
+        var response = await ctx.Ai.ReviewReportQuestionsAsync(
+            "match-123",
+            inputPhases,
+            ctx.AsUser,
+            Ct);
+
+        Assert.Equal(2, ctx.ChatClient.Calls.Count);
+        Assert.Equal(2, response.AiReview.Phases.Count);
+        // phase-1 tinha spelling, entao verdict 'ok' foi promovido para 'attention'
+        Assert.Equal("attention", response.AiReview.Phases[0].Verdict);
+        Assert.Single(response.AiReview.Phases[0].Spelling);
+        // phase-16 tinha conceptual e answerKey 'wrong', entao verdict foi promovido para 'problem'
+        Assert.Equal("problem", response.AiReview.Phases[1].Verdict);
+        Assert.Equal("wrong", response.AiReview.Phases[1].AnswerKey);
+        // Custo total cobrado = 1 credito
+        Assert.Equal(1, response.Usage.CreditsUsed);
+        var totalDbCost = await ctx.Db.AiGenerations.SumAsync(g => g.Cost, Ct);
+        Assert.Equal(1, totalDbCost);
+    }
+
     private sealed class AiTestContext
     {
         public AppDbContext Db { get; }

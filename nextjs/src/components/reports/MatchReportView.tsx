@@ -1,20 +1,33 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Avatar } from '@/components/avatar/Avatar';
 import { Button, Toast, ToastViewport } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
 import { KIND_META } from '@/components/set-editor/phaseKinds';
 import { cx } from '@/lib/cx';
-import type { MatchReport } from '@/lib/types';
+import type { MatchReport, ReportAiReview } from '@/lib/types';
 import { exportHtmlElementToPdf } from './exportHtmlToPdf';
+import {
+  AI_VERDICT_META,
+  DIFFICULTY_META,
+  QUESTION_FLAG_META,
+} from './insights/insightLabels';
+import { IntegritySection } from './insights/IntegritySection';
+import { QuestionQualitySection } from './insights/QuestionQualitySection';
 import { MatchReportExportDocument } from './MatchReportExportDocument';
+import { PdfExportModal } from './pdf-export/PdfExportModal';
+import {
+  DEFAULT_PDF_EXPORT_OPTIONS,
+  type PdfExportOptions,
+} from './pdf-export/pdfExportOptions';
+import { loadPdfExportOptions } from './pdf-export/pdfExportStorage';
 import { saveVisitedReport } from './visitedReportsStorage';
 import styles from './MatchReportView.module.css';
 
-type TabKey = 'phases' | 'ranking' | 'matrix';
+type TabKey = 'phases' | 'quality' | 'ranking' | 'matrix' | 'integrity';
 
 const MODE_LABEL: Record<MatchReport['mode'], string> = {
   live: 'Ao vivo',
@@ -45,20 +58,68 @@ function accuracyColor(value: number): string {
 
 interface MatchReportViewProps {
   report: MatchReport;
+  isLeader?: boolean;
   backHref?: string;
   backLabel?: string;
 }
 
 export function MatchReportView({
   report,
+  isLeader = false,
   backHref = '/relatorios',
   backLabel = 'Histórico de relatórios',
 }: MatchReportViewProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('phases');
+  const [aiReviewOverride, setAiReviewOverride] = useState<ReportAiReview | null>(null);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [pdfOptions, setPdfOptions] = useState<PdfExportOptions>(DEFAULT_PDF_EXPORT_OPTIONS);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const pdfContainerRef = useRef<HTMLDivElement | null>(null);
   const autoExportTriggeredRef = useRef(false);
+
+  const effectiveReport = useMemo<MatchReport>(
+    () => ({
+      ...report,
+      aiReview: aiReviewOverride ?? report.aiReview ?? null,
+    }),
+    [report, aiReviewOverride],
+  );
+
+  const questionInsightByPhaseId = useMemo(
+    () => new Map((effectiveReport.insights?.questions ?? []).map((q) => [q.phaseId, q])),
+    [effectiveReport.insights?.questions],
+  );
+
+  const aiByPhaseId = useMemo(
+    () => new Map((effectiveReport.aiReview?.phases ?? []).map((p) => [p.phaseId, p])),
+    [effectiveReport.aiReview?.phases],
+  );
+
+  const qualityAlertCount = useMemo(() => {
+    const questions = effectiveReport.insights?.questions ?? [];
+    return questions.filter((q) => {
+      const hasHeuristicAlert = q.flags.some(
+        (f) =>
+          f === 'suspect_answer_key' ||
+          f === 'negative_discrimination' ||
+          f === 'time_too_short' ||
+          f === 'reading_exceeds_time' ||
+          f === 'long_question' ||
+          f === 'long_options',
+      );
+      const ai = aiByPhaseId.get(q.phaseId);
+      return hasHeuristicAlert || (ai && ai.verdict !== 'ok');
+    }).length;
+  }, [effectiveReport.insights?.questions, aiByPhaseId]);
+
+  const integrityAlertCount = useMemo(() => {
+    const guessCount = (effectiveReport.insights?.guessing?.participants ?? []).filter(
+      (g) => g.events.length > 0,
+    ).length;
+    const collusionCount = (effectiveReport.insights?.collusion?.pairs ?? []).length;
+    return guessCount + collusionCount;
+  }, [effectiveReport.insights?.guessing, effectiveReport.insights?.collusion]);
 
   useEffect(() => {
     saveVisitedReport({
@@ -77,11 +138,23 @@ export function MatchReportView({
     });
   }, [report]);
 
-  const exportPdfFromHtml = useCallback(async () => {
+  const openPdfModal = useCallback(() => {
     if (isExportingPdf) return;
-    setIsExportingPdf(true);
-    setToast('Renderizando página HTML em tema claro e gerando PDF...');
+    const loaded = loadPdfExportOptions();
+    setPdfOptions(loaded);
+    setIsPdfModalOpen(true);
   }, [isExportingPdf]);
+
+  const handleConfirmPdfExport = useCallback(
+    (chosenOptions: PdfExportOptions) => {
+      if (isExportingPdf) return;
+      setPdfOptions(chosenOptions);
+      setIsPdfModalOpen(false);
+      setIsExportingPdf(true);
+      setToast('Renderizando página HTML personalizada e gerando PDF...');
+    },
+    [isExportingPdf],
+  );
 
   // Quando `isExportingPdf` liga e o container offscreen com o documento A4 é montado,
   // capturamos com html2canvas + jsPDF e baixamos o PDF.
@@ -92,8 +165,11 @@ export function MatchReportView({
     const run = async () => {
       try {
         await exportHtmlElementToPdf(pdfContainerRef.current!, {
-          filename: `relatorio-${report.roomCode}-${report.matchId.slice(0, 8)}.pdf`,
-          footerTitle: `${report.title} (Sala ${report.roomCode})`,
+          filename: `relatorio-${effectiveReport.roomCode}-${effectiveReport.matchId.slice(0, 8)}.pdf`,
+          footerTitle: `${effectiveReport.title} (Sala ${effectiveReport.roomCode})`,
+          footerText: pdfOptions.footerText,
+          footerLogoDataUrl: pdfOptions.logoDataUrl,
+          honorForcedBreaks: pdfOptions.sectionPerPage,
         });
         if (!cancelled) {
           setToast('Relatório em PDF exportado com sucesso!');
@@ -114,9 +190,9 @@ export function MatchReportView({
     return () => {
       cancelled = true;
     };
-  }, [isExportingPdf, report]);
+  }, [isExportingPdf, effectiveReport, pdfOptions]);
 
-  // Dispara exportação automática se a página foi aberta com `?export=pdf`
+  // Abre modal de exportação automaticamente se a página foi aberta com `?export=pdf`
   useEffect(() => {
     if (autoExportTriggeredRef.current || typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -126,9 +202,9 @@ export function MatchReportView({
       const nextSearch = params.toString();
       const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}`;
       window.history.replaceState({}, '', nextUrl);
-      void exportPdfFromHtml();
+      openPdfModal();
     }
-  }, [exportPdfFromHtml]);
+  }, [openPdfModal]);
 
   async function copyShareLink() {
     const url = `${window.location.origin}/relatorios/${report.shareToken}`;
@@ -181,7 +257,7 @@ export function MatchReportView({
               variant="secondary"
               size="sm"
               disabled={isExportingPdf}
-              onClick={() => void exportPdfFromHtml()}
+              onClick={openPdfModal}
             >
               <Icon.Download size={15} />
               {isExportingPdf ? 'Gerando PDF...' : 'Exportar PDF'}
@@ -197,13 +273,14 @@ export function MatchReportView({
           <div className={styles.heroInfo}>
             <div className={styles.badges}>
               <span className={styles.badgePrimary}>Relatório Consolidado da Turma</span>
-              <span className={styles.badgeNeutral}>Sala {report.roomCode}</span>
-              <span className={styles.badgeNeutral}>{MODE_LABEL[report.mode]}</span>
+              <span className={styles.badgeNeutral}>Sala {effectiveReport.roomCode}</span>
+              <span className={styles.badgeNeutral}>{MODE_LABEL[effectiveReport.mode]}</span>
             </div>
-            <h1 className={styles.title}>{report.title}</h1>
+            <h1 className={styles.title}>{effectiveReport.title}</h1>
             <p className={styles.subtitle}>
-              Concluída em {formatDateBr(report.finishedAt)} · Duração de{' '}
-              {formatDuration(report.durationSeconds)} · {report.overview.phaseCount} fases
+              Concluída em {formatDateBr(effectiveReport.finishedAt)} · Duração de{' '}
+              {formatDuration(effectiveReport.durationSeconds)} ·{' '}
+              {effectiveReport.overview.phaseCount} fases
             </p>
           </div>
         </header>
@@ -211,21 +288,24 @@ export function MatchReportView({
         <section className={styles.kpiGrid} aria-label="Indicadores gerais da partida">
           <div className={styles.kpiCard}>
             <span className={styles.kpiLabel}>Participantes</span>
-            <span className={styles.kpiValue}>{report.overview.participantCount}</span>
+            <span className={styles.kpiValue}>{effectiveReport.overview.participantCount}</span>
             <span className={styles.kpiSub}>
-              {report.overview.totalSubmissions} respostas enviadas
+              {effectiveReport.overview.totalSubmissions} respostas enviadas
             </span>
           </div>
 
           <div className={styles.kpiCard}>
             <span className={styles.kpiLabel}>Pontuação Média</span>
             <span className={cx(styles.kpiValue, styles.kpiScore)}>
-              {report.overview.avgScore}
-              <span className={styles.kpiUnit}> / {report.overview.maxPossibleScore} pts</span>
+              {effectiveReport.overview.avgScore}
+              <span className={styles.kpiUnit}>
+                {' '}
+                / {effectiveReport.overview.maxPossibleScore} pts
+              </span>
             </span>
             <span className={styles.kpiSub}>
-              Maior: {report.overview.maxAchievedScore} pts · Mediana: {report.overview.medianScore}{' '}
-              pts
+              Maior: {effectiveReport.overview.maxAchievedScore} pts · Mediana:{' '}
+              {effectiveReport.overview.medianScore} pts
             </span>
           </div>
 
@@ -233,20 +313,23 @@ export function MatchReportView({
             <span className={styles.kpiLabel}>Taxa de Acerto Global</span>
             <span
               className={styles.kpiValue}
-              style={{ color: accuracyColor(report.overview.accuracyRate) }}
+              style={{ color: accuracyColor(effectiveReport.overview.accuracyRate) }}
             >
-              {report.overview.accuracyRate}%
+              {effectiveReport.overview.accuracyRate}%
             </span>
             <span className={styles.kpiSub}>
-              {report.overview.totalCorrect} acertos em {report.overview.totalGraded} corrigidas
+              {effectiveReport.overview.totalCorrect} acertos em{' '}
+              {effectiveReport.overview.totalGraded} corrigidas
             </span>
           </div>
 
           <div className={styles.kpiCard}>
             <span className={styles.kpiLabel}>Tempo Médio / Fase</span>
-            <span className={styles.kpiValue}>{report.overview.avgResponseSeconds}s</span>
+            <span className={styles.kpiValue}>
+              {effectiveReport.overview.avgResponseSeconds}s
+            </span>
             <span className={styles.kpiSub}>
-              Duração total: {formatDuration(report.durationSeconds)}
+              Duração total: {formatDuration(effectiveReport.durationSeconds)}
             </span>
           </div>
         </section>
@@ -259,8 +342,27 @@ export function MatchReportView({
             className={cx(styles.tabButton, activeTab === 'phases' && styles.tabButtonActive)}
             onClick={() => setActiveTab('phases')}
           >
-            Análise por Fase ({report.phases.length})
+            Análise por Fase ({effectiveReport.phases.length})
           </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'quality'}
+            className={cx(styles.tabButton, activeTab === 'quality' && styles.tabButtonActive)}
+            onClick={() => setActiveTab('quality')}
+          >
+            Diagnóstico das Questões
+            <span
+              className={cx(
+                styles.tabBadge,
+                qualityAlertCount > 0 && styles.tabBadgeWarn,
+              )}
+            >
+              {qualityAlertCount > 0 ? `${qualityAlertCount} alerta(s)` : 'OK'}
+            </span>
+          </button>
+
           <button
             type="button"
             role="tab"
@@ -268,8 +370,9 @@ export function MatchReportView({
             className={cx(styles.tabButton, activeTab === 'ranking' && styles.tabButtonActive)}
             onClick={() => setActiveTab('ranking')}
           >
-            Classificação & Links Individuais ({report.participants.length})
+            Classificação & Links Individuais ({effectiveReport.participants.length})
           </button>
+
           <button
             type="button"
             role="tab"
@@ -279,6 +382,24 @@ export function MatchReportView({
           >
             Matriz Aluno × Fase
           </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'integrity'}
+            className={cx(styles.tabButton, activeTab === 'integrity' && styles.tabButtonActive)}
+            onClick={() => setActiveTab('integrity')}
+          >
+            Integridade
+            <span
+              className={cx(
+                styles.tabBadge,
+                integrityAlertCount > 0 && styles.tabBadgeWarn,
+              )}
+            >
+              {integrityAlertCount}
+            </span>
+          </button>
         </div>
 
         {activeTab === 'phases' && (
@@ -286,7 +407,7 @@ export function MatchReportView({
             <div className={styles.phaseChartCard}>
               <h2 className={styles.sectionTitle}>Curva de Acerto por Fase</h2>
               <div className={styles.phaseBars}>
-                {report.phases.map((ph) => (
+                {effectiveReport.phases.map((ph) => (
                   <div key={ph.phaseId} className={styles.phaseBarCol}>
                     <span className={styles.phaseBarPct}>{ph.accuracyRate}%</span>
                     <div className={styles.phaseBarTrack}>
@@ -307,8 +428,11 @@ export function MatchReportView({
             </div>
 
             <div className={styles.phaseList}>
-              {report.phases.map((ph) => {
+              {effectiveReport.phases.map((ph) => {
                 const meta = KIND_META[ph.kind];
+                const qInsight = questionInsightByPhaseId.get(ph.phaseId);
+                const aiPhase = aiByPhaseId.get(ph.phaseId);
+
                 return (
                   <article key={ph.phaseId} className={styles.phaseCard}>
                     <div className={styles.phaseHead}>
@@ -336,6 +460,50 @@ export function MatchReportView({
                         </span>
                       </div>
                     </div>
+
+                    {qInsight && (
+                      <div className={styles.phaseDiagnosticStrip}>
+                        <span
+                          className={styles.diagnosticChip}
+                          style={{
+                            color: DIFFICULTY_META[qInsight.difficulty].colorHex,
+                            background: DIFFICULTY_META[qInsight.difficulty].bgHex,
+                          }}
+                        >
+                          {DIFFICULTY_META[qInsight.difficulty].label}
+                        </span>
+
+                        {qInsight.flags.map((flag) => {
+                          const flagMeta = QUESTION_FLAG_META[flag];
+                          if (!flagMeta) return null;
+                          return (
+                            <span
+                              key={flag}
+                              className={styles.diagnosticChip}
+                              style={{
+                                color: flagMeta.colorHex,
+                                background: flagMeta.bgHex,
+                              }}
+                              title={flagMeta.description}
+                            >
+                              {flagMeta.shortLabel}
+                            </span>
+                          );
+                        })}
+
+                        {aiPhase && (
+                          <span
+                            className={styles.diagnosticChip}
+                            style={{
+                              color: AI_VERDICT_META[aiPhase.verdict].colorHex,
+                              background: AI_VERDICT_META[aiPhase.verdict].bgHex,
+                            }}
+                          >
+                            {AI_VERDICT_META[aiPhase.verdict].shortLabel}
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     <p className={styles.phaseQuestion}>{ph.question}</p>
 
@@ -395,6 +563,22 @@ export function MatchReportView({
           </section>
         )}
 
+        {activeTab === 'quality' && (
+          <section className={styles.tabContent}>
+            <QuestionQualitySection
+              report={effectiveReport}
+              variant="web"
+              mode="full"
+              showAiReview
+              isLeader={isLeader}
+              onAiReviewUpdated={(review) => {
+                setAiReviewOverride(review);
+                setToast('Revisão pedagógica por IA concluída e salva no relatório!');
+              }}
+            />
+          </section>
+        )}
+
         {activeTab === 'ranking' && (
           <section className={styles.tabContent}>
             <div className={styles.tableCard}>
@@ -420,7 +604,7 @@ export function MatchReportView({
                     </tr>
                   </thead>
                   <tbody>
-                    {report.participants.map((p) => (
+                    {effectiveReport.participants.map((p) => (
                       <tr key={p.participantId}>
                         <td className={styles.rankCell}>
                           <span
@@ -503,14 +687,14 @@ export function MatchReportView({
                 </p>
               </div>
 
-              <div className={styles.tableWrapper}>
+              <div className={styles.matrixScrollWrapper}>
                 <table className={styles.matrixTable}>
                   <thead>
                     <tr>
-                      <th>#</th>
-                      <th>Participante</th>
-                      <th>Total</th>
-                      {report.phases.map((ph) => (
+                      <th className={styles.stickyColRank}>#</th>
+                      <th className={styles.stickyColPlayer}>Participante</th>
+                      <th className={styles.stickyColTotal}>Total</th>
+                      {effectiveReport.phases.map((ph) => (
                         <th key={ph.phaseId} title={ph.name}>
                           F{ph.phaseNumber}: {ph.name}
                         </th>
@@ -518,14 +702,21 @@ export function MatchReportView({
                     </tr>
                   </thead>
                   <tbody>
-                    {report.participants.map((p) => {
+                    {effectiveReport.participants.map((p) => {
                       const ansByPhase = new Map(p.answers.map((a) => [a.phaseId, a]));
                       return (
                         <tr key={p.participantId}>
-                          <td className={styles.rankCell}>#{p.rank}</td>
-                          <td className={styles.matrixPlayerName}>{p.displayName}</td>
-                          <td className={styles.scoreStrong}>{p.totalScore} pts</td>
-                          {report.phases.map((ph) => {
+                          <td className={cx(styles.rankCell, styles.stickyColRank)}>#{p.rank}</td>
+                          <td
+                            className={cx(styles.matrixPlayerName, styles.stickyColPlayer)}
+                            title={p.displayName}
+                          >
+                            {p.displayName}
+                          </td>
+                          <td className={cx(styles.scoreStrong, styles.stickyColTotal)}>
+                            {p.totalScore} pts
+                          </td>
+                          {effectiveReport.phases.map((ph) => {
                             const ans = ansByPhase.get(ph.phaseId);
                             if (!ans || !ans.submitted) {
                               return (
@@ -566,13 +757,29 @@ export function MatchReportView({
             </div>
           </section>
         )}
+
+        {activeTab === 'integrity' && (
+          <section className={styles.tabContent}>
+            <IntegritySection report={effectiveReport} variant="web" />
+          </section>
+        )}
       </div>
+
+      {/* Modal pré-exportação de PDF com templates, switches e preview animado */}
+      <PdfExportModal
+        open={isPdfModalOpen}
+        report={effectiveReport}
+        initialOptions={pdfOptions}
+        isExporting={isExportingPdf}
+        onClose={() => setIsPdfModalOpen(false)}
+        onConfirmExport={handleConfirmPdfExport}
+      />
 
       {/* Superfície de exportação HTML -> PDF: renderiza o MatchReportExportDocument */}
       {isExportingPdf && (
         <div className={styles.pdfOffscreenWrapper} aria-hidden="true">
           <div ref={pdfContainerRef}>
-            <MatchReportExportDocument report={report} />
+            <MatchReportExportDocument report={effectiveReport} options={pdfOptions} />
           </div>
         </div>
       )}

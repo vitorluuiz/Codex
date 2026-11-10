@@ -489,10 +489,24 @@
   overflow-x: auto;
 }
 
-.table,
-.matrixTable {
+.matrixScrollWrapper {
+  overflow: auto;
+  max-height: min(72vh, 680px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-l);
+  position: relative;
+}
+
+.table {
   width: 100%;
   border-collapse: collapse;
+  font-size: var(--text-body-s);
+}
+
+.matrixTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: var(--text-body-s);
 }
 
@@ -514,6 +528,81 @@
   color: var(--text-secondary);
   background: var(--surface-sunken);
   white-space: nowrap;
+}
+
+.matrixTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.stickyColRank {
+  position: sticky;
+  left: 0;
+  width: 56px;
+  min-width: 56px;
+  max-width: 56px;
+  z-index: 2;
+  background: var(--surface-card);
+  box-sizing: border-box;
+}
+
+.stickyColPlayer {
+  position: sticky;
+  left: 56px;
+  width: 190px;
+  min-width: 190px;
+  max-width: 190px;
+  z-index: 2;
+  background: var(--surface-card);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+
+.stickyColTotal {
+  position: sticky;
+  left: 246px;
+  width: 100px;
+  min-width: 100px;
+  max-width: 100px;
+  z-index: 2;
+  background: var(--surface-card);
+  border-right: 1px solid var(--border-subtle);
+  box-shadow: 4px 0 8px -4px rgba(15, 23, 42, 0.12);
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.matrixTable thead th.stickyColRank,
+.matrixTable thead th.stickyColPlayer,
+.matrixTable thead th.stickyColTotal {
+  z-index: 5;
+  background: var(--surface-sunken);
+}
+
+@media (max-width: 640px) {
+  .stickyColRank {
+    width: 44px;
+    min-width: 44px;
+    max-width: 44px;
+  }
+
+  .stickyColPlayer {
+    left: 44px;
+    width: 136px;
+    min-width: 136px;
+    max-width: 136px;
+  }
+
+  .stickyColTotal {
+    left: 180px;
+    width: 84px;
+    min-width: 84px;
+    max-width: 84px;
+  }
 }
 
 .rankCell {
@@ -643,6 +732,42 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tabBadgeWarn {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.phaseDiagnosticStrip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.diagnosticChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid transparent;
 }
 
 .pdfOffscreenWrapper {
