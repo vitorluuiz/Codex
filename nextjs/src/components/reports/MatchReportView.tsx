@@ -248,13 +248,15 @@ export function MatchReportView({
             </Link>
 
           <div className={styles.exportActions}>
-            <Link
-              href={`/relatorios/preview?token=${encodeURIComponent(report.shareToken)}`}
-              className={styles.devPreviewLink}
-              title="Abrir visualizador com Hot-Reload para editar o layout da folha A4"
-            >
-              Prévia A4 (Dev)
-            </Link>
+            {process.env.NODE_ENV !== 'production' && (
+              <Link
+                href={`/relatorios/preview?token=${encodeURIComponent(report.shareToken)}`}
+                className={styles.devPreviewLink}
+                title="Abrir visualizador com Hot-Reload para editar o layout da folha A4"
+              >
+                Prévia A4 (Dev)
+              </Link>
+            )}
             <Button variant="secondary" size="sm" onClick={() => void copyShareLink()}>
               <Icon.Copy size={15} />
               Copiar link seguro

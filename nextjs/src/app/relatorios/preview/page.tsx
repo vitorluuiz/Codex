@@ -1,3 +1,5 @@
+import { notFound } from 'next/navigation';
+
 import { ReportDevPreview } from '@/components/reports/ReportDevPreview';
 import { getIndividualReportByToken, getMatchReportById, getReportByShareToken } from '@/lib/api/reports';
 import type { IndividualReport, MatchReport } from '@/lib/types';
@@ -14,6 +16,10 @@ interface PreviewPageProps {
 }
 
 export default async function ReportPreviewDevPage({ searchParams }: PreviewPageProps) {
+  if (process.env.NODE_ENV === 'production') {
+    notFound();
+  }
+
   const { token, individualToken } = await searchParams;
 
   let report: MatchReport | null = null;

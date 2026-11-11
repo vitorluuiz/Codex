@@ -100,13 +100,6 @@ function IndividualReportBody({ report }: { report: IndividualReport }) {
         <div className={styles.answerList}>
           {p.answers.map((ans) => {
             const meta = KIND_META[ans.kind];
-            const stateClass = !ans.submitted
-              ? styles.cardUnanswered
-              : ans.grading === 'pending'
-                ? styles.cardPending
-                : ans.correct
-                  ? styles.cardCorrect
-                  : styles.cardWrong;
 
             const statusLabel = !ans.submitted
               ? 'Não respondeu'
@@ -117,19 +110,19 @@ function IndividualReportBody({ report }: { report: IndividualReport }) {
                   : 'Errou';
 
             return (
-              <article key={ans.phaseId} className={cx(styles.answerCard, stateClass)}>
+              <article key={ans.phaseId} className={cx(styles.answerCard)}>
                 <div className={styles.answerHead}>
                   <div className={styles.answerTitleWrap}>
                     <span className={styles.phaseNum}>F{ans.phaseNumber}</span>
                     <span className={styles.kindChip} style={{ color: meta.color }}>
-                      {meta.icon}
+                      {/* {meta.icon} */}
                       {meta.label}
                     </span>
                     <h3 className={styles.phaseTitle}>{ans.phaseName}</h3>
                   </div>
 
                   <div className={styles.answerStats}>
-                    <span className={styles.statusPill}>{statusLabel}</span>
+                    <span className={cx(styles.statusPill, ans.grading !== "graded" ? styles.pending : ans.correct ? styles.correct : styles.incorrect)}>{statusLabel}</span>
                     <span className={styles.pointsText}>
                       <strong>{ans.score}</strong> / {ans.maxScore} pts
                     </span>
@@ -272,13 +265,15 @@ export function IndividualReportView({ report, user = null }: IndividualReportVi
             </Link>
 
             <div className={styles.actions}>
-              <Link
-                href={`/relatorios/preview?individualToken=${encodeURIComponent(p.accessToken)}`}
-                className={styles.devPreviewLink}
-                title="Abrir visualizador com Hot-Reload para editar o layout da folha A4"
-              >
-                Prévia A4 (Dev)
-              </Link>
+              {process.env.NODE_ENV !== 'production' && (
+                <Link
+                  href={`/relatorios/preview?individualToken=${encodeURIComponent(p.accessToken)}`}
+                  className={styles.devPreviewLink}
+                  title="Abrir visualizador com Hot-Reload para editar o layout da folha A4"
+                >
+                  Prévia A4 (Dev)
+                </Link>
+              )}
               <Button variant="secondary" size="sm" onClick={() => void copyMyLink()}>
                 <Icon.Copy size={15} />
                 Copiar meu link permanente
