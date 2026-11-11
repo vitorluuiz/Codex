@@ -3,10 +3,10 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 
-import { Button, Toast, ToastViewport, Tooltip } from '@/components/ds';
+import { Button, Dialog, Toast, ToastViewport, Tooltip } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
 import { decideGenerationAction, generatePhaseAction } from '@/lib/actions/ai';
-import { savePhaseSetAction } from '@/lib/actions/phaseSets';
+import { deletePhaseSetAction, savePhaseSetAction } from '@/lib/actions/phaseSets';
 import { cssVars } from '@/lib/cssVars';
 import { cx } from '@/lib/cx';
 import type { PhaseLimits } from '@/lib/types';
@@ -85,6 +85,9 @@ export function SetEditor({
   const [addOpen, setAddOpen] = useState(false);
   const addOpenRef = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<SetValidationErrors>({});
   const [nameHighlight, setNameHighlight] = useState(false);
   const [aiUsage, setAiUsage] = useState<AiUsage | null>(initialAiUsage);
@@ -371,7 +374,26 @@ export function SetEditor({
     router.push('/perfil');
   }
 
+  function handleDelete() {
+    if (!initialDraft.id) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    startTransition(async () => {
+      try {
+        await deletePhaseSetAction(initialDraft.id!);
+        clearStoredDraft();
+        setDeleteDialogOpen(false);
+        router.push('/perfil');
+      } catch {
+        setIsDeleting(false);
+        setDeleteError('Não foi possível excluir o conjunto. Tente novamente.');
+      }
+    });
+  }
+
   function save() {
+    if (isDeleting) return;
     setSaveError(null);
 
     // Validação cruzada para a criação e manipulação de desafios
@@ -450,7 +472,16 @@ export function SetEditor({
           </div>
 
           <div className={styles.topActions}>
-            <Button variant="secondary" onClick={cancel}>
+            {!isNew && (
+              <Button
+                variant="danger"
+                onClick={() => setDeleteDialogOpen(true)}
+                disabled={isDeleting}
+              >
+                Excluir conjunto
+              </Button>
+            )}
+            <Button variant="secondary" onClick={cancel} disabled={isDeleting}>
               Cancelar
             </Button>
             {saveDisabled ? (
@@ -465,13 +496,15 @@ export function SetEditor({
                       : 'Adicione ao menos um desafio para salvar o conjunto.'
                   }
                 >
-                  <Button onClick={save} disabled={saveDisabled}>
+                  <Button onClick={save} disabled={saveDisabled || isDeleting}>
                     Salvar conjunto
                   </Button>
                 </Tooltip>
               </span>
             ) : (
-              <Button onClick={save}>Salvar conjunto</Button>
+              <Button onClick={save} disabled={isDeleting}>
+                Salvar conjunto
+              </Button>
             )}
           </div>
         </header>
@@ -579,6 +612,49 @@ export function SetEditor({
           }}
           onClose={() => setPendingVariationsGen(null)}
         />
+      )}
+
+      {deleteDialogOpen && (
+        <Dialog
+          open
+          title="Excluir conjunto"
+          onClose={() => {
+            if (!isDeleting) setDeleteDialogOpen(false);
+          }}
+          actions={
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={isDeleting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Excluindo...' : 'Excluir'}
+              </Button>
+            </>
+          }
+        >
+          <p className={styles.dialogText}>
+            O conjunto sai da sua biblioteca e não pode ser recuperado. As partidas já jogadas não mudam — a fila guarda uma cópia das fases.
+          </p>
+        </Dialog>
+      )}
+
+      {deleteError && (
+        <ToastViewport>
+          <Toast
+            tone="danger"
+            title="Erro ao excluir"
+            message={deleteError}
+            onClose={() => setDeleteError(null)}
+          />
+        </ToastViewport>
       )}
 
       {saveError && (

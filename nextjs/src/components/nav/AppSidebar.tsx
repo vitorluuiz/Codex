@@ -23,32 +23,39 @@ interface NavEntry {
   icon: ReactNode;
   /** Sem destino a entrada aparece desabilitada — a tela ainda não existe. */
   href?: string;
+  /**
+   * Se o destino exige usuário logado. Padrão: true.
+   * Quando o visitante está em rotas públicas sem conta, entradas com
+   * `requiresAuth` não aparecem na barra.
+   */
+  requiresAuth?: boolean;
 }
 
 /**
  * Itens ainda não construídos aparecem desabilitados em vez de sumirem: o menu
  * é o mapa do produto, e esconder o que vem depois faz a barra parecer quebrada
- * a cada release.
+ * a cada release. Já abas que exigem autenticação nem aparecem quando o usuário
+ * está deslogado, mantendo a barra enxuta apenas com as rotas acessíveis.
  */
 const LEADER_ENTRIES: NavEntry[] = [
-  { key: 'perfil', label: 'Perfil', icon: <Icon.Person size={18} />, href: '/perfil' },
-  { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} /> },
-  // { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} />, href: '/conjuntos' },
-  { key: 'salas', label: 'Minhas salas', icon: <Icon.Templates size={18} /> },
-  { key: 'turmas', label: 'Minhas turmas', icon: <Icon.Users size={18} /> },
-  { key: 'relatorios', label: 'Relatórios', icon: <Icon.Reports size={18} />, href: '/relatorios' },
-  { key: 'notificacoes', label: 'Notificações', icon: <Icon.Bell size={18} /> },
-  { key: 'configuracoes', label: 'Configurações', icon: <Icon.Settings size={18} /> },
+  { key: 'perfil', label: 'Perfil', icon: <Icon.Person size={18} />, href: '/perfil', requiresAuth: true },
+  { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} />, requiresAuth: true },
+  // { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} />, href: '/conjuntos', requiresAuth: true },
+  { key: 'salas', label: 'Minhas salas', icon: <Icon.Templates size={18} />, requiresAuth: true },
+  { key: 'turmas', label: 'Minhas turmas', icon: <Icon.Users size={18} />, requiresAuth: true },
+  { key: 'relatorios', label: 'Relatórios', icon: <Icon.Reports size={18} />, href: '/relatorios', requiresAuth: false },
+  { key: 'notificacoes', label: 'Notificações', icon: <Icon.Bell size={18} />, requiresAuth: true },
+  { key: 'configuracoes', label: 'Configurações', icon: <Icon.Settings size={18} />, requiresAuth: true },
 ];
 
 const PARTICIPANT_ENTRIES: NavEntry[] = [
-  { key: 'perfil', label: 'Perfil', icon: <Icon.Person size={18} />, href: '/perfil' },
-  { key: 'relatorios', label: 'Meus relatórios', icon: <Icon.Reports size={18} />, href: '/relatorios' },
-  { key: 'conquistas', label: 'Conquistas', icon: <Icon.Award size={18} /> },
-  { key: 'ranking', label: 'Ranking', icon: <Icon.Trophy size={18} /> },
-  { key: 'turmas-participo', label: 'Turmas em que participo', icon: <Icon.Users size={18} /> },
-  { key: 'notificacoes', label: 'Notificações', icon: <Icon.Bell size={18} /> },
-  { key: 'configuracoes', label: 'Configurações', icon: <Icon.Settings size={18} /> },
+  { key: 'perfil', label: 'Perfil', icon: <Icon.Person size={18} />, href: '/perfil', requiresAuth: true },
+  { key: 'relatorios', label: 'Meus relatórios', icon: <Icon.Reports size={18} />, href: '/relatorios', requiresAuth: false },
+  { key: 'conquistas', label: 'Conquistas', icon: <Icon.Award size={18} />, requiresAuth: true },
+  { key: 'ranking', label: 'Ranking', icon: <Icon.Trophy size={18} />, requiresAuth: true },
+  { key: 'turmas-participo', label: 'Turmas em que participo', icon: <Icon.Users size={18} />, requiresAuth: true },
+  { key: 'notificacoes', label: 'Notificações', icon: <Icon.Bell size={18} />, requiresAuth: true },
+  { key: 'configuracoes', label: 'Configurações', icon: <Icon.Settings size={18} />, requiresAuth: true },
 ];
 
 const PROFILE_OPTIONS: { mode: ProfileMode; label: string; hint: string; icon: ReactNode }[] = [
@@ -87,7 +94,8 @@ export function AppSidebar({
 }: AppSidebarProps) {
   const [, startTransition] = useTransition();
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const entries = profileMode === 'participant' ? PARTICIPANT_ENTRIES : LEADER_ENTRIES;
+  const allEntries = profileMode === 'participant' ? PARTICIPANT_ENTRIES : LEADER_ENTRIES;
+  const entries = user ? allEntries : allEntries.filter((entry) => entry.requiresAuth === false);
   const roleLabel = audienceLabel ?? (user ? AUDIENCE_LABEL[user.audience] : '');
 
   function handleSignOut() {

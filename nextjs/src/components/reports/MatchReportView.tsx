@@ -80,6 +80,44 @@ export function MatchReportView({
   const [toast, setToast] = useState<string | null>(null);
   const pdfContainerRef = useRef<HTMLDivElement | null>(null);
   const autoExportTriggeredRef = useRef(false);
+  const kpiGridRef = useRef<HTMLElement | null>(null);
+  const tabsRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToTabSection = useCallback(() => {
+    let targetY = 0;
+    if (kpiGridRef.current) {
+      const rect = kpiGridRef.current.getBoundingClientRect();
+      const kpiGridBottomInDoc = rect.bottom + window.scrollY;
+      const container = kpiGridRef.current.parentElement;
+      const gap = container
+        ? parseFloat(window.getComputedStyle(container).rowGap || window.getComputedStyle(container).gap) || 20
+        : 20;
+      targetY = kpiGridBottomInDoc + gap;
+    } else if (tabsRef.current) {
+      const rect = tabsRef.current.getBoundingClientRect();
+      targetY = rect.top + window.scrollY;
+    }
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    window.scrollTo({
+      top: Math.max(0, Math.round(targetY)),
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    });
+  }, []);
+
+  const handleTabClick = useCallback(
+    (tabKey: TabKey) => {
+      if (activeTab === tabKey) {
+        scrollToTabSection();
+      } else {
+        setActiveTab(tabKey);
+      }
+    },
+    [activeTab, scrollToTabSection],
+  );
 
   const effectiveReport = useMemo<MatchReport>(
     () => ({
@@ -293,7 +331,11 @@ export function MatchReportView({
           </div>
         </header>
 
-        <section className={styles.kpiGrid} aria-label="Indicadores gerais da partida">
+        <section
+          ref={kpiGridRef}
+          className={styles.kpiGrid}
+          aria-label="Indicadores gerais da partida"
+        >
           <div className={styles.kpiCard}>
             <span className={styles.kpiLabel}>Participantes</span>
             <span className={styles.kpiValue}>{effectiveReport.overview.participantCount}</span>
@@ -342,13 +384,18 @@ export function MatchReportView({
           </div>
         </section>
 
-        <div className={styles.tabs} role="tablist">
+        <div
+          ref={tabsRef}
+          className={styles.tabs}
+          role="tablist"
+          aria-label="Seções do relatório"
+        >
           <button
             type="button"
             role="tab"
             aria-selected={activeTab === 'phases'}
             className={cx(styles.tabButton, activeTab === 'phases' && styles.tabButtonActive)}
-            onClick={() => setActiveTab('phases')}
+            onClick={() => handleTabClick('phases')}
           >
             Análise por Fase ({effectiveReport.phases.length})
           </button>
@@ -358,7 +405,7 @@ export function MatchReportView({
             role="tab"
             aria-selected={activeTab === 'quality'}
             className={cx(styles.tabButton, activeTab === 'quality' && styles.tabButtonActive)}
-            onClick={() => setActiveTab('quality')}
+            onClick={() => handleTabClick('quality')}
           >
             Diagnóstico das Questões
             <span
@@ -376,7 +423,7 @@ export function MatchReportView({
             role="tab"
             aria-selected={activeTab === 'ranking'}
             className={cx(styles.tabButton, activeTab === 'ranking' && styles.tabButtonActive)}
-            onClick={() => setActiveTab('ranking')}
+            onClick={() => handleTabClick('ranking')}
           >
             Classificação & Links Individuais ({effectiveReport.participants.length})
           </button>
@@ -386,7 +433,7 @@ export function MatchReportView({
             role="tab"
             aria-selected={activeTab === 'matrix'}
             className={cx(styles.tabButton, activeTab === 'matrix' && styles.tabButtonActive)}
-            onClick={() => setActiveTab('matrix')}
+            onClick={() => handleTabClick('matrix')}
           >
             Matriz Aluno × Fase
           </button>
@@ -396,7 +443,7 @@ export function MatchReportView({
             role="tab"
             aria-selected={activeTab === 'integrity'}
             className={cx(styles.tabButton, activeTab === 'integrity' && styles.tabButtonActive)}
-            onClick={() => setActiveTab('integrity')}
+            onClick={() => handleTabClick('integrity')}
           >
             Integridade
             <span
