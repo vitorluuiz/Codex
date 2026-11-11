@@ -1,0 +1,897 @@
+/* ==========================================================================
+   Documento de Exportação HTML -> PDF (Líder / Turma)
+   Estilizado para renderização A4 com tema claro e economia de tinta.
+   Edições feitas aqui são refletidas em tempo real na rota de preview (/relatorios/preview).
+   ========================================================================== */
+
+.exportDocument {
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --surface-page: #ffffff;
+  --surface-card: #ffffff;
+  --surface-sunken: #f8fafc;
+  --surface-alt: #f1f5f9;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --accent-primary: #1e56d1;
+  --tone-green-surface: #dcfce7;
+  --tone-amber-surface: #fef3c7;
+  --tone-pink-surface: #fce7f3;
+
+  width: 1040px;
+  max-width: 1040px;
+  margin: 0 auto;
+  background: #ffffff;
+  color: var(--text-primary);
+  font-family: var(--font-body), system-ui, -apple-system, sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-sizing: border-box;
+}
+
+/* --- Cabeçalho --- */
+.hero {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.heroTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badgePrimary {
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badgeNeutral {
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.brandMark {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* --- Grade de KPIs --- */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.kpiCard {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpiLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.kpiValue {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.kpiScore {
+  color: var(--accent-primary);
+}
+
+.kpiUnit {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.kpiSub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+/* --- Seções do Documento --- */
+.sectionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-subtle);
+}
+
+.sectionTag {
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* --- Gráfico de Barras --- */
+.phaseChartCard {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chartHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.cardHeading {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cardMuted {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.phaseBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  min-height: 110px;
+}
+
+.phaseBarCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.phaseBarPct {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.phaseBarTrack {
+  width: 100%;
+  max-width: 38px;
+  height: 80px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.phaseBarFill {
+  width: 100%;
+  border-radius: 6px;
+  background: var(--bar-color, #2563eb);
+  box-sizing: border-box;
+}
+
+.phaseBarLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* --- Lista de Fases --- */
+.phaseList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.phaseCard {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.phaseHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.phaseTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.phaseNumBadge {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.phaseKindChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.phaseName {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.phaseQuickStats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.phaseAccuracyPill {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.phaseStatText {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.phaseQuestion {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--surface-sunken);
+  padding: 10px 12px;
+  border-radius: 8px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.phaseDetailsRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.phaseAnswerBox {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #ffffff;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.detailLabel {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.detailValue {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.optionDistList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.optionDistRow {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface-sunken);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.optionDistCorrect {
+  border-color: #86efac;
+  background: var(--tone-green-surface);
+}
+
+.optionDistHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+  width: 100%;
+  min-width: 0;
+}
+
+.optionDistLabel {
+  font-weight: 600;
+  min-width: 0;
+  flex: 1 1 auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.optionDistCount {
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.optionDistTrack {
+  width: 100%;
+  height: 5px;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.optionDistFill {
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--opt-color, #3b82f6);
+  box-sizing: border-box;
+}
+
+/* --- Tabelas (Classificação e Matriz) --- */
+.tableCard {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.tableWrapper {
+  width: 100%;
+  overflow: visible;
+}
+
+.matrixWrapper {
+  width: 100%;
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  text-align: left;
+}
+
+.matrixTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  table-layout: fixed;
+}
+
+.table th,
+.table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+
+.matrixTable th,
+.matrixTable td {
+  padding: 6px 3px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+  text-align: center;
+}
+
+.table th,
+.matrixTable th {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+  letter-spacing: 0.03em;
+}
+
+.colRank {
+  text-align: center !important;
+}
+
+.colPlayer {
+  text-align: left !important;
+  padding-left: 8px !important;
+}
+
+.colTotal {
+  text-align: right !important;
+  padding-right: 8px !important;
+}
+
+.colPhase {
+  text-align: center !important;
+  font-size: 10px !important;
+  letter-spacing: 0 !important;
+  padding: 6px 2px !important;
+}
+
+.rankCell {
+  font-weight: 700;
+}
+
+.rankBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.rankFirst {
+  background: var(--tone-amber-surface);
+  color: #b45309;
+}
+
+.rankSecond {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.rankThird {
+  background: var(--tone-pink-surface);
+  color: #db2777;
+}
+
+.playerCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.playerName {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.playerMeta {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.scoreStrong {
+  font-weight: 700;
+  color: var(--accent-primary);
+}
+
+.matrixTable td.scoreStrong {
+  text-align: right;
+  padding-right: 8px;
+}
+
+.scoreMuted {
+  color: var(--text-muted);
+}
+
+.accuracyStrong {
+  font-weight: 700;
+}
+
+.matrixPlayerName {
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: left !important;
+  padding-left: 8px !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.matrixCell {
+  text-align: center;
+  white-space: nowrap;
+  padding: 6px 2px !important;
+}
+
+.cellCorrect {
+  background: var(--tone-green-surface);
+}
+
+.cellWrong {
+  background: #fee2e2;
+}
+
+.cellPending {
+  background: var(--tone-amber-surface);
+}
+
+.cellUnanswered {
+  color: var(--text-muted);
+}
+
+.cellMain {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.cellSub {
+  display: block;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+/* --- Identidade da Escola & Modos de Exportação --- */
+.brandGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.schoolLogo {
+  max-height: 44px;
+  max-width: 150px;
+  object-fit: contain;
+}
+
+/* --- Modos de Economia de Tinta (eco = bordas coloridas / max = monocromático) --- */
+.inkSaverEco,
+.inkSaverMax {
+  --surface-sunken: #ffffff;
+  --surface-alt: #ffffff;
+  --border-subtle: #94a3b8;
+  --border-strong: #475569;
+  --tone-green-surface: #ffffff;
+  --tone-amber-surface: #ffffff;
+  --tone-pink-surface: #ffffff;
+}
+
+.inkSaverEco .kpiCard,
+.inkSaverEco .phaseChartCard,
+.inkSaverEco .phaseCard,
+.inkSaverEco .tableCard,
+.inkSaverMax .kpiCard,
+.inkSaverMax .phaseChartCard,
+.inkSaverMax .phaseCard,
+.inkSaverMax .tableCard {
+  background: #ffffff !important;
+  box-shadow: none !important;
+  border-color: #94a3b8 !important;
+}
+
+/* 1. Retira o background das barras do gráfico de curva de desempenho */
+.inkSaverEco .phaseBarTrack,
+.inkSaverMax .phaseBarTrack {
+  background: transparent !important;
+  border-radius: 0;
+  border-bottom: 1.5px solid #cbd5e1;
+  overflow: visible;
+}
+
+.inkSaverEco .phaseBarFill {
+  background: transparent !important;
+  border-radius: 5px 5px 0 0;
+  border: 2px solid var(--bar-color, #2563eb);
+  border-bottom: none;
+  border-top-width: 3px;
+}
+
+.inkSaverMax .phaseBarFill {
+  background: transparent !important;
+  border-radius: 5px 5px 0 0;
+  border: 1.5px solid #0f172a;
+  border-bottom: none;
+  border-top-width: 3px;
+}
+
+/* 2. Linhas de distribuição de respostas substituídas por marcador vertical no fim da linha */
+.inkSaverEco .optionDistRow,
+.inkSaverMax .optionDistRow {
+  background: #ffffff !important;
+}
+
+.inkSaverEco .optionDistTrack,
+.inkSaverMax .optionDistTrack {
+  background: transparent !important;
+  border-radius: 0;
+  height: 10px;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px dashed #cbd5e1;
+}
+
+.inkSaverEco .optionDistFill {
+  background: transparent !important;
+  border-radius: 0;
+  height: 12px;
+  min-width: 2px;
+  border-right: 3px solid var(--opt-color, #3b82f6);
+}
+
+.inkSaverMax .optionDistFill {
+  background: transparent !important;
+  border-radius: 0;
+  height: 12px;
+  min-width: 2px;
+  border-right: 2.5px solid #334155;
+}
+
+.inkSaverMax .optionDistCorrect .optionDistFill {
+  border-right: 3.5px solid #0f172a;
+}
+
+/* 3. Remove a cor de fundo do perfil (Avatar) e badges de ranking */
+.inkSaverEco .playerCell [role='img'],
+.inkSaverMax .playerCell [role='img'] {
+  background: transparent !important;
+  border: 1.5px solid #64748b;
+  --avatar-fg: #334155;
+  box-sizing: border-box;
+}
+
+.inkSaverEco .rankBadge {
+  background: transparent !important;
+  border: 1.5px solid currentColor;
+}
+
+.inkSaverMax .rankBadge {
+  background: transparent !important;
+  color: #0f172a !important;
+  border: 1.5px solid #475569;
+}
+
+/* 4. Matriz Aluno x Fase: apenas borda e número/símbolo coloridos no modo economia normal (eco) */
+.inkSaverEco .matrixTable,
+.inkSaverMax .matrixTable {
+  border-collapse: separate;
+  border-spacing: 3px;
+}
+
+.inkSaverEco .matrixTable th,
+.inkSaverMax .matrixTable th {
+  background: #ffffff !important;
+  border-bottom: 1.5px solid #94a3b8;
+}
+
+.inkSaverEco .matrixTable td,
+.inkSaverMax .matrixTable td {
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.inkSaverEco .matrixTable td.cellCorrect {
+  background: #ffffff !important;
+  border: 1.5px solid #16a34a !important;
+  border-radius: 5px;
+  color: #15803d !important;
+  font-weight: 800;
+}
+
+.inkSaverEco .matrixTable td.cellCorrect .cellMain {
+  color: #15803d !important;
+}
+
+.inkSaverEco .matrixTable td.cellWrong {
+  background: #ffffff !important;
+  border: 1.5px solid #dc2626 !important;
+  border-radius: 5px;
+  color: #dc2626 !important;
+}
+
+.inkSaverEco .matrixTable td.cellWrong .cellMain {
+  color: #dc2626 !important;
+}
+
+.inkSaverEco .matrixTable td.cellPending {
+  background: #ffffff !important;
+  border: 1.5px solid #d97706 !important;
+  border-radius: 5px;
+  color: #b45309 !important;
+}
+
+.inkSaverEco .matrixTable td.cellPending .cellMain {
+  color: #b45309 !important;
+}
+
+.inkSaverEco .matrixTable td.cellUnanswered {
+  background: #ffffff !important;
+  border: 1px dashed #cbd5e1 !important;
+  border-radius: 5px;
+  color: #64748b !important;
+}
+
+/* 5. Economia Máxima (max): totalmente sem cor / monocromático de alto contraste */
+.inkSaverMax .badgePrimary,
+.inkSaverMax .badgeNeutral,
+.inkSaverMax .sectionTag,
+.inkSaverMax .phaseNumBadge {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #475569;
+}
+
+.inkSaverMax .kpiValue,
+.inkSaverMax .kpiScore,
+.inkSaverMax .scoreStrong,
+.inkSaverMax .accuracyStrong,
+.inkSaverMax .phaseAccuracyPill,
+.inkSaverMax .phaseKindChip {
+  color: #0f172a !important;
+}
+
+.inkSaverMax .optionDistCorrect {
+  border-color: #0f172a !important;
+  border-width: 1.5px;
+}
+
+.inkSaverMax .matrixTable td.cellCorrect {
+  background: #ffffff !important;
+  border: 1.5px solid #0f172a !important;
+  border-radius: 5px;
+  color: #0f172a !important;
+  font-weight: 800;
+}
+
+.inkSaverMax .matrixTable td.cellCorrect .cellMain {
+  color: #0f172a !important;
+}
+
+.inkSaverMax .matrixTable td.cellWrong {
+  background: #ffffff !important;
+  border: 1px dashed #475569 !important;
+  border-radius: 5px;
+  color: #0f172a !important;
+  text-decoration: underline;
+}
+
+.inkSaverMax .matrixTable td.cellWrong .cellMain {
+  color: #0f172a !important;
+}
+
+.inkSaverMax .matrixTable td.cellPending,
+.inkSaverMax .matrixTable td.cellUnanswered {
+  background: #ffffff !important;
+  border: 1px dotted #94a3b8 !important;
+  border-radius: 5px;
+  color: #334155 !important;
+}
+
+.compact {
+  padding: 16px;
+  gap: 16px;
+}
+
+.compact .hero {
+  padding: 16px;
+}
+
+.compact .kpiCard {
+  padding: 12px;
+}
+
+.compact .phaseCard {
+  padding: 12px;
+  gap: 8px;
+}
+

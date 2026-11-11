@@ -14,7 +14,7 @@ public class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : IExcepti
     {
         var (statusCode, response) = exception switch
         {
-            ApiException apiException => (apiException.StatusCode, new ErrorResponse(apiException.Code, apiException.Message)),
+            ApiException apiException => (apiException.StatusCode, new ErrorResponse(apiException.Code, apiException.Message, apiException.Usage)),
             _ => (StatusCodes.Status500InternalServerError, new ErrorResponse("INTERNAL_ERROR", "Erro interno do servidor.")),
         };
 

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Codex.Api.Contracts.Ai;
 using Codex.Api.Contracts.PhaseSets;
 
 namespace Codex.Api.Services;
@@ -30,7 +31,14 @@ public sealed record PhaseContent(
     IReadOnlyList<string?>? Blanks = null,
     string? StarterCode = null,
     string? TestCases = null,
-    string? ExpectedAnswer = null)
+    string? ExpectedAnswer = null,
+    string? Theme = null,
+    bool? ShowFeedbackAnimation = null,
+    int? IntroSeconds = null,
+    string? IntroTip = null,
+    bool? IntroSound = null,
+    bool? IntroShapes = null,
+    AiVariationOptions? VariationSettings = null)
 {
     /// <summary>
     /// Marcadores que abrem uma lacuna numa fase <c>fill</c>. Espelham
@@ -50,6 +58,7 @@ public sealed record PhaseContent(
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
     /// <summary>
@@ -93,7 +102,14 @@ public sealed record PhaseContent(
         phase.Blanks,
         phase.StarterCode,
         phase.TestCases,
-        phase.ExpectedAnswer);
+        phase.ExpectedAnswer,
+        string.IsNullOrWhiteSpace(phase.Theme) ? null : phase.Theme.Trim(),
+        phase.ShowFeedbackAnimation,
+        phase.IntroSeconds,
+        phase.IntroTip?.Trim(),
+        phase.IntroSound,
+        phase.IntroShapes,
+        phase.VariationSettings);
 
     public string ToJson() => JsonSerializer.Serialize(this, SerializerOptions);
 

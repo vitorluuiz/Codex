@@ -168,8 +168,8 @@ public static class PhaseGrading
                 }
 
                 // O unico campo que um aluno envia sem teto nenhum ate aqui — e o que mais cresce,
-                // porque e codigo colado. E ele que decide o tamanho do bucket do participante no
-                // documento da partida (400 submissoes) e o consumo do Redis durante a partida.
+                // porque e codigo colado. E ele que decide o tamanho de cada participante embutido
+                // no documento da partida (400 submissoes) e o consumo do Redis durante a partida.
                 if (PhaseLimits.ExceedsLength(answer.Source, PhaseLimits.MaxAnswerSourceLength))
                 {
                     throw Validation($"answer.source deve ter no maximo {PhaseLimits.MaxAnswerSourceLength} caracteres.");

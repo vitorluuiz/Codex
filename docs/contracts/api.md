@@ -68,9 +68,15 @@ Todas as respostas de erro seguem o formato padronizado com código estável:
 | 409 | `INVALID_DIRECTION` | Direção inválida de avanço (ex: voltar fase no modo live) |
 | 409 | `OAUTH_EMAIL_NOT_VERIFIED` | Provedor OAuth não forneceu e-mail verificado |
 | 429 | `RATE_LIMITED` | Limite de requisições excedido |
+| 429 | `AI_QUOTA_EXCEEDED` | Cota mensal de créditos de IA ou limite diário de sugestões atingido (inclui `usage` no corpo) |
+| 429 / 503 | `AI_BUSY` | Já há uma geração em andamento para a conta ou a fila do provedor de IA está ocupada |
+| 404 | `AI_GENERATION_NOT_FOUND` | Registro de geração de IA não encontrado ou de outro usuário |
 | 500 | `SERVICE_TOKEN_NOT_CONFIGURED` | API sem token de serviço configurado |
 | 501 | `OAUTH_PROVIDER_NOT_CONFIGURED`| Credenciais do provedor OAuth não configuradas |
+| 501 | `AI_NOT_CONFIGURED` | Nenhum provedor de IA configurado para o plano do usuário |
 | 502 | `OAUTH_EXCHANGE_FAILED` | Falha de comunicação com o provedor OAuth externo |
+| 502 | `AI_INVALID_OUTPUT` | O modelo de IA retornou uma resposta inválida mesmo após nova tentativa |
+| 503 | `AI_PROVIDER_UNAVAILABLE` | Provedor de IA fora do ar ou tempo limite esgotado |
 
 ---
 
@@ -362,6 +368,23 @@ Renomeia título do conjunto: `{ "title": "Novo Título" }`.
 
 #### `DELETE /phase-sets/{setId}`
 Exclui conjunto e suas fases associadas em cascata.
+
+#### 3.4.1 Geração Assistida por IA (`/ai`)
+
+Todas as rotas exigem sessão de usuário autenticado (`403 ACCOUNT_REQUIRED`). As fases geradas retornam com `fromAI: true` e **não** são gravadas em `phases` até que o autor revise e salve o conjunto.
+
+* `GET /ai/usage` -> `200 OK`: Retorna `{ "plan", "creditsUsed", "creditsLimit", "suggestionsUsedToday", "suggestionsDailyLimit", "resetsAt", "enabled" }`.
+* `POST /ai/phases/generate` -> `200 OK`:
+  * **Corpo:** `{ "kind": "quiz|fill|text|code", "topic": "...", "difficulty": "easy|medium|hard", "notes": "..." }`.
+  * **Resposta:** `{ "generationId": "uuid", "phase": DraftPhase, "usage": AiUsage }`. Custo padrão: `1` crédito.
+* `POST /ai/phases/variations` -> `200 OK`:
+  * **Corpo:** `{ "source": DraftPhase, "options": { "count": 1..5, "aspects": ["wording", "values", "context", "distractors"], "difficulty": "same|easier|harder", "keepSettings": true, "notes": "..." } }`.
+  * **Resposta:** `{ "generationId": "uuid", "phases": DraftPhase[], "discarded": 0, "usage": AiUsage }`. Custo padrão: `1` crédito para `count <= 3`, `2` créditos para `count > 3`.
+* `POST /ai/quiz/options/suggest` -> `200 OK`:
+  * **Corpo:** `{ "question": "...", "options": ["..."], "correctIndexes": [0], "count": 1..6, "mode": "distractors|correct|any" }`.
+  * **Resposta:** `{ "generationId": "uuid", "suggestions": [{ "label": "...", "isCorrect": false, "rationale": "..." }], "usage": AiUsage }`. Custo: `0` créditos (limitado por `suggestionsDailyLimit`).
+* `POST /ai/generations/{generationId}/decision` -> `204 No Content`:
+  * **Corpo:** `{ "decision": "accepted|partial|discarded", "acceptedCount": 1 }`. Registra a decisão do autor na revisão.
 
 ---
 

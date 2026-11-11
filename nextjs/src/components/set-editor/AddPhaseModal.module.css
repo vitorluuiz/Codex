@@ -383,6 +383,42 @@
   font-size: var(--text-body-s);
 }
 
+.pathsSingle {
+  grid-template-columns: 1fr;
+}
+
+.quotaBox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-m);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-sunken);
+}
+
+.quotaHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  font-weight: var(--fw-semibold);
+}
+
+.quotaCost {
+  color: var(--blue-700);
+  font-weight: var(--fw-bold);
+}
+
+.reviewActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

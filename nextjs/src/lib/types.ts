@@ -186,6 +186,8 @@ export interface PhaseSetLibrary {
   coverUrl: string | null;
 }
 
+export type PhaseTheme = 'default' | 'cyberpunk' | 'emerald' | 'sunset' | 'crimson';
+
 interface PhaseBase {
   id: string;
   setId: string;
@@ -193,6 +195,18 @@ interface PhaseBase {
   basePoints: number;
   pointsMultiplier: number;
   timeSeconds: number;
+  /** Identificador do tema visual da fase (ex.: 'default', 'cyberpunk', 'emerald', 'sunset', 'crimson'). */
+  theme?: string;
+  /** Se deve exibir animações e feedback visual dinâmico. */
+  showFeedbackAnimation?: boolean;
+  /** Duração em segundos da tela de introdução / pré-desafio. */
+  introSeconds?: number;
+  /** Mensagem / orientação exibida na tela de pré-desafio antes de começar. */
+  introTip?: string;
+  /** Se os efeitos sonoros da contagem regressiva ficam ativos no pré-desafio. */
+  introSound?: boolean;
+  /** Se exibe as formas geométricas animadas na tela de pré-desafio. */
+  introShapes?: boolean;
 }
 
 export interface QuizOption {
@@ -282,6 +296,20 @@ interface DraftPhaseBase {
   question: string;
   /** `true` enquanto o texto veio da IA e o autor não revisou. */
   fromAI: boolean;
+  /** Identificador do tema visual da fase (ex.: 'default', 'cyberpunk', 'emerald', 'sunset', 'crimson'). */
+  theme?: string;
+  /** Se deve exibir animações e feedback visual dinâmico. */
+  showFeedbackAnimation?: boolean;
+  /** Duração em segundos da tela de introdução / pré-desafio. */
+  introSeconds?: number;
+  /** Mensagem / orientação exibida na tela de pré-desafio antes de começar. */
+  introTip?: string;
+  /** Se os efeitos sonoros da contagem regressiva ficam ativos no pré-desafio. */
+  introSound?: boolean;
+  /** Se exibe as formas geométricas animadas na tela de pré-desafio. */
+  introShapes?: boolean;
+  /** Preferências de geração de variações por IA salvas junto da fase. */
+  variationSettings?: AiVariationOptions;
 }
 
 export interface QuizDraftPhase extends DraftPhaseBase {
@@ -314,11 +342,20 @@ export interface FillDraftPhase extends DraftPhaseBase {
 
 export type DraftPhase = QuizDraftPhase | CodeDraftPhase | TextDraftPhase | FillDraftPhase;
 
+export interface PhaseLimits {
+  maxQuestionLength: number;
+  maxOptionLength: number;
+  maxExpectedAnswerLength: number;
+  maxStarterCodeLength: number;
+  maxTestCasesLength: number;
+}
+
 export interface PhaseSetDraft {
   /** `null` num conjunto que ainda não foi salvo pela primeira vez. */
   id: string | null;
   title: string;
   phases: DraftPhase[];
+  limits?: PhaseLimits;
 }
 
 /** Dificuldade pedida na geração por IA. */
@@ -329,7 +366,78 @@ export interface AiPhaseRequest {
   topic: string;
   difficulty: AiDifficulty;
   /** Instruções adicionais do autor. Opcional. */
+  notes?: string;
+}
+
+export interface AiUsage {
+  plan: PlanId;
+  creditsUsed: number;
+  creditsLimit: number;
+  suggestionsUsedToday: number;
+  suggestionsDailyLimit: number;
+  resetsAt: string;
+  enabled: boolean;
+}
+
+export interface AiPhaseResult {
+  generationId: string;
+  phase: DraftPhase;
+  usage: AiUsage;
+}
+
+export type AiVariationAspect = 'wording' | 'values' | 'context' | 'distractors';
+export type AiDifficultyShift = 'same' | 'easier' | 'harder';
+
+export interface AiVariationOptions {
+  count: number;
+  aspects: AiVariationAspect[];
+  difficulty: AiDifficultyShift;
+  keepSettings: boolean;
+  notes?: string;
+}
+
+export interface AiVariationsResult {
+  generationId: string;
+  phases: DraftPhase[];
+  discarded: number;
+  usage: AiUsage;
+}
+
+export type QuizSuggestionMode = 'distractors' | 'correct' | 'any';
+
+export interface QuizOptionSuggestion {
+  label: string;
+  isCorrect: boolean;
+  rationale?: string;
+}
+
+export interface AiQuizOptionsResult {
+  generationId: string;
+  suggestions: QuizOptionSuggestion[];
+  usage: AiUsage;
+}
+
+export type AiDecision = 'accepted' | 'partial' | 'discarded';
+
+export interface PendingAiPhaseGeneration {
+  kind: PhaseKind;
+  topic: string;
+  difficulty: AiDifficulty;
   notes: string;
+  result: AiPhaseResult;
+}
+
+export interface PendingAiVariationsGeneration {
+  sourcePhaseId: string;
+  sourcePhaseName: string;
+  result: AiVariationsResult;
+  selectedIds: string[];
+}
+
+export interface PendingAiQuizSuggestions {
+  generationId: string;
+  suggestions: QuizOptionSuggestion[];
+  acceptedCount: number;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -526,4 +634,347 @@ export interface LeaderProfile {
   /** Conjuntos de autoria da pessoa, mais recentes primeiro. */
   sets: PhaseSetSummary[];
   matches: LeaderMatchSummary[];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Relatórios de Partidas                                                      */
+/* -------------------------------------------------------------------------- */
+
+export interface ReportOptionDistribution {
+  optionId: string;
+  label: string;
+  isCorrect: boolean;
+  count: number;
+  percentage: number;
+}
+
+export interface ReportPhaseAnalysis {
+  phaseId: string;
+  orderIndex: number;
+  phaseNumber: number;
+  setTitle: string;
+  kind: PhaseKind;
+  name: string;
+  question: string;
+  basePoints: number;
+  pointsMultiplier: number;
+  maxScore: number;
+  timeSeconds: number;
+  correctAnswerText: string;
+  submittedCount: number;
+  correctCount: number;
+  incorrectCount: number;
+  unansweredCount: number;
+  pendingCount: number;
+  accuracyRate: number;
+  avgScore: number;
+  avgElapsedSeconds: number;
+  mostCommonAnswerText: string | null;
+  optionDistribution: ReportOptionDistribution[];
+}
+
+export interface ReportParticipantAnswer {
+  phaseId: string;
+  phaseNumber: number;
+  phaseName: string;
+  kind: PhaseKind;
+  question: string;
+  submitted: boolean;
+  grading: 'graded' | 'pending' | 'unanswered';
+  correct: boolean | null;
+  score: number;
+  maxScore: number;
+  classAvgScore: number;
+  classAccuracyRate: number;
+  elapsedSeconds: number | null;
+  timeSeconds: number;
+  givenAnswerText: string;
+  correctAnswerText: string;
+  explanation: string | null;
+}
+
+export interface ReportParticipantAnalysis {
+  participantId: string;
+  userId: string | null;
+  displayName: string;
+  avatarIndex: AvatarIndex;
+  rank: number;
+  percentile: number;
+  accessToken: string;
+  joinedAt: string;
+  totalScore: number;
+  maxPossibleScore: number;
+  scorePercentage: number;
+  gradedCount: number;
+  correctCount: number;
+  incorrectCount: number;
+  unansweredCount: number;
+  pendingCount: number;
+  accuracyRate: number;
+  totalElapsedSeconds: number;
+  avgElapsedSeconds: number;
+  answers: ReportParticipantAnswer[];
+}
+
+export interface ReportOverview {
+  participantCount: number;
+  phaseCount: number;
+  avgScore: number;
+  maxPossibleScore: number;
+  maxAchievedScore: number;
+  minAchievedScore: number;
+  medianScore: number;
+  accuracyRate: number;
+  totalSubmissions: number;
+  totalGraded: number;
+  totalCorrect: number;
+  totalPending: number;
+  avgResponseSeconds: number;
+  durationSeconds: number;
+}
+
+export type InsightSeverity = 'low' | 'medium' | 'high';
+export type DifficultyLevel =
+  | 'very_easy'
+  | 'easy'
+  | 'medium'
+  | 'hard'
+  | 'very_hard'
+  | 'insufficient';
+
+export type QuestionFlag =
+  | 'time_too_short'
+  | 'time_too_long'
+  | 'long_question'
+  | 'long_options'
+  | 'reading_exceeds_time'
+  | 'low_discrimination'
+  | 'negative_discrimination'
+  | 'suspect_answer_key';
+
+export interface QuestionInsight {
+  phaseId: string;
+  phaseNumber: number;
+  difficulty: DifficultyLevel;
+  accuracyRate: number;
+  discriminationIndex: number | null;
+  unansweredRate: number;
+  lateSubmissionRate: number;
+  lateWrongRate: number;
+  avgTimeUsageRate: number;
+  questionWordCount: number;
+  questionCharCount: number;
+  avgOptionCharCount: number | null;
+  maxOptionCharCount: number | null;
+  estimatedReadingSeconds: number;
+  topDistractor: {
+    label: string;
+    percentage: number;
+    upperGroupPercentage: number;
+  } | null;
+  flags: QuestionFlag[];
+}
+
+export interface GuessingEvent {
+  phaseId: string;
+  phaseNumber: number;
+  phaseName: string;
+  type: 'fast_wrong' | 'late_wrong';
+  elapsedSeconds: number;
+  timeSeconds: number;
+  givenAnswerText: string;
+}
+
+export interface GuessingInsight {
+  participantId: string;
+  displayName: string;
+  avatarIndex: AvatarIndex;
+  gradedCount: number;
+  fastWrongCount: number;
+  lateWrongCount: number;
+  guessRate: number;
+  severity: InsightSeverity;
+  events: GuessingEvent[];
+}
+
+export interface CollusionEvidence {
+  phaseId: string;
+  phaseNumber: number;
+  phaseName: string;
+  type: 'shared_wrong' | 'sequential_same';
+  answerText: string;
+  rarity: number | null;
+  deltaMs: number | null;
+  followerParticipantId: string | null;
+}
+
+export interface CollusionPair {
+  participantAId: string;
+  participantAName: string;
+  participantBId: string;
+  participantBName: string;
+  commonPhases: number;
+  identicalAnswers: number;
+  agreementRate: number;
+  sharedWrongCount: number;
+  weightedRareSharedWrong: number;
+  sequentialCount: number;
+  dominantFollowerId: string | null;
+  score: number;
+  severity: InsightSeverity;
+  evidence: CollusionEvidence[];
+}
+
+export interface CollusionGroup {
+  participantIds: string[];
+  displayNames: string[];
+  maxSeverity: InsightSeverity;
+}
+
+export interface ReportInsights {
+  thresholdsVersion: number;
+  questions: QuestionInsight[];
+  guessing: {
+    eligible: boolean;
+    reason: string | null;
+    participants: GuessingInsight[];
+  };
+  collusion: {
+    eligible: boolean;
+    reason: string | null;
+    pairs: CollusionPair[];
+    groups: CollusionGroup[];
+  };
+  highlights: {
+    easiest: string[];
+    hardest: string[];
+    flaggedQuestionCount: number;
+    flaggedGuessers: number;
+    flaggedPairs: number;
+  };
+}
+
+export type AiVerdict = 'ok' | 'attention' | 'problem';
+
+export interface AiPhaseReview {
+  phaseId: string;
+  phaseNumber: number;
+  verdict: AiVerdict;
+  spelling: { excerpt: string; suggestion: string }[];
+  conceptual: { description: string; severity: InsightSeverity }[];
+  clarity: { description: string; suggestion: string | null }[];
+  answerKey: 'ok' | 'suspect' | 'wrong' | 'not_applicable';
+  answerKeyNote: string | null;
+  suggestedRewrite: string | null;
+}
+
+export interface ReportAiReview {
+  generatedAt: string;
+  requestedByUserId: string;
+  provider: string;
+  model: string;
+  phases: AiPhaseReview[];
+}
+
+export interface AiReportReviewResponse {
+  generationId: string;
+  aiReview: ReportAiReview;
+  usage: AiUsage;
+}
+
+export interface MatchReport {
+  id: string;
+  matchId: string;
+  schemaVersion: number;
+  status: 'processing' | 'ready' | 'failed';
+  shareToken: string;
+  roomCode: string;
+  roomId: string;
+  leaderUserId: string;
+  mode: MatchMode;
+  title: string;
+  startedAt: string;
+  finishedAt: string;
+  generatedAt: string;
+  durationSeconds: number;
+  overview: ReportOverview;
+  phases: ReportPhaseAnalysis[];
+  participants: ReportParticipantAnalysis[];
+  insights?: ReportInsights;
+  aiReview?: ReportAiReview | null;
+}
+
+export interface IndividualReport {
+  matchId: string;
+  roomCode: string;
+  mode: MatchMode;
+  title: string;
+  startedAt: string;
+  finishedAt: string;
+  generatedAt: string;
+  durationSeconds: number;
+  classOverview: {
+    participantCount: number;
+    phaseCount: number;
+    avgScore: number;
+    maxPossibleScore: number;
+    maxAchievedScore: number;
+    accuracyRate: number;
+    avgResponseSeconds: number;
+  };
+  participant: ReportParticipantAnalysis;
+}
+
+export interface LeaderReportHistoryItem {
+  matchId: string;
+  shareToken: string;
+  roomCode: string;
+  title: string;
+  mode: MatchMode;
+  finishedAt: string;
+  generatedAt: string;
+  durationSeconds: number;
+  participantCount: number;
+  phaseCount: number;
+  avgScore: number;
+  maxPossibleScore: number;
+  accuracyRate: number;
+}
+
+export interface ParticipantReportHistoryItem {
+  matchId: string;
+  accessToken: string;
+  roomCode: string;
+  title: string;
+  mode: MatchMode;
+  finishedAt: string;
+  displayName: string;
+  avatarIndex: AvatarIndex;
+  rank: number;
+  participantCount: number;
+  totalScore: number;
+  maxPossibleScore: number;
+  accuracyRate: number;
+  correctCount: number;
+  phaseCount: number;
+}
+
+export interface UserReportsHistory {
+  leaderReports: LeaderReportHistoryItem[];
+  participantReports: ParticipantReportHistoryItem[];
+}
+
+export interface ReportStatusResponse {
+  matchId: string;
+  status: 'processing' | 'ready' | 'failed' | 'not_found';
+  shareToken?: string;
+  generatedAt?: string;
+}
+
+export interface RoomReportResolution {
+  matchId: string;
+  role: 'leader' | 'participant';
+  shareToken: string | null;
+  accessToken: string | null;
+
 }

@@ -6,7 +6,7 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  background: radial-gradient(circle at 50% 35%, #1e3a8a, #0b132b 90%);
+  background: var(--phase-intro-bg, radial-gradient(circle at 50% 35%, #1e3a8a, #0b132b 90%));
   color: #ffffff;
   overflow: hidden;
   padding: 1.5rem;
@@ -52,7 +52,7 @@
   right: 12%;
   width: 44px;
   height: 44px;
-  background-color: var(--blue-400, #4c85fb);
+  background-color: var(--phase-accent-light, var(--blue-400, #4c85fb));
   transform: rotate(45deg);
   animation: floatReverse 8s ease-in-out infinite alternate;
 }
@@ -125,16 +125,25 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
   z-index: 10;
+}
+
+.topMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .phaseBadge {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--phase-accent, rgba(255, 255, 255, 0.16));
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 9999px;
   padding: 0.45rem 1rem;
   font-size: 0.92rem;
@@ -142,6 +151,19 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #ffffff;
+}
+
+.metaPill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 9999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .audioButton {
@@ -231,7 +253,7 @@
 }
 
 .timerProgress {
-  stroke: var(--blue-400, #4c85fb);
+  stroke: var(--phase-accent-light, var(--blue-400, #4c85fb));
   transition: stroke-dashoffset 0.25s linear;
   stroke-linecap: round;
 }
@@ -273,6 +295,27 @@
   color: rgba(255, 255, 255, 0.8);
   margin: 0;
   font-weight: 500;
+}
+
+.tipBanner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 16px;
+  padding: 0.75rem 1.25rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ffffff;
+  max-width: 560px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.tipIcon {
+  color: var(--amber-400, #fbbf24);
+  flex-shrink: 0;
 }
 
 /* --- Rodapé --- */

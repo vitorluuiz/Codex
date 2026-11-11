@@ -20,6 +20,7 @@ import {
   setPausedAction,
   submitAnswerAction,
 } from '@/lib/actions/match';
+import { getMatchReportStatusAction } from '@/lib/actions/reports';
 import type {
   AnswerPayload,
   Match,
@@ -96,11 +97,14 @@ function ChallengeContent({
 
   const [phaseState, setPhaseState] = useState<PhaseState>(initialPhaseState);
   const [startsAt, setStartsAt] = useState<number | null>(initialPhaseState.startsAt ?? null);
-  const [endsAt, setEndsAt] = useState<number | null>(
-    !initialPhaseState.paused && initialPhaseState.secondsLeft > 0
-      ? Date.now() + initialPhaseState.secondsLeft * 1000
-      : null,
-  );
+  const [endsAt, setEndsAt] = useState<number | null>(() => {
+    if (initialPhaseState.paused || initialPhaseState.secondsLeft <= 0) return null;
+    const baseTime =
+      initialPhaseState.startsAt && initialPhaseState.startsAt > Date.now()
+        ? initialPhaseState.startsAt
+        : Date.now();
+    return baseTime + initialPhaseState.secondsLeft * 1000;
+  });
   const [stats, setStats] = useState<PhaseStats | null>(initialStats);
   const [scoreboard, setScoreboard] = useState<PlayerScoreboard | null>(initialScoreboard);
   const [matchStatus, setMatchStatus] = useState(match.status);
@@ -120,6 +124,7 @@ function ChallengeContent({
   const [submission, setSubmission] = useState<Submission | null>(initialPhaseState.mySubmission);
   const [comparison, setComparison] = useState<PhaseComparison | null>(null);
   const [podium, setPodium] = useState<PodiumEntry[]>(initialPodium ?? []);
+  const [reportReady, setReportReady] = useState<boolean>(false);
   const [readyMarked, setReadyMarked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -358,6 +363,41 @@ function ChallengeContent({
     setScreen('podium');
   });
 
+  useRealtimeEvent('report.ready', (message) => {
+    if (!message.matchId || message.matchId === match.id) {
+      setReportReady(true);
+    }
+  });
+
+  useEffect(() => {
+    if (screen !== 'podium' || reportReady) return;
+    let cancelled = false;
+    let attempts = 0;
+
+    async function checkStatus() {
+      if (cancelled) return;
+      try {
+        const res = await getMatchReportStatusAction(match.id);
+        if (!cancelled && res && res.status === 'ready') {
+          setReportReady(true);
+          return;
+        }
+      } catch {
+        /* ignora e tenta de novo */
+      }
+      attempts += 1;
+      if (!cancelled && attempts < 10) {
+        setTimeout(checkStatus, 1200);
+      }
+    }
+
+    const timer = setTimeout(checkStatus, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [screen, reportReady, match.id]);
+
   useRealtimeEvent('match.returned-to-lobby', () => {
     // Quem está no pódio decide sozinho quando sair dele ("Continuar jogando"): o
     // líder voltar ao lobby não volta por ninguém. Quem já está nos resultados da
@@ -497,36 +537,48 @@ function ChallengeContent({
         entries={podium}
         onViewReport={() => router.push(`/sala/${roomCode}/relatorio`)}
         onContinue={backToLobby}
+        reportReady={reportReady}
+        isLeader={isLeader}
       />
     );
   }
 
+  const phaseTheme = phase.theme || 'default';
+
   if (screen === 'timeup') {
-    return <TimeUpScreen onContinue={openComparison} />;
+    return (
+      <div data-phase-theme={phaseTheme}>
+        <TimeUpScreen onContinue={openComparison} />
+      </div>
+    );
   }
 
   if (screen === 'collective' && comparison) {
     return (
-      <CollectiveFeedbackScreen
-        comparison={comparison}
-        isLastPhase={isLastPhase}
-        waitsForLeader={match.mode === 'live'}
-        readyMarked={readyMarked}
-        onMarkReady={markReady}
-        onNextPhase={() => startTransition(() => void advancePhaseAction(match.id, 'next'))}
-        onViewPodium={showPodium}
-      />
+      <div data-phase-theme={phaseTheme}>
+        <CollectiveFeedbackScreen
+          comparison={comparison}
+          isLastPhase={isLastPhase}
+          waitsForLeader={match.mode === 'live'}
+          readyMarked={readyMarked}
+          onMarkReady={markReady}
+          onNextPhase={() => startTransition(() => void advancePhaseAction(match.id, 'next'))}
+          onViewPodium={showPodium}
+        />
+      </div>
     );
   }
 
   if (screen === 'individual' && submission) {
     return (
-      <IndividualFeedbackScreen
-        phase={phase}
-        submission={submission}
-        totalScore={scoreboard?.myScore ?? 0}
-        onContinue={openComparison}
-      />
+      <div data-phase-theme={phaseTheme}>
+        <IndividualFeedbackScreen
+          phase={phase}
+          submission={submission}
+          totalScore={scoreboard?.myScore ?? 0}
+          onContinue={openComparison}
+        />
+      </div>
     );
   }
 
@@ -544,19 +596,21 @@ function ChallengeContent({
 
   if (screen === 'waiting') {
     return (
-      <WaitingScreen
-        submittedCount={phaseState.submittedCount}
-        totalPlayers={phaseState.totalPlayers}
-        secondsLeft={secondsLeft}
-        paused={paused}
-      />
+      <div data-phase-theme={phaseTheme}>
+        <WaitingScreen
+          submittedCount={phaseState.submittedCount}
+          totalPlayers={phaseState.totalPlayers}
+          secondsLeft={secondsLeft}
+          paused={paused}
+        />
+      </div>
     );
   }
 
   /* --- tela do desafio ---------------------------------------------------- */
 
   return (
-    <div className={styles.screen}>
+    <div className={styles.screen} data-phase-theme={phaseTheme}>
       {connection !== 'open' && (
         <p className={styles.connectionBanner}>
           {connection === 'closed'

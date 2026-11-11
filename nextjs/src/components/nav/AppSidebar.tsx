@@ -1,16 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
+import { useState, useTransition, type ReactNode } from 'react';
 
 import { Avatar } from '@/components/avatar/Avatar';
 import { Icon } from '@/components/icons/Icons';
+import { AUDIENCE_LABEL } from '@/components/nav/audienceLabels';
+import { logoutAction } from '@/lib/actions/auth';
 import { cx } from '@/lib/cx';
 import type { User } from '@/lib/types';
 import styles from './AppSidebar.module.css';
 
 /** Chaves das telas que a barra conhece. */
-export type AppSection = 'perfil' | 'conjuntos';
+export type AppSection = 'perfil' | 'conjuntos' | 'relatorios';
 
 /** As duas faces do perfil — cada uma com seu próprio menu. */
 export type ProfileMode = 'leader' | 'participant';
@@ -21,31 +23,39 @@ interface NavEntry {
   icon: ReactNode;
   /** Sem destino a entrada aparece desabilitada — a tela ainda não existe. */
   href?: string;
+  /**
+   * Se o destino exige usuário logado. Padrão: true.
+   * Quando o visitante está em rotas públicas sem conta, entradas com
+   * `requiresAuth` não aparecem na barra.
+   */
+  requiresAuth?: boolean;
 }
 
 /**
  * Itens ainda não construídos aparecem desabilitados em vez de sumirem: o menu
  * é o mapa do produto, e esconder o que vem depois faz a barra parecer quebrada
- * a cada release.
+ * a cada release. Já abas que exigem autenticação nem aparecem quando o usuário
+ * está deslogado, mantendo a barra enxuta apenas com as rotas acessíveis.
  */
 const LEADER_ENTRIES: NavEntry[] = [
-  { key: 'perfil', label: 'Perfil', icon: <Icon.Person size={18} />, href: '/perfil' },
-  { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} /> },
-  // { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} />, href: '/conjuntos' },
-  { key: 'salas', label: 'Minhas salas', icon: <Icon.Templates size={18} /> },
-  { key: 'turmas', label: 'Minhas turmas', icon: <Icon.Users size={18} /> },
-  { key: 'relatorios', label: 'Relatórios', icon: <Icon.Reports size={18} /> },
-  { key: 'notificacoes', label: 'Notificações', icon: <Icon.Bell size={18} /> },
-  { key: 'configuracoes', label: 'Configurações', icon: <Icon.Settings size={18} /> },
+  { key: 'perfil', label: 'Perfil', icon: <Icon.Person size={18} />, href: '/perfil', requiresAuth: true },
+  { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} />, requiresAuth: true },
+  // { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} />, href: '/conjuntos', requiresAuth: true },
+  { key: 'salas', label: 'Minhas salas', icon: <Icon.Templates size={18} />, requiresAuth: true },
+  { key: 'turmas', label: 'Minhas turmas', icon: <Icon.Users size={18} />, requiresAuth: true },
+  { key: 'relatorios', label: 'Relatórios', icon: <Icon.Reports size={18} />, href: '/relatorios', requiresAuth: false },
+  { key: 'notificacoes', label: 'Notificações', icon: <Icon.Bell size={18} />, requiresAuth: true },
+  { key: 'configuracoes', label: 'Configurações', icon: <Icon.Settings size={18} />, requiresAuth: true },
 ];
 
 const PARTICIPANT_ENTRIES: NavEntry[] = [
-  { key: 'perfil', label: 'Perfil', icon: <Icon.Person size={18} />, href: '/perfil' },
-  { key: 'conquistas', label: 'Conquistas', icon: <Icon.Award size={18} /> },
-  { key: 'ranking', label: 'Ranking', icon: <Icon.Trophy size={18} /> },
-  { key: 'turmas-participo', label: 'Turmas em que participo', icon: <Icon.Users size={18} /> },
-  { key: 'notificacoes', label: 'Notificações', icon: <Icon.Bell size={18} /> },
-  { key: 'configuracoes', label: 'Configurações', icon: <Icon.Settings size={18} /> },
+  { key: 'perfil', label: 'Perfil', icon: <Icon.Person size={18} />, href: '/perfil', requiresAuth: true },
+  { key: 'relatorios', label: 'Meus relatórios', icon: <Icon.Reports size={18} />, href: '/relatorios', requiresAuth: false },
+  { key: 'conquistas', label: 'Conquistas', icon: <Icon.Award size={18} />, requiresAuth: true },
+  { key: 'ranking', label: 'Ranking', icon: <Icon.Trophy size={18} />, requiresAuth: true },
+  { key: 'turmas-participo', label: 'Turmas em que participo', icon: <Icon.Users size={18} />, requiresAuth: true },
+  { key: 'notificacoes', label: 'Notificações', icon: <Icon.Bell size={18} />, requiresAuth: true },
+  { key: 'configuracoes', label: 'Configurações', icon: <Icon.Settings size={18} />, requiresAuth: true },
 ];
 
 const PROFILE_OPTIONS: { mode: ProfileMode; label: string; hint: string; icon: ReactNode }[] = [
@@ -59,11 +69,11 @@ const PROFILE_OPTIONS: { mode: ProfileMode; label: string; hint: string; icon: R
 ];
 
 interface AppSidebarProps {
-  user: User;
-  audienceLabel: string;
+  user?: User | null;
+  audienceLabel?: string;
   /** Qual entrada está aberta. As demais viram link ou item "em breve". */
   active: AppSection;
-  onSignOut: () => void;
+  onSignOut?: () => void;
   /**
    * Qual face do perfil está aberta. Presente só em `/perfil`: é o que decide
    * o menu (líder vs participante) e habilita o switcher "Trocar de perfil" no
@@ -82,8 +92,19 @@ export function AppSidebar({
   profileMode,
   onProfileModeChange,
 }: AppSidebarProps) {
+  const [, startTransition] = useTransition();
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const entries = profileMode === 'participant' ? PARTICIPANT_ENTRIES : LEADER_ENTRIES;
+  const allEntries = profileMode === 'participant' ? PARTICIPANT_ENTRIES : LEADER_ENTRIES;
+  const entries = user ? allEntries : allEntries.filter((entry) => entry.requiresAuth === false);
+  const roleLabel = audienceLabel ?? (user ? AUDIENCE_LABEL[user.audience] : '');
+
+  function handleSignOut() {
+    if (onSignOut) {
+      onSignOut();
+    } else {
+      startTransition(() => void logoutAction());
+    }
+  }
 
   return (
     <nav className={styles.sidebar} aria-label="Navegação da conta">
@@ -115,7 +136,7 @@ export function AppSidebar({
       </ul>
 
       <div className={styles.footer}>
-        {onProfileModeChange && (
+        {user && onProfileModeChange && (
           <div className={styles.switcher}>
             {switcherOpen && (
               <div className={styles.switcherPanel}>
@@ -156,7 +177,7 @@ export function AppSidebar({
                 <Avatar index={user.avatarIndex} size="sm" name={user.name} />
                 <div>
                   <div className={styles.accountName}>{user.name}</div>
-                  <div className={styles.accountRole}>{audienceLabel}</div>
+                  <div className={styles.accountRole}>{roleLabel}</div>
                 </div>
               </div>
               <Icon.ChevronDown size={16} className={styles.switcherChevron} />
@@ -164,20 +185,27 @@ export function AppSidebar({
           </div>
         )}
 
-        {!onProfileModeChange && (
+        {user && !onProfileModeChange && (
           <div className={styles.account}>
             <Avatar index={user.avatarIndex} size="sm" name={user.name} />
             <div className={styles.accountInfo}>
               <div className={styles.accountName}>{user.name}</div>
-              <div className={styles.accountRole}>{audienceLabel}</div>
+              <div className={styles.accountRole}>{roleLabel}</div>
             </div>
           </div>
         )}
 
-        <button type="button" className={styles.signOut} onClick={onSignOut}>
-          <Icon.SignOut size={18} />
-          Sair
-        </button>
+        {user ? (
+          <button type="button" className={styles.signOut} onClick={handleSignOut}>
+            <Icon.SignOut size={18} />
+            Sair
+          </button>
+        ) : (
+          <Link href="/entrar" className={styles.signIn}>
+            <Icon.Person size={18} />
+            Entrar
+          </Link>
+        )}
       </div>
     </nav>
   );

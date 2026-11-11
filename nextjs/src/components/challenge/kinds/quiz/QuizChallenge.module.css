@@ -1,6 +1,7 @@
 .prompt {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
+  border-top: 3px solid var(--phase-accent, var(--blue-500));
   border-radius: var(--radius-xl);
   padding: clamp(24px, 4vw, 40px);
   box-shadow: var(--shadow-s);
@@ -12,7 +13,7 @@
   font-weight: var(--fw-bold);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-secondary);
+  color: var(--phase-accent, var(--text-secondary));
   margin: 0 0 12px;
 }
 

@@ -1,6 +1,6 @@
 .screen {
   min-height: 100vh;
-  background: var(--surface-page);
+  background: var(--phase-surface-glow, var(--surface-page));
   font-family: var(--font-body);
   display: flex;
   flex-direction: column;

@@ -171,7 +171,6 @@ export function MatchHistorySection({
                 <button
                   type="button"
                   className={styles.iconButton}
-                  disabled
                   onClick={() => onDownload(match)}
                   title="Baixar relatório"
                   aria-label={`Baixar relatório de ${match.setTitle}`}
@@ -209,7 +208,23 @@ export function MatchHistorySection({
               <Button variant="secondary" onClick={() => setReport(null)}>
                 Fechar
               </Button>
-              <Button onClick={() => onDownload(report)}>Baixar relatório</Button>
+              <Button
+                variant="secondary"
+                onClick={() =>
+                  window.open(
+                    `/api/reports/matches/${encodeURIComponent(report.id)}/export?format=xlsx`,
+                    '_blank',
+                  )
+                }
+              >
+                Excel (.xlsx)
+              </Button>
+              <Button variant="secondary" onClick={() => onDownload(report)}>
+                PDF
+              </Button>
+              <Link href={`/relatorios/${report.id}`} className={styles.resumeLink}>
+                Abrir página web
+              </Link>
             </div>
           </div>
         )}

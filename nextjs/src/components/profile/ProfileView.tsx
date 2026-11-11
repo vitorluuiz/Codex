@@ -41,7 +41,6 @@ interface ProfileViewProps {
 export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: ProfileViewProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  console.log(profile)
 
   const [user, setUser] = useState(profile.user);
   const [profileMode, setProfileMode] = useState<ProfileMode>('leader');
@@ -62,9 +61,10 @@ export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: Profile
   }
 
   function downloadReport(match: LeaderMatchSummary) {
+    router.push(`/relatorios/${encodeURIComponent(match.id)}?export=pdf`);
     startTransition(async () => {
       await exportMatchReportAction(match.id);
-      setToast(`${match.setTitle} · ${match.playedAtLabel}`);
+      setToast(`Exportando relatório de ${match.setTitle} · ${match.playedAtLabel}`);
     });
   }
 

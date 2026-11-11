@@ -696,11 +696,13 @@ public class MatchService(
     /// Zera o cronometro para a fase indicada. O <c>CurrentPhaseEndedAt</c> volta a nulo aqui, e nao
     /// em cada chamador, porque "comecar uma fase" e "ela nao esta fechada" sao a mesma afirmacao —
     /// separa-las e como o codigo esqueceria de reabrir a fase num reinicio.
-    /// Inclui a janela de introducao/aquecimento sincronizada de 5 segundos.
+    /// Inclui a janela de introducao/aquecimento sincronizada configurada na fase (ou 5s por padrao).
     /// </summary>
     private static void StartPhaseClock(Match match, RoomQueuePhase phase, DateTimeOffset now)
     {
-        match.CurrentPhaseStartedAt = now.AddSeconds(IntroDurationSeconds);
+        var introSeconds = PhaseContent.Parse(phase.ContentJson).IntroSeconds ?? IntroDurationSeconds;
+        var clampedIntro = Math.Clamp(introSeconds, 0, PhaseLimits.MaxIntroSeconds);
+        match.CurrentPhaseStartedAt = now.AddSeconds(clampedIntro);
         match.CurrentPhaseEndsAt = match.CurrentPhaseStartedAt.Value.AddSeconds(phase.TimeSeconds);
         match.CurrentPhaseEndedAt = null;
         match.PausedSecondsLeft = null;

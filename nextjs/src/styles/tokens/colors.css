@@ -90,3 +90,95 @@
   --tone-green-surface: #0d2f1c;
   --tone-amber-surface: #3a2708;
 }
+
+/* --- Temas de personalização do desafio (PhaseSettings) ------------------- */
+
+[data-phase-theme='default'] {
+  --accent-primary: var(--blue-500);
+  --accent-primary-hover: var(--blue-600);
+  --accent-primary-active: var(--blue-700);
+  --focus-ring: var(--blue-400);
+  --phase-accent: #2f6fed;
+  --phase-accent-light: #4c85fb;
+  --phase-accent-soft: #dbe7ff;
+  --phase-accent-strong: #1642a6;
+  --phase-surface-glow: radial-gradient(circle at 50% 0%, rgba(47, 111, 237, 0.08), transparent 60%), var(--surface-page);
+  --phase-intro-bg: radial-gradient(circle at 50% 35%, #1e3a8a, #0b132b 90%);
+}
+
+[data-phase-theme='cyberpunk'] {
+  --accent-primary: #8b5cf6;
+  --accent-primary-hover: #7c3aed;
+  --accent-primary-active: #6d28d9;
+  --focus-ring: #a78bfa;
+  --phase-accent: #8b5cf6;
+  --phase-accent-light: #a78bfa;
+  --phase-accent-soft: #ede9fe;
+  --phase-accent-strong: #5b21b6;
+  --phase-surface-glow: radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.12), transparent 60%), var(--surface-page);
+  --phase-intro-bg: radial-gradient(circle at 50% 35%, #4c1d95, #0f0720 90%);
+}
+
+[data-phase-theme='emerald'] {
+  --accent-primary: #16a34a;
+  --accent-primary-hover: #15803d;
+  --accent-primary-active: #166534;
+  --focus-ring: #4ade80;
+  --phase-accent: #16a34a;
+  --phase-accent-light: #4ade80;
+  --phase-accent-soft: #dcfce7;
+  --phase-accent-strong: #166534;
+  --phase-surface-glow: radial-gradient(circle at 50% 0%, rgba(22, 163, 74, 0.1), transparent 60%), var(--surface-page);
+  --phase-intro-bg: radial-gradient(circle at 50% 35%, #065f46, #041f18 90%);
+}
+
+[data-phase-theme='sunset'] {
+  --accent-primary: #d97706;
+  --accent-primary-hover: #b45309;
+  --accent-primary-active: #92400e;
+  --focus-ring: #fbbf24;
+  --phase-accent: #d97706;
+  --phase-accent-light: #fbbf24;
+  --phase-accent-soft: #fef3c7;
+  --phase-accent-strong: #92400e;
+  --phase-surface-glow: radial-gradient(circle at 50% 0%, rgba(217, 119, 6, 0.11), transparent 60%), var(--surface-page);
+  --phase-intro-bg: radial-gradient(circle at 50% 35%, #7c2d12, #1c0a04 90%);
+}
+
+[data-phase-theme='crimson'] {
+  --accent-primary: #dc2626;
+  --accent-primary-hover: #b91c1c;
+  --accent-primary-active: #991b1b;
+  --focus-ring: #f87171;
+  --phase-accent: #dc2626;
+  --phase-accent-light: #f87171;
+  --phase-accent-soft: #fee2e2;
+  --phase-accent-strong: #991b1b;
+  --phase-surface-glow: radial-gradient(circle at 50% 0%, rgba(220, 38, 38, 0.1), transparent 60%), var(--surface-page);
+  --phase-intro-bg: radial-gradient(circle at 50% 35%, #7f1d1d, #1a0606 90%);
+}
+
+[data-theme='dark'] [data-phase-theme='default'] {
+  --phase-accent-soft: rgba(47, 111, 237, 0.22);
+  --phase-accent-strong: #93c5fd;
+}
+
+[data-theme='dark'] [data-phase-theme='cyberpunk'] {
+  --phase-accent-soft: rgba(139, 92, 246, 0.24);
+  --phase-accent-strong: #c4b5fd;
+}
+
+[data-theme='dark'] [data-phase-theme='emerald'] {
+  --phase-accent-soft: rgba(22, 163, 74, 0.24);
+  --phase-accent-strong: #86efac;
+}
+
+[data-theme='dark'] [data-phase-theme='sunset'] {
+  --phase-accent-soft: rgba(217, 119, 6, 0.24);
+  --phase-accent-strong: #fcd34d;
+}
+
+[data-theme='dark'] [data-phase-theme='crimson'] {
+  --phase-accent-soft: rgba(220, 38, 38, 0.24);
+  --phase-accent-strong: #fca5a5;
+}

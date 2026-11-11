@@ -114,6 +114,13 @@
   align-items: start;
 }
 
+/* A panel variation that supports items outside original panel */
+.superPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .panel {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
@@ -143,6 +150,7 @@
   font-weight: var(--fw-semibold);
   color: var(--text-primary);
   margin-bottom: 6px;
+  gap: var(--space-2);
 }
 
 .barHeaderCorrect {

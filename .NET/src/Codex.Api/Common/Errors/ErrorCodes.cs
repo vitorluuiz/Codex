@@ -104,4 +104,12 @@ public static class ErrorCodes
 
     /// <summary>O provedor nao afirma que o email e verificado (caso comum no GitHub com email privado). Sem isso nao ha como vincular a uma conta existente sem abrir tomada de conta.</summary>
     public const string OAuthEmailNotVerified = "OAUTH_EMAIL_NOT_VERIFIED";
+
+    // Geracao por IA.
+    public const string AiNotConfigured = "AI_NOT_CONFIGURED";
+    public const string AiQuotaExceeded = "AI_QUOTA_EXCEEDED";
+    public const string AiBusy = "AI_BUSY";
+    public const string AiProviderUnavailable = "AI_PROVIDER_UNAVAILABLE";
+    public const string AiInvalidOutput = "AI_INVALID_OUTPUT";
+    public const string AiGenerationNotFound = "AI_GENERATION_NOT_FOUND";
 }

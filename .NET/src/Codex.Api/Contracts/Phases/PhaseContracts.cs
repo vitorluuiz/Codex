@@ -63,7 +63,21 @@ public record PhaseDto(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     string? FileName = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    IReadOnlyList<CodeLanguageDto>? Languages = null);
+    IReadOnlyList<CodeLanguageDto>? Languages = null,
+
+    // temas do desafio e tela de pre-desafio
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? Theme = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    bool? ShowFeedbackAnimation = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    int? IntroSeconds = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? IntroTip = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    bool? IntroSound = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    bool? IntroShapes = null);
 
 /// <summary>
 /// Alternativa de quiz com id, que e o que a submissao referencia (<c>answer.optionId</c>, secao 8).

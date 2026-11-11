@@ -100,4 +100,12 @@ public static class RedisKeys
     /// <c>commit:pending</c> → SET com IDs de partidas finalizadas aguardando confirmação no MongoDB.
     /// </summary>
     public static string CommitPending() => "commit:pending";
+
+    // ── IA ─────────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// <c>ai:inflight:{userId}</c> → STRING com o <c>generationId</c> em andamento.
+    /// Trava por usuario via <c>SET NX EX</c> para serializar a checagem de cota e impedir geracoes concorrentes.
+    /// </summary>
+    public static string AiInflight(string userId) => $"ai:inflight:{userId}";
 }

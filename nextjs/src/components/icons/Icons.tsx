@@ -243,6 +243,15 @@ export const Icon = {
       <path d="M12 5v14M5 12h14" />
     </svg>
   ),
+  Shuffle: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <path d="M16 3h5v5" />
+      <path d="M4 20L21 3" />
+      <path d="M21 16v5h-5" />
+      <path d="M15 15l6 6" />
+      <path d="M4 4l5 5" />
+    </svg>
+  ),
   Grid: ({ size = 24, className }: IconProps) => (
     <svg {...base(size, className)}>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />

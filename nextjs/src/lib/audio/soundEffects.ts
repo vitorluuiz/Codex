@@ -128,6 +128,39 @@ class SoundEffectsController {
       });
     } catch {}
   }
+
+  /**
+   * Acorde celebratório quando o participante acerta o desafio (acompanha os confetes).
+   */
+  public playSuccess(): void {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const notes = [587.33, 739.99, 880, 1174.66]; // Ré maior brilhante (D5 -> F#5 -> A5 -> D6)
+
+      notes.forEach((freq, index) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const start = now + index * 0.055;
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(0.18, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.42);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(start);
+        osc.stop(start + 0.44);
+      });
+    } catch {}
+  }
 }
 
 export const soundEffects = new SoundEffectsController();

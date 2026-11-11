@@ -24,4 +24,5 @@ public class User
 
     public ICollection<UserIdentity> Identities { get; init; } = [];
     public ICollection<PhaseSet> PhaseSets { get; init; } = [];
+    public ICollection<AiGeneration> AiGenerations { get; init; } = [];
 }

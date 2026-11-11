@@ -1,0 +1,191 @@
+.accordion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.flush {
+  gap: 0;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.item {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  background: var(--surface-card);
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+  overflow: hidden;
+}
+
+.item:hover:not(.itemDisabled) {
+  border-color: var(--border-strong);
+}
+
+.itemExpanded {
+  border-color: var(--blue-300);
+  box-shadow: 0 2px 8px rgba(47, 111, 237, 0.06);
+}
+
+.itemDisabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Flush variant */
+.itemFlush {
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+}
+
+.itemFlush:last-child {
+  border-bottom: none;
+}
+
+.itemFlush.itemExpanded {
+  border-color: var(--border-subtle);
+  box-shadow: none;
+}
+
+/* Trigger Button */
+.trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.trigger:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+
+.trigger:disabled {
+  cursor: not-allowed;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+
+.iconWrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-s);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.itemExpanded .iconWrapper {
+  background: var(--blue-100);
+  color: var(--blue-700);
+}
+
+.headerContent {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.title {
+  font-family: var(--font-body);
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.subtitle {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  line-height: 1.3;
+  margin-top: 2px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.chevron {
+  color: var(--text-secondary);
+  transition:
+    transform var(--dur-normal) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chevronExpanded {
+  transform: rotate(180deg);
+  color: var(--accent-primary);
+}
+
+/* Collapsible Panel with CSS Grid Animation */
+.panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-normal) var(--ease-out);
+}
+
+.panelExpanded {
+  grid-template-rows: 1fr;
+}
+
+.panelInner {
+  overflow: hidden;
+}
+
+.panelContent {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.itemFlush .panelContent {
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}
