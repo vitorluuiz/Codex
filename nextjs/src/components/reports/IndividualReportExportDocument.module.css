@@ -1,0 +1,352 @@
+/* ==========================================================================
+   Documento de Exportação HTML -> PDF (Individual / Aluno)
+   Estilizado para renderização A4 com tema claro e economia de tinta.
+   Edições feitas aqui são refletidas em tempo real na rota de preview (/relatorios/preview).
+   ========================================================================== */
+
+.exportDocument {
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --surface-page: #ffffff;
+  --surface-card: #ffffff;
+  --surface-sunken: #f8fafc;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --accent-primary: #1e56d1;
+  --tone-green-surface: #dcfce7;
+  --tone-amber-surface: #fef3c7;
+  --tone-pink-surface: #fce7f3;
+
+  width: 860px;
+  max-width: 860px;
+  margin: 0 auto;
+  background: #ffffff;
+  color: var(--text-primary);
+  font-family: var(--font-body), system-ui, -apple-system, sans-serif;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-sizing: border-box;
+}
+
+.heroCard {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.identityRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.identityInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rankBadge {
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.roomBadge {
+  padding: 3px 10px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.playerName {
+  margin: 0;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.matchMeta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.scoreHighlight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  background: var(--surface-sunken);
+  padding: 12px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+}
+
+.scoreLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.scoreBig {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--accent-primary);
+}
+
+.scoreMax {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.scoreSub {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.kpiTile {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpiLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.kpiValue {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.kpiComparison {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.reviewSection {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--border-subtle);
+}
+
+.sectionTag {
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.answerList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.answerCard {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-left-width: 4px;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cardCorrect {
+  border-left-color: #16a34a;
+}
+
+.cardWrong {
+  border-left-color: #dc2626;
+}
+
+.cardPending {
+  border-left-color: #d97706;
+}
+
+.cardUnanswered {
+  border-left-color: #94a3b8;
+}
+
+.answerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.answerTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.phaseNum {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.kindChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.phaseTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.answerStats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.statusPill {
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: #f1f5f9;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pointsText,
+.timeText {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.questionText {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--surface-sunken);
+  padding: 10px 12px;
+  border-radius: 8px;
+  line-height: 1.4;
+}
+
+.comparisonGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.answerBox {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: #ffffff;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.boxLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.boxValue {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.classFoot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-top: 4px;
+}

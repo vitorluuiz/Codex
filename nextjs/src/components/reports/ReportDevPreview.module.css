@@ -1,0 +1,172 @@
+.previewCanvas {
+  min-height: 100vh;
+  background: #0f172a;
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.brandGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.badgeDev {
+  padding: 3px 9px;
+  border-radius: 9999px;
+  background: #3b82f6;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.docTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #334155;
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.backButton:hover {
+  background: #475569;
+}
+
+.segmentedControl {
+  display: inline-flex;
+  background: #0f172a;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+}
+
+.segmentBtn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.segmentBtn:hover {
+  color: #f8fafc;
+}
+
+.segmentBtnActive {
+  background: #334155;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.devNotice {
+  background: #172554;
+  border-bottom: 1px solid #1e40af;
+  color: #bfdbfe;
+  padding: 8px 24px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.devNotice code {
+  background: #1e3a8a;
+  color: #93c5fd;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+}
+
+.noticeIcon {
+  font-size: 14px;
+}
+
+.paperStage {
+  flex: 1;
+  padding: 40px 20px 80px;
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.paperContainer {
+  background: #ffffff;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  overflow: visible;
+  transition: all 0.2s ease;
+}
+
+/* Quando "Guias A4" estiver ativo, adiciona régua visual de quebras */
+.paperWithA4Guides {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 1450px,
+    #ef4444 1450px,
+    #ef4444 1452px
+  );
+  position: relative;
+}
+
+.paperWithA4Guides::after {
+  content: 'Limite Aprox. Folha A4';
+  position: absolute;
+  top: 1430px;
+  right: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ef4444;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+}

@@ -1,0 +1,621 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+
+.exportVariant {
+  gap: 14px;
+}
+
+/* --- Highlights Grid --- */
+.highlightsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3, 12px);
+}
+
+.exportVariant .highlightsGrid {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.highlightCard {
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: var(--radius-l, 12px);
+  padding: var(--space-4, 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.exportVariant .highlightCard {
+  background: var(--surface-sunken, #f8fafc);
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+
+.highlightLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary, #475569);
+}
+
+.highlightValue {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+}
+
+.highlightSub {
+  font-size: 12px;
+  color: var(--text-secondary, #475569);
+  line-height: 1.35;
+}
+
+/* --- AI Action Banner --- */
+.aiBanner {
+  background: linear-gradient(135deg, var(--blue-50, #eff6ff) 0%, var(--surface-card, #ffffff) 100%);
+  border: 1px solid var(--blue-200, #bfdbfe);
+  border-radius: var(--radius-xl, 16px);
+  padding: var(--space-5, 20px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4, 16px);
+}
+
+.aiBannerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 680px;
+}
+
+.aiBannerTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aiBannerBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--blue-600, #2563eb);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.aiBannerTitle {
+  margin: 0;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.aiBannerDesc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary, #475569);
+  line-height: 1.45;
+}
+
+.aiBannerError {
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.aiBannerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* --- Dispersion Chart (Accuracy vs Discrimination D) --- */
+.chartCard {
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: var(--radius-xl, 14px);
+  padding: var(--space-5, 18px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exportVariant .chartCard {
+  background: var(--surface-sunken, #f8fafc);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.chartHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chartTitle {
+  margin: 0;
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.chartHint {
+  font-size: 12px;
+  color: var(--text-secondary, #475569);
+}
+
+.scatterPlot {
+  position: relative;
+  height: 168px;
+  background: var(--surface-sunken, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 10px;
+  margin: 4px 12px 18px 36px;
+}
+
+.exportVariant .scatterPlot {
+  background: #ffffff;
+}
+
+.scatterZeroLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px dashed #94a3b8;
+  z-index: 1;
+}
+
+.scatterEasyZone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 22%;
+  background: rgba(59, 130, 246, 0.05);
+  border-left: 1px dotted #93c5fd;
+}
+
+.scatterHardZone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 35%;
+  background: rgba(220, 38, 38, 0.04);
+  border-right: 1px dotted #fca5a5;
+}
+
+.scatterQuadrants {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 35% 43% 22%;
+  grid-template-rows: 1fr 1fr;
+  pointer-events: none;
+  user-select: none;
+  z-index: 1;
+}
+
+.scatterQuadrant {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 6px 8px;
+  gap: 2px;
+}
+
+.quadrantTitle {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary, #475569);
+  opacity: 0.62;
+}
+
+.quadrantSub {
+  font-size: 9.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text-secondary, #64748b);
+  opacity: 0.55;
+}
+
+.scatterYLabelTop {
+  position: absolute;
+  left: -34px;
+  top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary, #64748b);
+}
+
+.scatterYLabelMid {
+  position: absolute;
+  left: -34px;
+  top: calc(50% - 7px);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary, #64748b);
+}
+
+.scatterYLabelBot {
+  position: absolute;
+  left: -34px;
+  bottom: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary, #64748b);
+}
+
+.scatterXLabelLeft {
+  position: absolute;
+  left: 4px;
+  bottom: -18px;
+  font-size: 10px;
+  color: var(--text-secondary, #64748b);
+}
+
+.scatterXLabelCenter {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -18px;
+  font-size: 10px;
+  color: var(--text-secondary, #64748b);
+}
+
+.scatterXLabelRight {
+  position: absolute;
+  right: 4px;
+  bottom: -18px;
+  font-size: 10px;
+  color: var(--text-secondary, #64748b);
+}
+
+.scatterDot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.18);
+  white-space: nowrap;
+  z-index: 2;
+}
+
+/* --- Phase Diagnostic List --- */
+.phaseList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.phaseCard {
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: var(--radius-xl, 14px);
+  padding: var(--space-5, 18px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.exportVariant .phaseCard {
+  border-radius: 10px;
+  padding: 14px 16px;
+  gap: 10px;
+}
+
+.phaseHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.phaseTitleGroup {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.phaseNumBadge {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--surface-sunken, #f1f5f9);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary, #475569);
+}
+
+.phaseKindChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.phaseName {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.badgeRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 10px;
+}
+
+.exportVariant .metricsGrid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.metricBox {
+  background: var(--surface-sunken, #f8fafc);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 8px;
+  padding: 9px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.metricLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary, #64748b);
+}
+
+.metricValue {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.metricSub {
+  font-size: 11px;
+  color: var(--text-secondary, #475569);
+}
+
+.progressTrack {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--prog-color, #16a34a);
+  box-sizing: border-box;
+}
+
+.distractorAlert {
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* --- AI Review Sub-card inside Phase --- */
+.aiReviewCard {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-left: 4px solid #2563eb;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.aiReviewTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.aiReviewHeading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e3a8a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.aiComment {
+  margin: 0;
+  font-size: 13px;
+  color: #1e293b;
+  line-height: 1.45;
+}
+
+.aiIssueList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.aiIssueItem {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  line-height: 1.4;
+}
+
+.aiIssueTag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-right: 6px;
+}
+
+.aiRewriteBox {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #eff6ff;
+  border: 1px dashed #93c5fd;
+  font-size: 12px;
+  color: #1e3a8a;
+}
+
+/* --- Modos de Economia de Tinta --- */
+.inkSaverEco .highlightCard,
+.inkSaverEco .chartCard,
+.inkSaverEco .phaseCard,
+.inkSaverEco .metricBox,
+.inkSaverEco .aiReviewCard,
+.inkSaverEco .distractorAlert,
+.inkSaverEco .aiRewriteBox,
+.inkSaverMax .highlightCard,
+.inkSaverMax .chartCard,
+.inkSaverMax .phaseCard,
+.inkSaverMax .metricBox,
+.inkSaverMax .aiReviewCard,
+.inkSaverMax .distractorAlert,
+.inkSaverMax .aiRewriteBox {
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.inkSaverEco .scatterEasyZone,
+.inkSaverEco .scatterHardZone,
+.inkSaverMax .scatterEasyZone,
+.inkSaverMax .scatterHardZone {
+  background: transparent !important;
+}
+
+.inkSaverEco .scatterDot {
+  background: #ffffff !important;
+  color: var(--dot-color, #0f172a) !important;
+  border: 1.5px solid var(--dot-color, #0f172a);
+  box-shadow: none;
+}
+
+.inkSaverMax .scatterDot {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1.5px solid #0f172a;
+  box-shadow: none;
+}
+
+.inkSaverEco .progressTrack,
+.inkSaverMax .progressTrack {
+  background: transparent !important;
+  border-radius: 0;
+  height: 10px;
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px dashed #cbd5e1;
+}
+
+.inkSaverEco .progressFill {
+  background: transparent !important;
+  border-radius: 0;
+  height: 12px;
+  min-width: 2px;
+  border-right: 3px solid var(--prog-color, #16a34a);
+}
+
+.inkSaverMax .progressFill {
+  background: transparent !important;
+  border-radius: 0;
+  height: 12px;
+  min-width: 2px;
+  border-right: 2.5px solid #0f172a;
+}
+
+.inkSaverEco .pill {
+  background: #ffffff !important;
+  border-color: currentColor !important;
+}
+
+.inkSaverMax .pill,
+.inkSaverMax .aiIssueTag {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #475569 !important;
+}
+
+.inkSaverMax .aiReviewCard {
+  border-left-color: #0f172a !important;
+}
+
+.inkSaverMax .aiReviewHeading,
+.inkSaverMax .distractorAlert,
+.inkSaverMax .aiRewriteBox,
+.inkSaverMax .phaseKindChip {
+  color: #0f172a !important;
+}

@@ -19,9 +19,17 @@ interface PodiumScreenProps {
   entries: PodiumEntry[];
   onViewReport: () => void;
   onContinue: () => void;
+  reportReady?: boolean;
+  isLeader?: boolean;
 }
 
-export function PodiumScreen({ entries, onViewReport, onContinue }: PodiumScreenProps) {
+export function PodiumScreen({
+  entries,
+  onViewReport,
+  onContinue,
+  reportReady = true,
+  isLeader = false,
+}: PodiumScreenProps) {
   const [risen, setRisen] = useState(false);
 
   useEffect(() => {
@@ -94,11 +102,17 @@ export function PodiumScreen({ entries, onViewReport, onContinue }: PodiumScreen
       )}
 
       <div className={styles.actions}>
-        <Tooltip openDirection='top' label='Os relatórios estão temporariamente indisponíveis'>
-          <Button disabled size="lg" variant="secondary" onClick={onViewReport}>
-            Ver relatório
+        {reportReady ? (
+          <Button size="lg" variant="secondary" onClick={onViewReport}>
+            {isLeader ? 'Ver relatório da turma' : 'Ver meu relatório'}
           </Button>
-        </Tooltip>
+        ) : (
+          <Tooltip openDirection="top" label="O relatório está sendo processado em segundo plano...">
+            <Button disabled size="lg" variant="secondary" onClick={onViewReport}>
+              Processando relatório...
+            </Button>
+          </Tooltip>
+        )}
         <Button size="lg" onClick={onContinue}>
           Continuar jogando
         </Button>

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Modelo de domínio do Codex.
  *
  * Este arquivo é o contrato: `contracts/api/api-rest-contract.md` e
@@ -634,4 +634,347 @@ export interface LeaderProfile {
   /** Conjuntos de autoria da pessoa, mais recentes primeiro. */
   sets: PhaseSetSummary[];
   matches: LeaderMatchSummary[];
+}
+
+/* -------------------------------------------------------------------------- */
+/* Relatórios de Partidas                                                      */
+/* -------------------------------------------------------------------------- */
+
+export interface ReportOptionDistribution {
+  optionId: string;
+  label: string;
+  isCorrect: boolean;
+  count: number;
+  percentage: number;
+}
+
+export interface ReportPhaseAnalysis {
+  phaseId: string;
+  orderIndex: number;
+  phaseNumber: number;
+  setTitle: string;
+  kind: PhaseKind;
+  name: string;
+  question: string;
+  basePoints: number;
+  pointsMultiplier: number;
+  maxScore: number;
+  timeSeconds: number;
+  correctAnswerText: string;
+  submittedCount: number;
+  correctCount: number;
+  incorrectCount: number;
+  unansweredCount: number;
+  pendingCount: number;
+  accuracyRate: number;
+  avgScore: number;
+  avgElapsedSeconds: number;
+  mostCommonAnswerText: string | null;
+  optionDistribution: ReportOptionDistribution[];
+}
+
+export interface ReportParticipantAnswer {
+  phaseId: string;
+  phaseNumber: number;
+  phaseName: string;
+  kind: PhaseKind;
+  question: string;
+  submitted: boolean;
+  grading: 'graded' | 'pending' | 'unanswered';
+  correct: boolean | null;
+  score: number;
+  maxScore: number;
+  classAvgScore: number;
+  classAccuracyRate: number;
+  elapsedSeconds: number | null;
+  timeSeconds: number;
+  givenAnswerText: string;
+  correctAnswerText: string;
+  explanation: string | null;
+}
+
+export interface ReportParticipantAnalysis {
+  participantId: string;
+  userId: string | null;
+  displayName: string;
+  avatarIndex: AvatarIndex;
+  rank: number;
+  percentile: number;
+  accessToken: string;
+  joinedAt: string;
+  totalScore: number;
+  maxPossibleScore: number;
+  scorePercentage: number;
+  gradedCount: number;
+  correctCount: number;
+  incorrectCount: number;
+  unansweredCount: number;
+  pendingCount: number;
+  accuracyRate: number;
+  totalElapsedSeconds: number;
+  avgElapsedSeconds: number;
+  answers: ReportParticipantAnswer[];
+}
+
+export interface ReportOverview {
+  participantCount: number;
+  phaseCount: number;
+  avgScore: number;
+  maxPossibleScore: number;
+  maxAchievedScore: number;
+  minAchievedScore: number;
+  medianScore: number;
+  accuracyRate: number;
+  totalSubmissions: number;
+  totalGraded: number;
+  totalCorrect: number;
+  totalPending: number;
+  avgResponseSeconds: number;
+  durationSeconds: number;
+}
+
+export type InsightSeverity = 'low' | 'medium' | 'high';
+export type DifficultyLevel =
+  | 'very_easy'
+  | 'easy'
+  | 'medium'
+  | 'hard'
+  | 'very_hard'
+  | 'insufficient';
+
+export type QuestionFlag =
+  | 'time_too_short'
+  | 'time_too_long'
+  | 'long_question'
+  | 'long_options'
+  | 'reading_exceeds_time'
+  | 'low_discrimination'
+  | 'negative_discrimination'
+  | 'suspect_answer_key';
+
+export interface QuestionInsight {
+  phaseId: string;
+  phaseNumber: number;
+  difficulty: DifficultyLevel;
+  accuracyRate: number;
+  discriminationIndex: number | null;
+  unansweredRate: number;
+  lateSubmissionRate: number;
+  lateWrongRate: number;
+  avgTimeUsageRate: number;
+  questionWordCount: number;
+  questionCharCount: number;
+  avgOptionCharCount: number | null;
+  maxOptionCharCount: number | null;
+  estimatedReadingSeconds: number;
+  topDistractor: {
+    label: string;
+    percentage: number;
+    upperGroupPercentage: number;
+  } | null;
+  flags: QuestionFlag[];
+}
+
+export interface GuessingEvent {
+  phaseId: string;
+  phaseNumber: number;
+  phaseName: string;
+  type: 'fast_wrong' | 'late_wrong';
+  elapsedSeconds: number;
+  timeSeconds: number;
+  givenAnswerText: string;
+}
+
+export interface GuessingInsight {
+  participantId: string;
+  displayName: string;
+  avatarIndex: AvatarIndex;
+  gradedCount: number;
+  fastWrongCount: number;
+  lateWrongCount: number;
+  guessRate: number;
+  severity: InsightSeverity;
+  events: GuessingEvent[];
+}
+
+export interface CollusionEvidence {
+  phaseId: string;
+  phaseNumber: number;
+  phaseName: string;
+  type: 'shared_wrong' | 'sequential_same';
+  answerText: string;
+  rarity: number | null;
+  deltaMs: number | null;
+  followerParticipantId: string | null;
+}
+
+export interface CollusionPair {
+  participantAId: string;
+  participantAName: string;
+  participantBId: string;
+  participantBName: string;
+  commonPhases: number;
+  identicalAnswers: number;
+  agreementRate: number;
+  sharedWrongCount: number;
+  weightedRareSharedWrong: number;
+  sequentialCount: number;
+  dominantFollowerId: string | null;
+  score: number;
+  severity: InsightSeverity;
+  evidence: CollusionEvidence[];
+}
+
+export interface CollusionGroup {
+  participantIds: string[];
+  displayNames: string[];
+  maxSeverity: InsightSeverity;
+}
+
+export interface ReportInsights {
+  thresholdsVersion: number;
+  questions: QuestionInsight[];
+  guessing: {
+    eligible: boolean;
+    reason: string | null;
+    participants: GuessingInsight[];
+  };
+  collusion: {
+    eligible: boolean;
+    reason: string | null;
+    pairs: CollusionPair[];
+    groups: CollusionGroup[];
+  };
+  highlights: {
+    easiest: string[];
+    hardest: string[];
+    flaggedQuestionCount: number;
+    flaggedGuessers: number;
+    flaggedPairs: number;
+  };
+}
+
+export type AiVerdict = 'ok' | 'attention' | 'problem';
+
+export interface AiPhaseReview {
+  phaseId: string;
+  phaseNumber: number;
+  verdict: AiVerdict;
+  spelling: { excerpt: string; suggestion: string }[];
+  conceptual: { description: string; severity: InsightSeverity }[];
+  clarity: { description: string; suggestion: string | null }[];
+  answerKey: 'ok' | 'suspect' | 'wrong' | 'not_applicable';
+  answerKeyNote: string | null;
+  suggestedRewrite: string | null;
+}
+
+export interface ReportAiReview {
+  generatedAt: string;
+  requestedByUserId: string;
+  provider: string;
+  model: string;
+  phases: AiPhaseReview[];
+}
+
+export interface AiReportReviewResponse {
+  generationId: string;
+  aiReview: ReportAiReview;
+  usage: AiUsage;
+}
+
+export interface MatchReport {
+  id: string;
+  matchId: string;
+  schemaVersion: number;
+  status: 'processing' | 'ready' | 'failed';
+  shareToken: string;
+  roomCode: string;
+  roomId: string;
+  leaderUserId: string;
+  mode: MatchMode;
+  title: string;
+  startedAt: string;
+  finishedAt: string;
+  generatedAt: string;
+  durationSeconds: number;
+  overview: ReportOverview;
+  phases: ReportPhaseAnalysis[];
+  participants: ReportParticipantAnalysis[];
+  insights?: ReportInsights;
+  aiReview?: ReportAiReview | null;
+}
+
+export interface IndividualReport {
+  matchId: string;
+  roomCode: string;
+  mode: MatchMode;
+  title: string;
+  startedAt: string;
+  finishedAt: string;
+  generatedAt: string;
+  durationSeconds: number;
+  classOverview: {
+    participantCount: number;
+    phaseCount: number;
+    avgScore: number;
+    maxPossibleScore: number;
+    maxAchievedScore: number;
+    accuracyRate: number;
+    avgResponseSeconds: number;
+  };
+  participant: ReportParticipantAnalysis;
+}
+
+export interface LeaderReportHistoryItem {
+  matchId: string;
+  shareToken: string;
+  roomCode: string;
+  title: string;
+  mode: MatchMode;
+  finishedAt: string;
+  generatedAt: string;
+  durationSeconds: number;
+  participantCount: number;
+  phaseCount: number;
+  avgScore: number;
+  maxPossibleScore: number;
+  accuracyRate: number;
+}
+
+export interface ParticipantReportHistoryItem {
+  matchId: string;
+  accessToken: string;
+  roomCode: string;
+  title: string;
+  mode: MatchMode;
+  finishedAt: string;
+  displayName: string;
+  avatarIndex: AvatarIndex;
+  rank: number;
+  participantCount: number;
+  totalScore: number;
+  maxPossibleScore: number;
+  accuracyRate: number;
+  correctCount: number;
+  phaseCount: number;
+}
+
+export interface UserReportsHistory {
+  leaderReports: LeaderReportHistoryItem[];
+  participantReports: ParticipantReportHistoryItem[];
+}
+
+export interface ReportStatusResponse {
+  matchId: string;
+  status: 'processing' | 'ready' | 'failed' | 'not_found';
+  shareToken?: string;
+  generatedAt?: string;
+}
+
+export interface RoomReportResolution {
+  matchId: string;
+  role: 'leader' | 'participant';
+  shareToken: string | null;
+  accessToken: string | null;
+
 }

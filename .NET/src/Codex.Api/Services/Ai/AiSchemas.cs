@@ -67,6 +67,103 @@ public static class AiSchemas
         },
     };
 
+    public static JsonObject ForReportReview(int maxPhasesCount) => new()
+    {
+        ["type"] = "object",
+        ["additionalProperties"] = false,
+        ["required"] = new JsonArray("phases"),
+        ["properties"] = new JsonObject
+        {
+            ["phases"] = new JsonObject
+            {
+                ["type"] = "array",
+                ["minItems"] = 1,
+                ["maxItems"] = Math.Max(1, maxPhasesCount),
+                ["items"] = new JsonObject
+                {
+                    ["type"] = "object",
+                    ["additionalProperties"] = false,
+                    ["required"] = new JsonArray(
+                        "phaseId",
+                        "phaseNumber",
+                        "verdict",
+                        "spelling",
+                        "conceptual",
+                        "clarity",
+                        "answerKey",
+                        "answerKeyNote",
+                        "suggestedRewrite"),
+                    ["properties"] = new JsonObject
+                    {
+                        ["phaseId"] = new JsonObject { ["type"] = "string" },
+                        ["phaseNumber"] = new JsonObject { ["type"] = "integer" },
+                        ["verdict"] = new JsonObject
+                        {
+                            ["type"] = "string",
+                            ["enum"] = new JsonArray("ok", "attention", "problem"),
+                        },
+                        ["spelling"] = new JsonObject
+                        {
+                            ["type"] = "array",
+                            ["items"] = new JsonObject
+                            {
+                                ["type"] = "object",
+                                ["additionalProperties"] = false,
+                                ["required"] = new JsonArray("excerpt", "suggestion"),
+                                ["properties"] = new JsonObject
+                                {
+                                    ["excerpt"] = new JsonObject { ["type"] = "string", ["maxLength"] = 200 },
+                                    ["suggestion"] = new JsonObject { ["type"] = "string", ["maxLength"] = 200 },
+                                },
+                            },
+                        },
+                        ["conceptual"] = new JsonObject
+                        {
+                            ["type"] = "array",
+                            ["items"] = new JsonObject
+                            {
+                                ["type"] = "object",
+                                ["additionalProperties"] = false,
+                                ["required"] = new JsonArray("description", "severity"),
+                                ["properties"] = new JsonObject
+                                {
+                                    ["description"] = new JsonObject { ["type"] = "string", ["maxLength"] = 300 },
+                                    ["severity"] = new JsonObject
+                                    {
+                                        ["type"] = "string",
+                                        ["enum"] = new JsonArray("low", "medium", "high"),
+                                    },
+                                },
+                            },
+                        },
+                        ["clarity"] = new JsonObject
+                        {
+                            ["type"] = "array",
+                            ["items"] = new JsonObject
+                            {
+                                ["type"] = "object",
+                                ["additionalProperties"] = false,
+                                ["required"] = new JsonArray("description", "suggestion"),
+                                ["properties"] = new JsonObject
+                                {
+                                    ["description"] = new JsonObject { ["type"] = "string", ["maxLength"] = 300 },
+                                    ["suggestion"] = new JsonObject { ["type"] = "string", ["maxLength"] = 300 },
+                                },
+                            },
+                        },
+                        ["answerKey"] = new JsonObject
+                        {
+                            ["type"] = "string",
+                            ["enum"] = new JsonArray("ok", "suspect", "wrong", "not_applicable"),
+                        },
+                        ["answerKeyNote"] = new JsonObject { ["type"] = "string", ["maxLength"] = 300 },
+                        ["suggestedRewrite"] = new JsonObject { ["type"] = "string", ["maxLength"] = 500 },
+                    },
+                },
+            },
+        },
+    };
+
     private static JsonObject BuildPhaseSchema(PhaseKind kind)
     {
         var properties = new JsonObject

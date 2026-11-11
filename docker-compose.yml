@@ -81,6 +81,7 @@ services:
       CodexApi__Realtime__RedisConnectionString: "redis:6379,password=${REDIS_PASSWORD}"
       CodexApi__Documents__ConnectionString: "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin"
       CodexApi__Documents__DatabaseName: ${MONGO_DB:-codex}
+      CodexApi__Reports__BaseUrl: http://reports:4002
       # Login social. Vazio desliga o provedor: a rota responde 501 OAUTH_PROVIDER_NOT_CONFIGURED
       # em vez de quebrar o resto da API, entao da para ligar um provedor de cada vez.
       CodexApi__OAuth__RedirectBaseUrl: ${OAUTH_REDIRECT_BASE_URL:-}
@@ -124,6 +125,27 @@ services:
       REALTIME_ALLOWED_ORIGINS: ${REALTIME_ALLOWED_ORIGINS:-http://localhost:3000}
     ports:
       - "4001:4001"
+    networks:
+      - codex
+
+  reports:
+    build: ./reports
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      PORT: 4002
+      REPORTS_HOST: 0.0.0.0
+      API_SERVICE_TOKEN: ${API_SERVICE_TOKEN}
+      MONGO_URL: "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin"
+      MONGO_DB: ${MONGO_DB:-codex}
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
+      REDIS_CHANNEL_PREFIX: codex:rt:
+    ports:
+      - "4002:4002"
     networks:
       - codex
 

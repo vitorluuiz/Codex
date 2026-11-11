@@ -1,0 +1,27 @@
+{
+  "name": "codex-reports",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Servico de processamento em segundo plano e exportacao de relatorios de partidas do Codex (Web e Excel).",
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20.6"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --env-file-if-exists=.env dist/index.js",
+    "dev": "npm run build && npm start",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node test/reports.smoke.mjs"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "ioredis": "^5.4.1",
+    "mongodb": "^6.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "typescript": "^5.8.0"
+  }
+}

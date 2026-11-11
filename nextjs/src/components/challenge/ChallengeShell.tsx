@@ -20,6 +20,7 @@ import {
   setPausedAction,
   submitAnswerAction,
 } from '@/lib/actions/match';
+import { getMatchReportStatusAction } from '@/lib/actions/reports';
 import type {
   AnswerPayload,
   Match,
@@ -123,6 +124,7 @@ function ChallengeContent({
   const [submission, setSubmission] = useState<Submission | null>(initialPhaseState.mySubmission);
   const [comparison, setComparison] = useState<PhaseComparison | null>(null);
   const [podium, setPodium] = useState<PodiumEntry[]>(initialPodium ?? []);
+  const [reportReady, setReportReady] = useState<boolean>(false);
   const [readyMarked, setReadyMarked] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -361,6 +363,41 @@ function ChallengeContent({
     setScreen('podium');
   });
 
+  useRealtimeEvent('report.ready', (message) => {
+    if (!message.matchId || message.matchId === match.id) {
+      setReportReady(true);
+    }
+  });
+
+  useEffect(() => {
+    if (screen !== 'podium' || reportReady) return;
+    let cancelled = false;
+    let attempts = 0;
+
+    async function checkStatus() {
+      if (cancelled) return;
+      try {
+        const res = await getMatchReportStatusAction(match.id);
+        if (!cancelled && res && res.status === 'ready') {
+          setReportReady(true);
+          return;
+        }
+      } catch {
+        /* ignora e tenta de novo */
+      }
+      attempts += 1;
+      if (!cancelled && attempts < 10) {
+        setTimeout(checkStatus, 1200);
+      }
+    }
+
+    const timer = setTimeout(checkStatus, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [screen, reportReady, match.id]);
+
   useRealtimeEvent('match.returned-to-lobby', () => {
     // Quem está no pódio decide sozinho quando sair dele ("Continuar jogando"): o
     // líder voltar ao lobby não volta por ninguém. Quem já está nos resultados da
@@ -500,6 +537,8 @@ function ChallengeContent({
         entries={podium}
         onViewReport={() => router.push(`/sala/${roomCode}/relatorio`)}
         onContinue={backToLobby}
+        reportReady={reportReady}
+        isLeader={isLeader}
       />
     );
   }

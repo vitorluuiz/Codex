@@ -41,6 +41,27 @@ public sealed class InMemoryMatchDocumentStore : IMatchDocumentStore
     public Task<MatchDocument?> FindAsync(Guid matchId, CancellationToken ct)
         => Task.FromResult(_matches.GetValueOrDefault(matchId));
 
+    public Task<MatchDocument?> FindLatestByRoomCodeAsync(string roomCode, CancellationToken ct)
+    {
+        var match = _matches.Values
+            .Where(m => string.Equals(m.RoomCode, roomCode, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(m => m.FinishedAt)
+            .FirstOrDefault();
+
+        return Task.FromResult(match);
+    }
+
+    public Task<IReadOnlyList<MatchDocument>> ListByUserAsync(Guid userId, int limit, CancellationToken ct)
+    {
+        IReadOnlyList<MatchDocument> result = _matches.Values
+            .Where(m => m.LeaderUserId == userId || m.Participants.Any(p => p.UserId == userId))
+            .OrderByDescending(m => m.FinishedAt)
+            .Take(limit)
+            .ToList();
+
+        return Task.FromResult(result);
+    }
+
     public Task<IReadOnlyList<MatchParticipantDocument>> ParticipantsAsync(Guid matchId, CancellationToken ct)
     {
         IReadOnlyList<MatchParticipantDocument> result = _matches.TryGetValue(matchId, out var match)
