@@ -46,6 +46,7 @@ export interface PhaseSlide {
   title: string;
   description: string;
   imagePlaceholder: string;
+  imageSrc?: string
 }
 
 export const PHASE_SLIDES: PhaseSlide[] = [
@@ -57,6 +58,7 @@ export const PHASE_SLIDES: PhaseSlide[] = [
     description:
       'Perguntas de múltipla escolha com correção instantânea — ideal para revisão e aquecimento.',
     imagePlaceholder: 'Print da fase de quiz',
+    imageSrc: '/landing/codex_quiz.webp'
   },
   {
     id: 'code',
@@ -66,6 +68,7 @@ export const PHASE_SLIDES: PhaseSlide[] = [
     description:
       'Editor com execução de testes e IA avaliando a solução — como um problema de entrevista técnica.',
     imagePlaceholder: 'Print da fase de código',
+    imageSrc: '/landing/codex_code.webp'
   },
   {
     id: 'text',
@@ -74,6 +77,7 @@ export const PHASE_SLIDES: PhaseSlide[] = [
     title: 'Respostas em texto livre',
     description: 'Explicações abertas avaliadas por IA, com feedback sobre o raciocínio do aluno.',
     imagePlaceholder: 'Print da fase dissertativa',
+    imageSrc: '/landing/codex_dissertative.webp'
   },
   {
     id: 'fill',
@@ -83,6 +87,7 @@ export const PHASE_SLIDES: PhaseSlide[] = [
     description:
       'Preencha lacunas arrastando os termos certos — reforça conceitos e vocabulário técnico.',
     imagePlaceholder: 'Print da fase de completar frase',
+    imageSrc: '/landing/codex_fill.webp'
   },
 ];
 

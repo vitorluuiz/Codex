@@ -152,6 +152,7 @@ export default function LandingPage() {
           </div>
         </div>
         <ImageSlot
+          src={"/landing/codex_quiz.webp"}
           placeholder="Screenshot da sala de desafio em andamento"
           width={640}
           height={440}

@@ -123,6 +123,7 @@
 
 .section {
   padding-block: 16px 96px;
+  scroll-margin-top: 88px;
 }
 
 .sectionHead {
@@ -204,6 +205,7 @@
   background: var(--ink-950);
   color: #fff;
   padding-block: 96px;
+  scroll-margin-top: 88px;
 }
 
 .featuresBand .sectionLead {
@@ -246,6 +248,7 @@
 
 .pricing {
   padding-block: 96px;
+  scroll-margin-top: 88px;
 }
 
 .pricingTable {

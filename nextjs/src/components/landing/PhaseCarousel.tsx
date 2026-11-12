@@ -54,6 +54,7 @@ export function PhaseCarousel({ slides }: { slides: PhaseSlide[] }) {
                 width={640}
                 height={380}
                 className={styles.slideImage}
+                src={slide.imageSrc}
               />
               <div className={styles.slideBody}>
                 <Tag tone={slide.tone}>{slide.tagLabel}</Tag>
