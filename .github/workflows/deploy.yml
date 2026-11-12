@@ -25,6 +25,8 @@ jobs:
                       context: ./.NET
                     - service: realtime
                       context: ./realtime
+                    - service: reports
+                      context: ./reports
         steps:
             - uses: actions/checkout@v4
 

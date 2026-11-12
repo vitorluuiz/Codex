@@ -1,6 +1,6 @@
 # Docker
 
-Como rodar o MVP inteiro (`web`, `realtime`, `api`, `postgres`, `redis`, `mongo`) via
+Como rodar o MVP inteiro (`web`, `realtime`, `reports`, `api`, `postgres`, `redis`, `mongo`) via
 Docker Compose, e o porquê de cada decisão nos Dockerfiles. Para rodar sem
 Docker (processos nativos), veja o [`README.md`](README.md).
 
@@ -15,11 +15,12 @@ docker-compose.yml
 ├── mongo/Dockerfile      FROM mongo:8.0            (+ init/ opcional)
 ├── .NET/Dockerfile       build .NET 10 SDK → runtime ASP.NET 10 alpine
 ├── realtime/Dockerfile   build Node 20 → runtime Node 20 alpine
+├── reports/Dockerfile    build Node 20 → runtime Node 20 alpine
 └── nextjs/Dockerfile     build Node 20 → runtime standalone Next.js
 ```
 
-Todos os 6 serviços sobem na mesma rede (`codex`) e se enxergam pelo nome do
-serviço (`postgres`, `redis`, `mongo`, `api`), nunca por `localhost` — `localhost`
+Todos os 7 serviços sobem na mesma rede (`codex`) e se enxergam pelo nome do
+serviço (`postgres`, `redis`, `mongo`, `api`, `realtime`, `reports`), nunca por `localhost` — `localhost`
 dentro de um container é o próprio container.
 
 | Serviço | Porta no host | Porta interna |
@@ -27,6 +28,7 @@ dentro de um container é o próprio container.
 | `web` (Next.js) | `3000` | `3000` |
 | `api` (.NET) | `5282` | `8080` |
 | `realtime` (Node) | `4001` | `4001` |
+| `reports` (Node) | `4002` | `4002` |
 | `postgres` | `5433` | `5432` |
 | `redis` | `6379` | `6379` |
 | `mongo` | `27018` | `27017` |

@@ -143,7 +143,7 @@ services:
       MONGO_URL: "mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin"
       MONGO_DB: ${MONGO_DB:-codex}
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
-      REDIS_CHANNEL_PREFIX: codex:rt:
+      REDIS_CHANNEL_PREFIX: "codex:rt:"
     ports:
       - "4002:4002"
     networks:
