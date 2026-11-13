@@ -21,7 +21,8 @@ public class RoomService(
     RoomAccessService roomAccess,
     RoomQueueService queue,
     LabelFormatter labels,
-    IRealtimeEventPublisher realtime)
+    IRealtimeEventPublisher realtime,
+    PhaseSetService phaseSets)
 {
     private const int MaxCapacity = 500;
     private const int DefaultCapacity = 20;
@@ -34,13 +35,10 @@ public class RoomService(
         var userId = principal.GetUserId() ?? throw AccountRequired();
         var leader = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct) ?? throw AccountRequired();
 
-        PhaseSet? phaseSet = null;
+        PhaseSetService.ResolvedQueueSet? resolvedSet = null;
         if (request.SetId is { } setId)
         {
-            phaseSet = await db.PhaseSets
-                           .FirstOrDefaultAsync(
-                               s => s.Id == setId && (s.OwnerId == userId || s.Visibility == PhaseSetVisibility.Community), ct)
-                       ?? throw new ApiException(StatusCodes.Status404NotFound, ErrorCodes.PhaseSetNotFound, "Conjunto de fases nao encontrado.");
+            resolvedSet = await phaseSets.ResolveSetForQueueAsync(setId, userId, ct);
         }
 
         var roomId = Guid.NewGuid().ToString();
@@ -76,9 +74,9 @@ public class RoomService(
             throw new InvalidOperationException($"Nao foi possivel gerar um codigo livre em {CodeGenerationAttempts} tentativas.");
         }
 
-        if (phaseSet is not null)
+        if (resolvedSet is not null)
         {
-            await queue.AppendSetAsync(roomId, phaseSet, ct);
+            await queue.AppendSetAsync(roomId, resolvedSet, ct);
         }
 
         return ToDto(roomData);

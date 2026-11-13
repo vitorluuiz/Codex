@@ -4,6 +4,7 @@ using Codex.Api.Common.Errors;
 using Codex.Api.Common.Formatting;
 using Codex.Api.Contracts.PhaseSets;
 using Codex.Api.Data;
+using Codex.Api.Documents;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -11,41 +12,36 @@ using Microsoft.EntityFrameworkCore;
 namespace Codex.Api.Services;
 
 /// <summary>
-/// api-rest.md secao 5 — a biblioteca de conjuntos e o editor.
-///
-/// Todas as rotas de escrita daqui sao "do autor": quem nao e dono do conjunto recebe
-/// PHASE_SET_NOT_FOUND, e nao NOT_ROOM_LEADER (que e de sala) nem 403. O motivo esta em
-/// <see cref="FindOwnedAsync"/>.
-///
-/// E a primeira leva que precisa <b>entender</b> o <c>ContentJson</c>: ate agora ele so tinha
-/// sido gravado por SQL e copiado literal para a fila. O formato guardado esta em
-/// <see cref="PhaseContent"/>.
+/// Gerencia conjuntos privados (<c>private_phase_sets</c>), biblioteca (<c>user_workspaces</c>),
+/// publicação imutável na comunidade (<c>community_phase_sets</c> + <c>community_phases</c>)
+/// e clonagem com isolamento por cópia.
 /// </summary>
-public class PhaseSetService(AppDbContext db, LabelFormatter labels)
+public class PhaseSetService(AppDbContext db, IPhaseSetDocumentStore store, LabelFormatter labels)
 {
-    /// <summary>
-    /// Teto de linhas de <c>GET /phase-sets</c>. O contrato nao pagina esta rota e o seletor de
-    /// conjuntos nao tem "carregar mais" — mesmo criterio do historico de partidas do perfil.
-    /// A busca por <c>q</c> e o que faz a biblioteca da comunidade caber aqui.
-    /// </summary>
     public const int MaxResults = 50;
 
-    /// <summary>Igual ao HasMaxLength(160) de phase_sets.Title e phases.Name — cortar aqui devolve VALIDATION_ERROR em vez de estourar no INSERT.</summary>
     private const int MaxTitleLength = PhaseLimits.MaxNameLength;
+    private const int MaxMetadataLength = 64;
+    private const int MaxCoverUrlLength = 512;
+    private const string DefaultSubject = "Geral";
+
+    public sealed record ResolvedQueuePhase(
+        Guid SourcePhaseId,
+        PhaseKind Kind,
+        string Name,
+        int BasePoints,
+        decimal PointsMultiplier,
+        int TimeSeconds,
+        string ContentJson);
+
+    public sealed record ResolvedQueueSet(
+        Guid SourceSetId,
+        string Title,
+        bool IsCommunity,
+        IReadOnlyList<ResolvedQueuePhase> Phases);
 
     /// <summary>
-    /// GET /phase-sets?scope=owned|community&amp;q= — o seletor "Escolher conjunto de fases" e a
-    /// aba de biblioteca do perfil.
-    ///
-    /// <c>scope</c> decide as duas coisas de uma vez: quais conjuntos entram e qual
-    /// <see cref="PhaseSetSource"/> sai em cada linha. Nao e redundancia — "source e relativo a
-    /// quem olha, nao e atributo do conjunto" (mesma regra ja fixada pelo perfil): o conjunto que
-    /// o autor publicou aparece como <c>owned</c> ("editado ha 2 dias") para ele e como
-    /// <c>community</c> ("por Prof. Marcos") para os outros.
-    ///
-    /// <b>A aba comunidade esconde os conjuntos do proprio usuario</b>, que ja estao inteiros na
-    /// aba "meus". Sem isso o mesmo conjunto sairia duas vezes no mesmo seletor, com rotulos
-    /// diferentes, e o autor teria que descobrir que sao o mesmo.
+    /// <c>GET /phase-sets?scope=owned|community&amp;q=</c> — lê exclusivamente do MongoDB.
     /// </summary>
     public async Task<IReadOnlyList<PhaseSetSummaryDto>> ListAsync(
         string? scope,
@@ -55,248 +51,622 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
     {
         var source = ParseScope(scope);
         var viewerId = principal.GetUserId();
-        var query = db.PhaseSets.AsNoTracking();
 
         if (source is PhaseSetSource.Owned)
         {
-            // "Meus conjuntos" sem conta nao e uma lista vazia, e um pedido sem sujeito — mesmo
-            // criterio do GET /users/me/profile.
             var ownerId = viewerId ?? throw AccountRequired();
-            query = query.Where(s => s.OwnerId == ownerId);
-        }
-        else
-        {
-            query = query.Where(s => s.Visibility == PhaseSetVisibility.Community);
+            var sets = await store.ListPrivateSetsByOwnerAsync(ownerId, q, MaxResults, ct);
 
-            if (viewerId is { } id)
-            {
-                query = query.Where(s => s.OwnerId != id);
-            }
-        }
-
-        var search = q?.Trim();
-        if (!string.IsNullOrEmpty(search))
-        {
-            // ToLower() e nao EF.Functions.ILike: o ILike so existe no Npgsql e os testes rodam em
-            // InMemory. Traduz para lower(title) LIKE lower(...) no Postgres, que e o que a busca
-            // do seletor precisa.
-            var lowered = search.ToLower();
-            query = query.Where(s => s.Title.ToLower().Contains(lowered));
+            return
+            [
+                .. sets.Select(s => new PhaseSetSummaryDto(
+                    s.Id,
+                    s.Title,
+                    s.Summary.PhaseCount,
+                    PhaseSetSource.Owned,
+                    labels.EditedLabel(ToUtcOffset(s.UpdatedAt)),
+                    null)),
+            ];
         }
 
-        var sets = await query
-            .OrderByDescending(s => s.UpdatedAt)
-            .Take(MaxResults)
-            .Select(s => new
-            {
+        var communitySets = await store.ListCommunitySetsAsync(
+            q,
+            subject: null,
+            kind: null,
+            sort: null,
+            excludeAuthorId: viewerId,
+            MaxResults,
+            ct);
+
+        return
+        [
+            .. communitySets.Select(s => new PhaseSetSummaryDto(
                 s.Id,
                 s.Title,
-                s.UpdatedAt,
-                AuthorName = s.Owner.Name,
-                PhaseCount = s.Phases.Count,
-            })
-            .ToListAsync(ct);
-
-        return [.. sets.Select(s => new PhaseSetSummaryDto(
-            s.Id,
-            s.Title,
-            s.PhaseCount,
-            source,
-            source is PhaseSetSource.Owned ? labels.EditedLabel(s.UpdatedAt) : null,
-            source is PhaseSetSource.Owned ? null : s.AuthorName))];
-    }
-
-    /// <summary>GET /phase-sets/{setId}/draft — a tela do editor inteira, em uma chamada.</summary>
-    public async Task<PhaseSetDraftResponse> GetDraftAsync(string setId, ClaimsPrincipal principal, CancellationToken ct)
-    {
-        var set = await FindOwnedAsync(setId, principal, tracked: false, ct);
-        return ToDraft(set);
+                s.Summary.PhaseCount,
+                PhaseSetSource.Community,
+                null,
+                s.AuthorName)),
+        ];
     }
 
     /// <summary>
-    /// POST /phase-sets — o "Salvar" de um conjunto que ainda nao existe (<c>id: null</c> no
-    /// rascunho do front).
-    ///
-    /// Nasce <c>private</c>: publicar na comunidade e uma acao separada, que o contrato ainda nao
-    /// tem rota para fazer. Ninguem publica sem pedir.
+    /// <c>GET /phase-sets/library</c> — biblioteca completa para <c>/conjuntos</c> em leitura exclusiva ao MongoDB.
     /// </summary>
+    public async Task<PhaseSetLibraryResponse> GetLibraryAsync(ClaimsPrincipal principal, CancellationToken ct)
+    {
+        var userId = principal.GetUserId() ?? throw AccountRequired();
+        var workspace = await store.GetOrCreateWorkspaceAsync(userId, ct);
+        var privateSets = await store.ListPrivateSetsByOwnerAsync(userId, null, MaxResults, ct);
+        var communitySets = await store.ListCommunitySetsAsync(
+            q: null,
+            subject: null,
+            kind: null,
+            sort: null,
+            excludeAuthorId: userId,
+            MaxResults,
+            ct);
+
+        var ownedEntries = privateSets.Select(ToLibraryEntry);
+        var communityEntries = communitySets.Select(ToLibraryEntry);
+        var entries = ownedEntries.Concat(communityEntries).ToList();
+
+        var subjects = workspace.Subjects
+            .Concat(privateSets.Select(s => s.Subject))
+            .Concat(communitySets.Select(s => s.Subject))
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(s => s.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var folders = workspace.Folders
+            .Concat(privateSets.Where(s => !string.IsNullOrWhiteSpace(s.Folder)).Select(s => s.Folder!))
+            .Select(f => f.Trim())
+            .Where(f => f.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new PhaseSetLibraryResponse(entries, subjects, folders, workspace.CoverUrl);
+    }
+
+    /// <summary>GET /phase-sets/{setId}/draft — conjunto privado na íntegra.</summary>
+    public async Task<PhaseSetDraftResponse> GetDraftAsync(string setId, ClaimsPrincipal principal, CancellationToken ct)
+    {
+        var doc = await FindOwnedAsync(setId, principal, ct);
+        return ToDraft(doc);
+    }
+
+    /// <summary>POST /phase-sets — cria conjunto privado em <c>private_phase_sets</c>.</summary>
     public async Task<PhaseSetDraftResponse> CreateAsync(SavePhaseSetRequest request, ClaimsPrincipal principal, CancellationToken ct)
     {
         var ownerId = principal.GetUserId() ?? throw AccountRequired();
         var title = NormalizeTitle(request.Title);
-        var phases = PhaseDraftValidator.Validate(request.Phases);
+        var subject = NormalizeSubject(request.Subject);
+        var folder = NormalizeOptionalTag(request.Folder, "folder");
+        var coverUrl = NormalizeCoverUrl(request.CoverUrl);
+        var validated = PhaseDraftValidator.Validate(request.Phases);
 
-        var set = new PhaseSet
+        var now = DateTime.UtcNow;
+        var items = BuildPrivateItems(validated, existingIds: null);
+        var summary = ComputeSummary(items, useCount: 0, submissionsCount: 0, correctSubmissionsCount: 0);
+
+        var doc = new PrivatePhaseSetDocument
         {
-            Title = title,
+            Id = Guid.CreateVersion7(),
             OwnerId = ownerId,
-            Visibility = PhaseSetVisibility.Private,
+            Title = title,
+            Subject = subject,
+            Folder = folder,
+            CoverUrl = coverUrl,
+            CreatedAt = now,
+            UpdatedAt = now,
+            Summary = summary,
+            Phases = items,
         };
-        db.PhaseSets.Add(set);
 
-        for (var index = 0; index < phases.Count; index++)
-        {
-            var phase = new Phase { PhaseSetId = set.Id, Name = string.Empty, ContentJson = string.Empty };
-            Apply(phase, phases[index], index);
-            // So no DbSet: o change tracker faz o fixup e coloca a fase em set.Phases sozinho.
-            // Adicionar nos dois lugares punha a mesma fase duas vezes na navegacao — e e de la
-            // que a resposta e montada.
-            db.Phases.Add(phase);
-        }
+        await store.UpsertPrivateSetAsync(doc, ct);
+        await SyncWorkspaceMetadataAsync(ownerId, subject, folder, ct);
 
-        await db.SaveChangesAsync(ct);
-
-        return ToDraft(set);
+        return ToDraft(doc);
     }
 
-    /// <summary>
-    /// PUT /phase-sets/{setId}/draft — o "Salvar" de um conjunto que ja existe. O corpo e o
-    /// conjunto inteiro, entao o que nao veio no array foi apagado no editor e sai daqui tambem.
-    ///
-    /// <b>Fase que ja tem id definitivo e atualizada no lugar, nao recriada.</b> O contrato so
-    /// exige que ids <c>draft_*</c> voltem trocados pelos definitivos, mas apagar e reinserir tudo
-    /// daria um id novo a cada gravada — e <c>RoomQueuePhase.SourcePhaseId</c>, que e a unica
-    /// pista de qual fase da biblioteca originou a fase de uma partida, apontaria para um id que
-    /// nao existe mais depois da primeira correcao de digitacao.
-    /// </summary>
+    /// <summary>PUT /phase-sets/{setId}/draft — substitui fases e atualiza summary no MongoDB.</summary>
     public async Task<PhaseSetDraftResponse> ReplaceDraftAsync(
         string setId,
         SavePhaseSetRequest request,
         ClaimsPrincipal principal,
         CancellationToken ct)
     {
-        var set = await FindOwnedAsync(setId, principal, tracked: true, ct);
+        var doc = await FindOwnedAsync(setId, principal, ct);
         var title = NormalizeTitle(request.Title);
-        var phases = PhaseDraftValidator.Validate(request.Phases);
+        var subject = request.Subject is null ? doc.Subject : NormalizeSubject(request.Subject);
+        var folder = request.Folder is null ? doc.Folder : NormalizeOptionalTag(request.Folder, "folder");
+        var coverUrl = request.CoverUrl is null ? doc.CoverUrl : NormalizeCoverUrl(request.CoverUrl);
+        var validated = PhaseDraftValidator.Validate(request.Phases);
 
-        set.Title = title;
-        set.UpdatedAt = DateTimeOffset.UtcNow;
+        var existingIds = doc.Phases.ToDictionary(p => p.Id);
+        var items = BuildPrivateItems(validated, existingIds);
 
-        // Consumido conforme cada id do corpo e reconhecido: o que sobrar no fim foi removido no
-        // editor. Consumir tambem impede que duas fases do corpo reivindiquem a mesma linha — a
-        // segunda cai como fase nova, em vez de sobrescrever a primeira em silencio.
-        var existing = set.Phases.ToDictionary(p => p.Id);
+        doc.Title = title;
+        doc.Subject = subject;
+        doc.Folder = folder;
+        doc.CoverUrl = coverUrl;
+        doc.UpdatedAt = DateTime.UtcNow;
+        doc.Phases = items;
+        doc.Summary = ComputeSummary(
+            items,
+            doc.Summary.UseCount,
+            doc.Summary.SubmissionsCount,
+            doc.Summary.CorrectSubmissionsCount);
 
-        for (var index = 0; index < phases.Count; index++)
-        {
-            var incoming = phases[index];
-            Phase phase;
+        await store.UpsertPrivateSetAsync(doc, ct);
+        await SyncWorkspaceMetadataAsync(doc.OwnerId, doc.Subject, doc.Folder, ct);
 
-            if (Guid.TryParse(incoming.Id, out var id) && existing.Remove(id, out var tracked))
-            {
-                phase = tracked;
-            }
-            else
-            {
-                // Id "draft_*", ausente, ou de fase de outro conjunto: nasce agora. Um id de outra
-                // pessoa nao pode ser adotado por este conjunto — seria roubar a fase dela.
-                phase = new Phase { PhaseSetId = set.Id, Name = string.Empty, ContentJson = string.Empty };
-                db.Phases.Add(phase);
-            }
-
-            Apply(phase, incoming, index);
-        }
-
-        foreach (var removed in existing.Values)
-        {
-            set.Phases.Remove(removed);
-            db.Phases.Remove(removed);
-        }
-
-        await db.SaveChangesAsync(ct);
-
-        return ToDraft(set);
+        return ToDraft(doc);
     }
 
-    /// <summary>
-    /// PATCH /phase-sets/{setId} — o dialogo de renomear. Devolve o PhaseSetSummary porque e o que
-    /// a linha da biblioteca precisa para se redesenhar sem refetch.
-    ///
-    /// Renomear conta como editar: mexe no <c>UpdatedAt</c>, entao o <c>updatedLabel</c> que volta
-    /// e "editado agora". O contrario faria a lista reordenar de um jeito que o autor nao explica.
-    /// </summary>
+    /// <summary>PATCH /phase-sets/{setId} — renomeia e/ou atualiza metadados organizacionais.</summary>
     public async Task<PhaseSetSummaryDto> RenameAsync(
         string setId,
         RenamePhaseSetRequest request,
         ClaimsPrincipal principal,
         CancellationToken ct)
     {
-        var set = await FindOwnedAsync(setId, principal, tracked: true, ct);
+        var doc = await FindOwnedAsync(setId, principal, ct);
 
-        set.Title = NormalizeTitle(request.Title);
-        set.UpdatedAt = DateTimeOffset.UtcNow;
-        await db.SaveChangesAsync(ct);
+        if (request.Title is not null || (request.Subject is null && request.Folder is null && request.CoverUrl is null))
+        {
+            doc.Title = NormalizeTitle(request.Title);
+        }
+
+        if (request.Subject is not null)
+        {
+            doc.Subject = NormalizeSubject(request.Subject);
+        }
+
+        if (request.Folder is not null)
+        {
+            doc.Folder = NormalizeOptionalTag(request.Folder, "folder");
+        }
+
+        if (request.CoverUrl is not null)
+        {
+            doc.CoverUrl = NormalizeCoverUrl(request.CoverUrl);
+        }
+
+        doc.UpdatedAt = DateTime.UtcNow;
+        await store.UpsertPrivateSetAsync(doc, ct);
+        await SyncWorkspaceMetadataAsync(doc.OwnerId, doc.Subject, doc.Folder, ct);
 
         return new PhaseSetSummaryDto(
-            set.Id,
-            set.Title,
-            set.Phases.Count,
+            doc.Id,
+            doc.Title,
+            doc.Summary.PhaseCount,
             PhaseSetSource.Owned,
-            labels.EditedLabel(set.UpdatedAt),
+            labels.EditedLabel(ToUtcOffset(doc.UpdatedAt)),
             null);
     }
 
     /// <summary>
-    /// DELETE /phase-sets/{setId} → 204.
-    ///
-    /// "Nao afeta partidas passadas: a fila copia a fase em vez de referencia-la" — e por isso que
-    /// <c>RoomQueueSet.SourcePhaseSetId</c> e um Guid solto, sem FK (decisao 1 da secao 13).
-    /// Apagar aqui nao toca em sala nenhuma, nem na que esta com o conjunto na fila agora.
+    /// DELETE /phase-sets/{setId} → 204. Exclui apenas de <c>private_phase_sets</c>,
+    /// sem afetar versões já publicadas na comunidade nem filas de salas ativas.
     /// </summary>
     public async Task DeleteAsync(string setId, ClaimsPrincipal principal, CancellationToken ct)
     {
-        var set = await FindOwnedAsync(setId, principal, tracked: true, ct);
-
-        db.PhaseSets.Remove(set);
-        await db.SaveChangesAsync(ct);
+        var doc = await FindOwnedAsync(setId, principal, ct);
+        await store.DeletePrivateSetAsync(doc.Id, doc.OwnerId, ct);
     }
 
     /// <summary>
-    /// O conjunto, se quem chamou for o dono dele.
-    ///
-    /// Quem nao e dono recebe <b>404 PHASE_SET_NOT_FOUND</b>, e nao 403: todas as rotas que passam
-    /// por aqui sao de autoria, e o front so monta esses links a partir da propria biblioteca.
-    /// Responder 403 confirmaria a existencia de um conjunto privado de outra pessoa para quem
-    /// varresse ids — e nao daria ao autor legitimo nenhuma acao a mais.
-    ///
-    /// Vale tambem para o conjunto <c>community</c> de outro autor: da para joga-lo numa sala
-    /// (POST /rooms com setId), nao para abrir o editor dele.
+    /// POST /phase-sets/{setId}/publish — publica versão imutável em <c>community_phases</c> (PostgreSQL)
+    /// com deduplicação por hash, e após commit grava o ponteiro ordenado <c>phaseIds[]</c> em <c>community_phase_sets</c> (MongoDB).
     /// </summary>
-    private async Task<PhaseSet> FindOwnedAsync(string setId, ClaimsPrincipal principal, bool tracked, CancellationToken ct)
+    public async Task<PhaseSetLibraryEntryDto> PublishAsync(string setId, ClaimsPrincipal principal, CancellationToken ct)
+    {
+        var doc = await FindOwnedAsync(setId, principal, ct);
+        var author = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == doc.OwnerId, ct)
+                     ?? throw AccountRequired();
+
+        if (doc.Phases.Count is 0)
+        {
+            throw new ApiException(
+                StatusCodes.Status409Conflict,
+                ErrorCodes.IncompletePhase,
+                "O conjunto precisa ter pelo menos uma fase completa para ser publicado.");
+        }
+
+        var ordered = doc.Phases.OrderBy(p => p.OrderIndex).ToList();
+        var contents = new List<PhaseContent>(ordered.Count);
+
+        foreach (var item in ordered)
+        {
+            var content = PhaseContentHasher.ToContent(item.Content);
+            PhaseGrading.EnsureComplete(item.Kind, item.Name, item.OrderIndex, content);
+            contents.Add(content);
+        }
+
+        var originIds = ordered
+            .Where(p => p.OriginCommunityPhaseId.HasValue)
+            .Select(p => p.OriginCommunityPhaseId!.Value)
+            .Distinct()
+            .ToList();
+
+        var existingOrigins = originIds.Count > 0
+            ? await db.CommunityPhases
+                .AsNoTracking()
+                .Where(cp => originIds.Contains(cp.Id) && cp.Status == CommunityResourceStatus.Published)
+                .ToDictionaryAsync(cp => cp.Id, ct)
+            : new Dictionary<Guid, CommunityPhase>();
+
+        var nextVersion = (doc.PublishedVersion ?? 0) + 1;
+        var phaseIds = new List<Guid>(ordered.Count);
+
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var item = ordered[i];
+            var content = contents[i];
+            var hash = PhaseContentHasher.Compute(
+                item.Kind,
+                item.Name,
+                item.BasePoints,
+                item.PointsMultiplier,
+                item.TimeSeconds,
+                content);
+
+            if (item.OriginCommunityPhaseId is { } originId
+                && existingOrigins.TryGetValue(originId, out var existingPhase)
+                && string.Equals(existingPhase.ContentHash, hash, StringComparison.Ordinal))
+            {
+                item.ContentHash = hash;
+                phaseIds.Add(originId);
+                continue;
+            }
+
+            var newPhase = new CommunityPhase
+            {
+                Id = Guid.CreateVersion7(),
+                AuthorId = author.Id,
+                AuthorName = author.Name,
+                OriginPhaseId = item.OriginCommunityPhaseId,
+                SourceDraftPhaseId = item.Id,
+                Version = nextVersion,
+                Kind = item.Kind,
+                Subject = doc.Subject,
+                Name = item.Name,
+                QuestionPreview = PhaseContentHasher.BuildQuestionPreview(content.Question),
+                BasePoints = item.BasePoints,
+                PointsMultiplier = item.PointsMultiplier,
+                TimeSeconds = item.TimeSeconds,
+                ContentJson = content.ToJson(),
+                ContentHash = hash,
+                Status = CommunityResourceStatus.Published,
+                PublishedAt = DateTimeOffset.UtcNow,
+            };
+
+            db.CommunityPhases.Add(newPhase);
+            item.OriginCommunityPhaseId = newPhase.Id;
+            item.ContentHash = hash;
+            phaseIds.Add(newPhase.Id);
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        var publishedDoc = new CommunityPhaseSetDocument
+        {
+            Id = Guid.CreateVersion7(),
+            SourcePrivateSetId = doc.Id,
+            Version = nextVersion,
+            AuthorId = author.Id,
+            AuthorName = author.Name,
+            Title = doc.Title,
+            Subject = doc.Subject,
+            CoverUrl = doc.CoverUrl,
+            Status = CommunityResourceStatus.Published,
+            PublishedAt = DateTime.UtcNow,
+            PhaseIds = phaseIds,
+            Summary = ComputeSummary(ordered, useCount: 0, submissionsCount: 0, correctSubmissionsCount: 0),
+        };
+
+        await store.InsertCommunitySetAsync(publishedDoc, ct);
+
+        doc.PublishedSetId = publishedDoc.Id;
+        doc.PublishedVersion = nextVersion;
+        await store.UpsertPrivateSetAsync(doc, ct);
+
+        return ToLibraryEntry(publishedDoc);
+    }
+
+    /// <summary>
+    /// POST /phase-sets/{setId}/copy — resolve <c>phaseIds[]</c> em lote do PostgreSQL (<c>ANY(@phaseIds)</c>)
+    /// e cria uma cópia privada editável isolada no MongoDB.
+    /// </summary>
+    public async Task<PhaseSetDraftResponse> CopyAsync(string setId, ClaimsPrincipal principal, CancellationToken ct)
     {
         var ownerId = principal.GetUserId() ?? throw AccountRequired();
 
-        // Id malformado e 404 pelo mesmo motivo do GET /users/{userId}/profile: para quem esta
-        // olhando, um id que nao resolve e um conjunto que nao existe.
         if (!Guid.TryParse(setId, out var id))
         {
             throw NotFound();
         }
 
-        var query = tracked ? db.PhaseSets : db.PhaseSets.AsNoTracking();
+        var now = DateTime.UtcNow;
+        var communityDoc = await store.GetCommunitySetAsync(id, ct);
+        if (communityDoc is { Status: CommunityResourceStatus.Published })
+        {
+            var phaseMap = communityDoc.PhaseIds.Count > 0
+                ? await db.CommunityPhases
+                    .AsNoTracking()
+                    .Where(p => communityDoc.PhaseIds.Contains(p.Id))
+                    .ToDictionaryAsync(p => p.Id, ct)
+                : new Dictionary<Guid, CommunityPhase>();
 
-        return await query
-                   .Include(s => s.Phases)
-                   .FirstOrDefaultAsync(s => s.Id == id && s.OwnerId == ownerId, ct)
-               ?? throw NotFound();
+            var copiedItems = new List<PrivatePhaseItemDocument>(communityDoc.PhaseIds.Count);
+            foreach (var phaseId in communityDoc.PhaseIds)
+            {
+                if (!phaseMap.TryGetValue(phaseId, out var cp))
+                {
+                    continue;
+                }
+
+                var content = PhaseContent.Parse(cp.ContentJson);
+                copiedItems.Add(new PrivatePhaseItemDocument
+                {
+                    Id = Guid.CreateVersion7(),
+                    OriginCommunityPhaseId = cp.Id,
+                    ContentHash = cp.ContentHash,
+                    Kind = cp.Kind,
+                    Name = cp.Name,
+                    BasePoints = cp.BasePoints,
+                    PointsMultiplier = cp.PointsMultiplier,
+                    TimeSeconds = cp.TimeSeconds,
+                    OrderIndex = copiedItems.Count,
+                    Content = PhaseContentHasher.FromContent(content),
+                });
+            }
+
+            var copyFromCommunity = new PrivatePhaseSetDocument
+            {
+                Id = Guid.CreateVersion7(),
+                OwnerId = ownerId,
+                Title = communityDoc.Title,
+                Subject = communityDoc.Subject,
+                Folder = null,
+                CoverUrl = communityDoc.CoverUrl,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Summary = ComputeSummary(copiedItems, useCount: 0, submissionsCount: 0, correctSubmissionsCount: 0),
+                Phases = copiedItems,
+            };
+
+            await store.UpsertPrivateSetAsync(copyFromCommunity, ct);
+            await store.IncrementSetUseCountAsync(communityDoc.Id, isCommunity: true, ct);
+            await SyncWorkspaceMetadataAsync(ownerId, copyFromCommunity.Subject, copyFromCommunity.Folder, ct);
+
+            return ToDraft(copyFromCommunity);
+        }
+
+        var privateDoc = await store.GetPrivateSetAsync(id, ct);
+        if (privateDoc is not null && privateDoc.OwnerId == ownerId)
+        {
+            var clonedItems = privateDoc.Phases
+                .OrderBy(p => p.OrderIndex)
+                .Select((p, index) => new PrivatePhaseItemDocument
+                {
+                    Id = Guid.CreateVersion7(),
+                    OriginCommunityPhaseId = p.OriginCommunityPhaseId,
+                    ContentHash = p.ContentHash,
+                    Kind = p.Kind,
+                    Name = p.Name,
+                    BasePoints = p.BasePoints,
+                    PointsMultiplier = p.PointsMultiplier,
+                    TimeSeconds = p.TimeSeconds,
+                    OrderIndex = index,
+                    Content = p.Content with { },
+                })
+                .ToList();
+
+            var copyFromPrivate = new PrivatePhaseSetDocument
+            {
+                Id = Guid.CreateVersion7(),
+                OwnerId = ownerId,
+                Title = privateDoc.Title,
+                Subject = privateDoc.Subject,
+                Folder = privateDoc.Folder,
+                CoverUrl = privateDoc.CoverUrl,
+                CreatedAt = now,
+                UpdatedAt = now,
+                Summary = ComputeSummary(clonedItems, useCount: 0, submissionsCount: 0, correctSubmissionsCount: 0),
+                Phases = clonedItems,
+            };
+
+            await store.UpsertPrivateSetAsync(copyFromPrivate, ct);
+            return ToDraft(copyFromPrivate);
+        }
+
+        throw NotFound();
     }
 
-    private PhaseSetDraftResponse ToDraft(PhaseSet set) => new(
-        set.Id,
-        set.Title,
-        [.. set.Phases.OrderBy(p => p.OrderIndex).Select(ToDraftPhase)],
-        new PhaseLimitsDto());
-
     /// <summary>
-    /// A fase como o editor a recebe de volta: colunas + o que estava no <c>ContentJson</c>.
-    ///
-    /// Os campos de outros kinds continuam nulos e, por causa do JsonIgnore de
-    /// <see cref="DraftPhaseDto"/>, nem aparecem no corpo — uma fase de quiz nao devolve
-    /// <c>blanks: null</c>, que em types.ts nao seria uma QuizDraftPhase valida.
+    /// Resolve um conjunto (privado do usuário no MongoDB ou publicado na comunidade com lookup em lote
+    /// em <c>community_phases</c>) para copiar para a fila congelada de uma sala.
     /// </summary>
-    private static DraftPhaseDto ToDraftPhase(Phase phase)
+    public async Task<ResolvedQueueSet> ResolveSetForQueueAsync(Guid setId, Guid? viewerUserId, CancellationToken ct)
     {
-        var content = PhaseContent.Parse(phase.ContentJson);
+        var privateDoc = await store.GetPrivateSetAsync(setId, ct);
+        if (privateDoc is not null)
+        {
+            if (viewerUserId is not { } ownerId || privateDoc.OwnerId != ownerId)
+            {
+                throw NotFound();
+            }
+
+            var resolvedPrivate = privateDoc.Phases
+                .OrderBy(p => p.OrderIndex)
+                .Select(p => new ResolvedQueuePhase(
+                    p.Id,
+                    p.Kind,
+                    p.Name,
+                    p.BasePoints,
+                    p.PointsMultiplier,
+                    p.TimeSeconds,
+                    PhaseContentHasher.ToContent(p.Content).ToJson()))
+                .ToList();
+
+            return new ResolvedQueueSet(privateDoc.Id, privateDoc.Title, IsCommunity: false, resolvedPrivate);
+        }
+
+        var communityDoc = await store.GetCommunitySetAsync(setId, ct);
+        if (communityDoc is { Status: CommunityResourceStatus.Published })
+        {
+            var phaseMap = communityDoc.PhaseIds.Count > 0
+                ? await db.CommunityPhases
+                    .AsNoTracking()
+                    .Where(p => communityDoc.PhaseIds.Contains(p.Id))
+                    .ToDictionaryAsync(p => p.Id, ct)
+                : new Dictionary<Guid, CommunityPhase>();
+
+            var resolvedCommunity = new List<ResolvedQueuePhase>(communityDoc.PhaseIds.Count);
+            foreach (var phaseId in communityDoc.PhaseIds)
+            {
+                if (!phaseMap.TryGetValue(phaseId, out var cp))
+                {
+                    continue;
+                }
+
+                resolvedCommunity.Add(new ResolvedQueuePhase(
+                    cp.Id,
+                    cp.Kind,
+                    cp.Name,
+                    cp.BasePoints,
+                    cp.PointsMultiplier,
+                    cp.TimeSeconds,
+                    cp.ContentJson));
+            }
+
+            return new ResolvedQueueSet(communityDoc.Id, communityDoc.Title, IsCommunity: true, resolvedCommunity);
+        }
+
+        throw NotFound();
+    }
+
+    private async Task<PrivatePhaseSetDocument> FindOwnedAsync(string setId, ClaimsPrincipal principal, CancellationToken ct)
+    {
+        var ownerId = principal.GetUserId() ?? throw AccountRequired();
+
+        if (!Guid.TryParse(setId, out var id))
+        {
+            throw NotFound();
+        }
+
+        var doc = await store.GetPrivateSetAsync(id, ct);
+        if (doc is null || doc.OwnerId != ownerId)
+        {
+            throw NotFound();
+        }
+
+        return doc;
+    }
+
+    private async Task SyncWorkspaceMetadataAsync(Guid userId, string subject, string? folder, CancellationToken ct)
+    {
+        var needsSubject = !string.Equals(subject, DefaultSubject, StringComparison.OrdinalIgnoreCase);
+        var needsFolder = !string.IsNullOrWhiteSpace(folder);
+        if (!needsSubject && !needsFolder)
+        {
+            return;
+        }
+
+        var workspace = await store.GetOrCreateWorkspaceAsync(userId, ct);
+        var changed = false;
+
+        if (needsSubject && !workspace.Subjects.Contains(subject, StringComparer.OrdinalIgnoreCase))
+        {
+            workspace.Subjects.Add(subject);
+            changed = true;
+        }
+
+        if (needsFolder && !workspace.Folders.Contains(folder!, StringComparer.OrdinalIgnoreCase))
+        {
+            workspace.Folders.Add(folder!);
+            changed = true;
+        }
+
+        if (changed)
+        {
+            workspace.UpdatedAt = DateTime.UtcNow;
+            await store.UpsertWorkspaceAsync(workspace, ct);
+        }
+    }
+
+    private static List<PrivatePhaseItemDocument> BuildPrivateItems(
+        IReadOnlyList<DraftPhaseDto> phases,
+        Dictionary<Guid, PrivatePhaseItemDocument>? existingIds)
+    {
+        var result = new List<PrivatePhaseItemDocument>(phases.Count);
+
+        for (var index = 0; index < phases.Count; index++)
+        {
+            var incoming = phases[index];
+            var phaseId = existingIds is not null
+                          && Guid.TryParse(incoming.Id, out var parsed)
+                          && existingIds.Remove(parsed, out _)
+                ? parsed
+                : Guid.CreateVersion7();
+
+            var name = incoming.Name!.Trim();
+            var multiplier = PhaseLimits.RoundMultiplier(incoming.PointsMultiplier);
+            var content = PhaseContent.From(incoming);
+            var hash = PhaseContentHasher.Compute(
+                incoming.Kind,
+                name,
+                incoming.BasePoints,
+                multiplier,
+                incoming.TimeSeconds,
+                content);
+
+            result.Add(new PrivatePhaseItemDocument
+            {
+                Id = phaseId,
+                OriginCommunityPhaseId = incoming.OriginCommunityPhaseId,
+                ContentHash = hash,
+                Kind = incoming.Kind,
+                Name = name,
+                BasePoints = incoming.BasePoints,
+                PointsMultiplier = multiplier,
+                TimeSeconds = incoming.TimeSeconds,
+                OrderIndex = index,
+                Content = PhaseContentHasher.FromContent(content),
+            });
+        }
+
+        return result;
+    }
+
+    private static PhaseSetSummarySubdocument ComputeSummary(
+        IReadOnlyList<PrivatePhaseItemDocument> items,
+        long useCount,
+        long submissionsCount,
+        long correctSubmissionsCount)
+        => PhaseSetSummarySubdocument.Compute(
+            [.. items.Select(p => (p.Kind, p.TimeSeconds))],
+            useCount,
+            submissionsCount,
+            correctSubmissionsCount);
+
+    private static PhaseSetDraftResponse ToDraft(PrivatePhaseSetDocument doc) => new(
+        doc.Id,
+        doc.Title,
+        [.. doc.Phases.OrderBy(p => p.OrderIndex).Select(ToDraftPhase)],
+        new PhaseLimitsDto(),
+        doc.Subject,
+        doc.Folder,
+        doc.CoverUrl);
+
+    private static DraftPhaseDto ToDraftPhase(PrivatePhaseItemDocument phase)
+    {
+        var content = PhaseContentHasher.ToContent(phase.Content);
 
         return new DraftPhaseDto(
             phase.Id.ToString(),
@@ -320,21 +690,44 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
             IntroTip: content.IntroTip,
             IntroSound: content.IntroSound,
             IntroShapes: content.IntroShapes,
-            VariationSettings: content.VariationSettings);
+            VariationSettings: content.VariationSettings,
+            OriginCommunityPhaseId: phase.OriginCommunityPhaseId);
     }
 
-    private static void Apply(Phase phase, DraftPhaseDto incoming, int order)
-    {
-        phase.Kind = incoming.Kind;
-        phase.Name = incoming.Name!.Trim();
-        phase.BasePoints = incoming.BasePoints;
-        phase.PointsMultiplier = PhaseLimits.RoundMultiplier(incoming.PointsMultiplier);
-        phase.TimeSeconds = incoming.TimeSeconds;
-        // "A ordem das fases e a ordem do array": a posicao no corpo e a unica fonte, e por isso
-        // nao existe campo de ordem no DraftPhase para sair de sincronia com o rail.
-        phase.OrderIndex = order;
-        phase.ContentJson = PhaseContent.From(incoming).ToJson();
-    }
+    private PhaseSetLibraryEntryDto ToLibraryEntry(PrivatePhaseSetDocument doc) => new(
+        doc.Id,
+        doc.Title,
+        doc.Summary.PhaseCount,
+        PhaseSetSource.Owned,
+        labels.EditedLabel(ToUtcOffset(doc.UpdatedAt)),
+        null,
+        doc.Summary.PhaseKindCounts,
+        doc.Summary.AccuracyRate,
+        LabelFormatter.DurationLabel(TimeSpan.FromSeconds(doc.Summary.TotalTimeSeconds)),
+        doc.Subject,
+        doc.Folder,
+        doc.Summary.UseCount,
+        doc.CoverUrl,
+        doc.PublishedVersion);
+
+    private static PhaseSetLibraryEntryDto ToLibraryEntry(CommunityPhaseSetDocument doc) => new(
+        doc.Id,
+        doc.Title,
+        doc.Summary.PhaseCount,
+        PhaseSetSource.Community,
+        null,
+        doc.AuthorName,
+        doc.Summary.PhaseKindCounts,
+        doc.Summary.AccuracyRate,
+        LabelFormatter.DurationLabel(TimeSpan.FromSeconds(doc.Summary.TotalTimeSeconds)),
+        doc.Subject,
+        null,
+        doc.Summary.UseCount,
+        doc.CoverUrl,
+        doc.Version);
+
+    private static DateTimeOffset ToUtcOffset(DateTime utc)
+        => new(DateTime.SpecifyKind(utc, DateTimeKind.Utc));
 
     private static string NormalizeTitle(string? title)
     {
@@ -345,12 +738,54 @@ public class PhaseSetService(AppDbContext db, LabelFormatter labels)
             : normalized;
     }
 
-    /// <summary>
-    /// <c>scope</c> ausente e "owned": o seletor abre na aba "meus conjuntos", e a rota so e
-    /// chamada por quem tem conta. Valor desconhecido e erro, e nao um silencioso cai-no-padrao —
-    /// devolver a biblioteca do proprio usuario para quem pediu "?scope=todos" seria uma resposta
-    /// 200 respondendo outra pergunta.
-    /// </summary>
+    private static string NormalizeSubject(string? subject)
+    {
+        var normalized = subject?.Trim();
+        if (string.IsNullOrEmpty(normalized))
+        {
+            return DefaultSubject;
+        }
+
+        if (normalized.Length > MaxMetadataLength)
+        {
+            throw Validation($"subject deve ter no maximo {MaxMetadataLength} caracteres.");
+        }
+
+        return normalized;
+    }
+
+    private static string? NormalizeOptionalTag(string? value, string fieldName)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrEmpty(normalized))
+        {
+            return null;
+        }
+
+        if (normalized.Length > MaxMetadataLength)
+        {
+            throw Validation($"{fieldName} deve ter no maximo {MaxMetadataLength} caracteres.");
+        }
+
+        return normalized;
+    }
+
+    private static string? NormalizeCoverUrl(string? value)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrEmpty(normalized))
+        {
+            return null;
+        }
+
+        if (normalized.Length > MaxCoverUrlLength)
+        {
+            throw Validation($"coverUrl deve ter no maximo {MaxCoverUrlLength} caracteres.");
+        }
+
+        return normalized;
+    }
+
     private static PhaseSetSource ParseScope(string? scope) => scope?.Trim().ToLowerInvariant() switch
     {
         null or "" or "owned" => PhaseSetSource.Owned,

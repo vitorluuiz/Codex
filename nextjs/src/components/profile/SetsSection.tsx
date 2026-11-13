@@ -8,6 +8,7 @@ import { cssVars } from '@/lib/cssVars';
 import { setColor } from '@/lib/setColor';
 import type { PhaseSetSummary } from '@/lib/types';
 import styles from './SetsSection.module.css';
+import { redirect } from 'next/navigation';
 
 /** Quanto o carrossel anda por clique — um card mais o gap. */
 const SCROLL_STEP = 276;
@@ -23,7 +24,6 @@ export function SetsSection({ sets, onCreate, onEdit, onStart }: SetsSectionProp
   const railRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
-  const [allOpen, setAllOpen] = useState(false);
 
   // As setas só existem quando há o que rolar; sem isso elas ficariam cobrindo
   // os cards de um conjunto único que já cabe inteiro na tela.
@@ -50,7 +50,7 @@ export function SetsSection({ sets, onCreate, onEdit, onStart }: SetsSectionProp
         <h2 className={styles.title}>Conjuntos de desafios criados</h2>
         <div className={styles.headActions}>
           {sets.length > 0 && (
-            <button type="button" className={styles.link} onClick={() => setAllOpen(true)}>
+            <button type="button" className={styles.link} onClick={() => redirect('/conjuntos')}>
               Ver todos ({sets.length})
             </button>
           )}
@@ -117,41 +117,6 @@ export function SetsSection({ sets, onCreate, onEdit, onStart }: SetsSectionProp
           )}
         </div>
       )}
-
-      <Dialog open={allOpen} title="Todos os conjuntos" onClose={() => setAllOpen(false)}>
-        <div className={styles.allList}>
-          {sets.map((set) => (
-            <div
-              key={set.id}
-              className={styles.allRow}
-              style={cssVars({ '--set-color': setColor(set.id) })}
-            >
-              <span className={styles.allIcon}>
-                <Icon.Grid size={16} />
-              </span>
-              <div className={styles.allText}>
-                <div className={styles.allTitle}>{set.title}</div>
-                <div className={styles.allMeta}>
-                  {set.phaseCount} fases
-                  {set.updatedLabel && ` · ${set.updatedLabel}`}
-                </div>
-              </div>
-              <button
-                type="button"
-                className={styles.allEdit}
-                onClick={() => onEdit(set.id)}
-                aria-label={`Editar ${set.title}`}
-                title="Editar conjunto"
-              >
-                <Icon.Pencil size={14} />
-              </button>
-              <Button size="sm" variant="secondary" onClick={() => onStart(set.id)}>
-                Abrir
-              </Button>
-            </div>
-          ))}
-        </div>
-      </Dialog>
     </section>
   );
 }

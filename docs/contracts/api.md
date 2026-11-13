@@ -49,6 +49,7 @@ Todas as respostas de erro seguem o formato padronizado com código estável:
 | 404 | `ROOM_NOT_FOUND` | Código de sala inexistente, expirado ou inválido |
 | 404 | `USER_NOT_FOUND` | Perfil de usuário não localizado |
 | 404 | `PHASE_SET_NOT_FOUND` | Conjunto de fases inexistente ou pertencente a outro autor |
+| 404 | `PHASE_NOT_FOUND` | Desafio inexistente na fila ou no catálogo da comunidade |
 | 404 | `MATCH_NOT_FOUND` | Partida não localizada ou chamada indevida por participante |
 | 404 | `PARTICIPANT_NOT_FOUND`| Participante não encontrado na sala |
 | 409 | `EMAIL_ALREADY_USED` / `EMAIL_TAKEN` | E-mail já utilizado por outra conta |
@@ -328,26 +329,55 @@ Encerra a sala e desconecta os participantes (apenas líder).
 
 ---
 
-### 3.4 Conjuntos de Fases e Autoria
+### 3.4 Conjuntos de Fases, Comunidade e Autoria
 
 #### `GET /phase-sets?scope=owned|community&q={termo}`
-Busca conjuntos para o seletor. Retorna resumos com contagem de fases e títulos.
+Busca conjuntos para o seletor de sala. Retorna resumos (`PhaseSetSummary[]`) com contagem de fases e títulos, lendo exclusivamente de `private_phase_sets` (`scope=owned`) ou `community_phase_sets` (`scope=community`) no MongoDB.
 
 #### `GET /phase-sets/library`
-Retorna conjuntos próprios e da comunidade com métricas agrupadas, tags e disciplinas para a tela de biblioteca.
+Retorna a biblioteca completa do usuário para a tela `/conjuntos` em uma única leitura no MongoDB (`user_workspaces`, `private_phase_sets` com projeção `{ phases: 0 }` e `community_phase_sets`).
+* **Resposta `200`:**
+```json
+{
+  "sets": [
+    {
+      "id": "01a069f5-8351-7c3f-aa88-50364832e5c1",
+      "title": "Frações & Funções Básicas",
+      "phaseCount": 8,
+      "source": "owned",
+      "updatedLabel": "editado há 2 dias",
+      "authorName": null,
+      "phaseKindCounts": { "quiz": 5, "fill": 3 },
+      "accuracyRate": 78,
+      "durationLabel": "32 min",
+      "subject": "Matemática",
+      "folder": "Matemática 2º ano",
+      "useCount": 12,
+      "coverUrl": null
+    }
+  ],
+  "subjects": ["Matemática", "Programação"],
+  "folders": ["Matemática 2º ano", "Provas"],
+  "coverUrl": null
+}
+```
 
 #### `GET /phase-sets/{setId}/draft`
-Retorna o conjunto na íntegra no formato do editor (com gabaritos e alternativas completas). Restrito ao autor.
+Retorna o conjunto privado na íntegra no formato do editor (com gabaritos e alternativas completas a partir de `private_phase_sets`). Restrito ao autor.
 
 #### `POST /phase-sets` e `PUT /phase-sets/{setId}/draft`
-Criação e substituição completa do rascunho de um conjunto.
+Criação e substituição completa do rascunho de um conjunto privado no MongoDB (`private_phase_sets`), recalculando automaticamente o subdocumento `summary`.
 * **Corpo:**
 ```json
 {
   "title": "Conjunto de Matemática",
+  "subject": "Matemática",
+  "folder": "Matemática 2º ano",
+  "coverUrl": null,
   "phases": [
     {
       "id": "draft_1",
+      "originCommunityPhaseId": null,
       "kind": "quiz",
       "name": "Soma Básica",
       "basePoints": 100,
@@ -361,13 +391,43 @@ Criação e substituição completa do rascunho de um conjunto.
   ]
 }
 ```
+* **Metadados opcionais de organização:** `subject` (até 64 caracteres, padrão `"Geral"`), `folder` (opcional, até 64 caracteres) e `coverUrl` (opcional).
+* **Linhagem por fase:** `originCommunityPhaseId` (opcional) preserva a referência de origem quando o autor adiciona um desafio da comunidade no editor; toda fase no rascunho privado é gravada como cópia isolada e embutida com seu `contentHash`.
 * **Validações:** Título até 160 caracteres, máximo 50 fases por conjunto. Limites de texto: enunciado até 4000 caracteres, código base até 8000 caracteres.
 
 #### `PATCH /phase-sets/{setId}`
-Renomeia título do conjunto: `{ "title": "Novo Título" }`.
+Atualiza metadados do conjunto privado (título, disciplina, pasta ou capa): `{ "title": "Novo Título", "subject": "Matemática", "folder": "Provas", "coverUrl": null }`.
 
 #### `DELETE /phase-sets/{setId}`
-Exclui conjunto e suas fases associadas em cascata.
+Exclui o conjunto privado de `private_phase_sets`. Não afeta partidas passadas nem versões já publicadas na comunidade.
+
+#### `POST /phase-sets/{setId}/publish`
+Publica uma versão imutável do conjunto privado na comunidade.
+* **Comportamento:**
+  * Para cada fase do conjunto privado: se possuir `originCommunityPhaseId` e seu `contentHash` canônico for idêntico ao da fase original em `community_phases`, reutiliza o UUID existente; caso contrário (fase inédita ou cópia modificada), insere um novo registro imutável em `community_phases` (PostgreSQL).
+  * Após commit no PostgreSQL, grava o conjunto público imutável em `community_phase_sets` (MongoDB) com `phaseIds[]` ordenado e `summary` pré-calculado, incrementando `publishedVersion` no rascunho privado.
+* **Resposta `201`:** Resumo do conjunto publicado (`PhaseSetLibraryEntry` com `source: "community"` e `version`).
+* **Erros:** `403 ACCOUNT_REQUIRED`, `404 PHASE_SET_NOT_FOUND`, `409 INCOMPLETE_PHASE` (se o conjunto não tiver fases válidas).
+
+#### `POST /phase-sets/{setId}/copy`
+Cria uma cópia privada editável (`private_phase_sets`) para o usuário autenticado a partir de um conjunto da comunidade (`community_phase_sets`).
+* **Comportamento:** Resolve `phaseIds[]` em lote na tabela `community_phases` (`WHERE "Id" = ANY(@phaseIds)`), embute a cópia completa de cada fase no novo documento privado preservando `originCommunityPhaseId` e `contentHash`, e devolve o rascunho criado.
+* **Resposta `201`:** `PhaseSetDraftResponse` do novo conjunto privado.
+* **Erros:** `403 ACCOUNT_REQUIRED`, `404 PHASE_SET_NOT_FOUND`.
+
+#### `GET /community/phases?q={termo}&subject={disciplina}&kind={tipo}&sort=popular|recent&limit=30&cursor={offset}`
+Busca paginada de desafios avulsos no catálogo imutável `community_phases` (PostgreSQL), utilizando índices compostos e *Full-Text Search* (`GIN` em português).
+* **Resposta `200`:** Lista paginada com resumos dos desafios (`id`, `name`, `questionPreview`, `kind`, `subject`, `difficulty`, `authorId`, `authorName`, `basePoints`, `pointsMultiplier`, `timeSeconds`, `useCount`, `accuracyRate`, `publishedAt`).
+
+#### `GET /community/phases/{phaseId}`
+Retorna o detalhe completo de um desafio da comunidade no formato `DraftPhase` (incluindo `originCommunityPhaseId = phaseId`) para importação e cópia isolada no editor de conjuntos.
+* **Erros:** `404 PHASE_NOT_FOUND`.
+
+#### `POST /community/phases`
+Publica um desafio avulso diretamente no catálogo imutável `community_phases` (PostgreSQL).
+* **Corpo:** `DraftPhase` + `{ "subject": "Matemática", "difficulty": "medium", "originPhaseId": null }`.
+* **Resposta `201`:** Resumo e `id` do desafio publicado na comunidade.
+* **Erros:** `403 ACCOUNT_REQUIRED`, `400 VALIDATION_ERROR`.
 
 #### 3.4.1 Geração Assistida por IA (`/ai`)
 

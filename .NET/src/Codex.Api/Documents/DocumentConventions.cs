@@ -58,6 +58,9 @@ public static class DocumentConventions
             BsonSerializer.RegisterSerializer(new NamedEnumSerializer<MatchMode>(JsonNamingPolicy.KebabCaseLower));
             BsonSerializer.RegisterSerializer(new NamedEnumSerializer<PhaseKind>(JsonNamingPolicy.CamelCase));
             BsonSerializer.RegisterSerializer(new NamedEnumSerializer<GradingStatus>(JsonNamingPolicy.CamelCase));
+            BsonSerializer.RegisterSerializer(new NamedEnumSerializer<CommunityResourceStatus>(JsonNamingPolicy.CamelCase));
+            BsonSerializer.RegisterSerializer(new NamedEnumSerializer<AiVariationAspect>(JsonNamingPolicy.CamelCase));
+            BsonSerializer.RegisterSerializer(new NamedEnumSerializer<AiDifficultyShift>(JsonNamingPolicy.CamelCase));
 
             _registered = true;
         }

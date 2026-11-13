@@ -2,8 +2,8 @@ using Codex.Api.Common.Errors;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
 using Codex.Api.Services;
+using Codex.Api.Services.Redis;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 
 namespace Codex.Api.Tests;
 
@@ -15,8 +15,7 @@ public class RoomQueueTests
     {
         var ctx = new RoomTestContext();
         var set = ctx.AddPhaseSet(ctx.Leader, "Frações & Funções Básicas", phaseCount: 3);
-        await ctx.Queue.AppendSetAsync(ctx.Room.Id, set, CancellationToken.None);
-        await ctx.Db.SaveChangesAsync();
+        await ctx.EnqueueAsync(set);
 
         var queue = await ctx.Queue.GetQueueAsync(ctx.Room.Code, ctx.AsLeader, CancellationToken.None);
 
@@ -35,9 +34,8 @@ public class RoomQueueTests
         var ctx = new RoomTestContext();
         var first = ctx.AddPhaseSet(ctx.Leader, "Primeiro", phaseCount: 2);
         var second = ctx.AddPhaseSet(ctx.Leader, "Segundo", phaseCount: 1);
-        await ctx.Queue.AppendSetAsync(ctx.Room.Id, first, CancellationToken.None);
-        await ctx.Queue.AppendSetAsync(ctx.Room.Id, second, CancellationToken.None);
-        await ctx.Db.SaveChangesAsync();
+        await ctx.EnqueueAsync(first);
+        await ctx.EnqueueAsync(second);
 
         var queue = await ctx.Queue.GetQueueAsync(ctx.Room.Code, ctx.AsLeader, CancellationToken.None);
 
@@ -51,15 +49,14 @@ public class RoomQueueTests
     {
         var ctx = new RoomTestContext();
         var set = ctx.AddPhaseSet(ctx.Leader, "Frações", phaseCount: 1);
-        await ctx.Queue.AppendSetAsync(ctx.Room.Id, set, CancellationToken.None);
-        await ctx.Db.SaveChangesAsync();
+        await ctx.EnqueueAsync(set);
 
         // O lider ajustou a fase dentro da fila; o conjunto de origem continua com 100/45.
-        var queued = await ctx.Db.RoomQueuePhases.SingleAsync(p => p.RoomId == ctx.Room.Id);
-        queued.BasePoints = 150;
-        queued.PointsMultiplier = 1.5m;
-        queued.TimeSeconds = 60;
-        await ctx.Db.SaveChangesAsync();
+        var queued = Assert.Single(await ctx.RoomRepo.GetQueuePhasesAsync(ctx.Room.Id.ToString(), CancellationToken.None));
+        await ctx.RoomRepo.SaveQueuePhaseAsync(
+            ctx.Room.Id.ToString(),
+            queued with { BasePoints = 150, PointsMultiplier = 1.5m, TimeSeconds = 60 },
+            CancellationToken.None);
 
         var phase = Assert.Single((await ctx.Queue.GetQueueAsync(ctx.Room.Code, ctx.AsLeader, CancellationToken.None)).Phases);
 
@@ -76,22 +73,23 @@ public class RoomQueueTests
         var ctx = new RoomTestContext();
         var first = ctx.AddPhaseSet(ctx.Leader, "Primeiro", phaseCount: 2);
         var second = ctx.AddPhaseSet(ctx.Leader, "Segundo", phaseCount: 2);
-        await ctx.Queue.AppendSetAsync(ctx.Room.Id, first, CancellationToken.None);
-        await ctx.Queue.AppendSetAsync(ctx.Room.Id, second, CancellationToken.None);
-        await ctx.Db.SaveChangesAsync();
+        await ctx.EnqueueAsync(first);
+        await ctx.EnqueueAsync(second);
 
         // Simula o que PUT /queue/order vai fazer: inverte a fila. A partir daqui, agrupar por
         // conjunto daria a resposta errada — a ordem que vale e a da fila inteira.
-        var phases = await ctx.Db.RoomQueuePhases.Where(p => p.RoomId == ctx.Room.Id).OrderBy(p => p.OrderIndex).ToListAsync();
-        for (var index = 0; index < phases.Count; index++)
-        {
-            phases[index].OrderIndex = phases.Count - 1 - index;
-        }
-        await ctx.Db.SaveChangesAsync();
+        var phases = (await ctx.RoomRepo.GetQueuePhasesAsync(ctx.Room.Id.ToString(), CancellationToken.None))
+            .OrderBy(p => p.OrderIndex)
+            .ToList();
+        var reversed = phases
+            .Select((p, index) => p with { OrderIndex = phases.Count - 1 - index })
+            .ToList();
+        var sets = await ctx.RoomRepo.GetQueueSetsAsync(ctx.Room.Id.ToString(), CancellationToken.None);
+        await ctx.RoomRepo.SaveQueueOrderAsync(ctx.Room.Id.ToString(), reversed, sets, CancellationToken.None);
 
         var queue = await ctx.Queue.GetQueueAsync(ctx.Room.Code, ctx.AsLeader, CancellationToken.None);
 
-        Assert.Equal(phases.AsEnumerable().Reverse().Select(p => p.Id), queue.Phases.Select(p => p.Id));
+        Assert.Equal(phases.AsEnumerable().Reverse().Select(p => Guid.Parse(p.Id)), queue.Phases.Select(p => p.Id));
     }
 
     [Fact]
@@ -110,7 +108,7 @@ public class RoomQueueTests
     {
         var ctx = new RoomTestContext();
         var set = ctx.AddPhaseSet(ctx.Leader, "Frações", phaseCount: 2);
-        await ctx.Queue.AppendSetAsync(ctx.Room.Id, set, CancellationToken.None);
+        await ctx.EnqueueAsync(set);
 
         var otherRoom = new Room
         {
@@ -119,8 +117,21 @@ public class RoomQueueTests
             LeaderUserId = ctx.Leader.Id,
             Leader = ctx.Leader,
         };
-        ctx.Db.Rooms.Add(otherRoom);
-        await ctx.Db.SaveChangesAsync();
+        var otherRoomData = new RoomRedisData.RoomData(
+            Id: otherRoom.Id.ToString(),
+            Code: otherRoom.Code,
+            Status: otherRoom.Status.ToString().ToLowerInvariant(),
+            MatchMode: null,
+            Capacity: otherRoom.Capacity,
+            Locked: otherRoom.Locked,
+            RequireAccount: otherRoom.RequireAccount,
+            LeaderUserId: otherRoom.LeaderUserId.ToString(),
+            LeaderName: ctx.Leader.Name,
+            CreatedAtMs: otherRoom.CreatedAt.ToUnixTimeMilliseconds(),
+            ExpiresAtMs: null,
+            QueueRevision: otherRoom.QueueRevision,
+            CurrentMatchId: null);
+        await ctx.RoomRepo.ClaimCodeAndCreateAsync(otherRoom.Code, otherRoomData, CancellationToken.None);
 
         var queue = await ctx.Queue.GetQueueAsync(otherRoom.Code, ctx.AsLeader, CancellationToken.None);
 

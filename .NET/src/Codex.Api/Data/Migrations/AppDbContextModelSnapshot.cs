@@ -97,18 +97,38 @@ namespace Codex.Api.Data.Migrations
                     b.ToTable("ai_generations", (string)null);
                 });
 
-            modelBuilder.Entity("Codex.Api.Domain.Entities.Phase", b =>
+            modelBuilder.Entity("Codex.Api.Domain.Entities.CommunityPhase", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AuthorName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
                     b.Property<int>("BasePoints")
                         .HasColumnType("integer");
+
+                    b.Property<string>("ContentHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("ContentJson")
                         .IsRequired()
                         .HasColumnType("jsonb");
+
+                    b.Property<long>("CorrectSubmissionsCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Difficulty")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
                     b.Property<string>("Kind")
                         .IsRequired()
@@ -120,58 +140,61 @@ namespace Codex.Api.Data.Migrations
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");
 
-                    b.Property<int>("OrderIndex")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("PhaseSetId")
+                    b.Property<Guid?>("OriginPhaseId")
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("PointsMultiplier")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
 
-                    b.Property<int>("TimeSeconds")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PhaseSetId", "OrderIndex");
-
-                    b.ToTable("phases", (string)null);
-                });
-
-            modelBuilder.Entity("Codex.Api.Domain.Entities.PhaseSet", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
+                    b.Property<DateTimeOffset>("PublishedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("OwnerId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Title")
+                    b.Property<string>("QuestionPreview")
                         .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("character varying(160)");
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                    b.Property<Guid?>("SourceDraftPhaseId")
+                        .HasColumnType("uuid");
 
-                    b.Property<string>("Visibility")
+                    b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long>("SubmissionsCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("TimeSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("UseCount")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("OwnerId", "UpdatedAt");
+                    b.HasIndex("AuthorId", "PublishedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("IX_community_phases_AuthorId_PublishedAt");
 
-                    b.HasIndex("Visibility", "Title");
+                    b.HasIndex("Status", "Subject", "Kind", "PublishedAt")
+                        .IsDescending(false, false, false, true)
+                        .HasDatabaseName("IX_community_phases_Catalog_Recent");
 
-                    b.ToTable("phase_sets", (string)null);
+                    b.HasIndex("Status", "Subject", "Kind", "UseCount")
+                        .IsDescending(false, false, false, true)
+                        .HasDatabaseName("IX_community_phases_Catalog_Popular");
+
+                    b.ToTable("community_phases", (string)null);
                 });
 
             modelBuilder.Entity("Codex.Api.Domain.Entities.User", b =>
@@ -286,26 +309,15 @@ namespace Codex.Api.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Codex.Api.Domain.Entities.Phase", b =>
+            modelBuilder.Entity("Codex.Api.Domain.Entities.CommunityPhase", b =>
                 {
-                    b.HasOne("Codex.Api.Domain.Entities.PhaseSet", "PhaseSet")
-                        .WithMany("Phases")
-                        .HasForeignKey("PhaseSetId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                    b.HasOne("Codex.Api.Domain.Entities.User", "Author")
+                        .WithMany("CommunityPhases")
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("PhaseSet");
-                });
-
-            modelBuilder.Entity("Codex.Api.Domain.Entities.PhaseSet", b =>
-                {
-                    b.HasOne("Codex.Api.Domain.Entities.User", "Owner")
-                        .WithMany("PhaseSets")
-                        .HasForeignKey("OwnerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Owner");
+                    b.Navigation("Author");
                 });
 
             modelBuilder.Entity("Codex.Api.Domain.Entities.UserIdentity", b =>
@@ -319,18 +331,13 @@ namespace Codex.Api.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Codex.Api.Domain.Entities.PhaseSet", b =>
-                {
-                    b.Navigation("Phases");
-                });
-
             modelBuilder.Entity("Codex.Api.Domain.Entities.User", b =>
                 {
                     b.Navigation("AiGenerations");
 
-                    b.Navigation("Identities");
+                    b.Navigation("CommunityPhases");
 
-                    b.Navigation("PhaseSets");
+                    b.Navigation("Identities");
                 });
 #pragma warning restore 612, 618
         }

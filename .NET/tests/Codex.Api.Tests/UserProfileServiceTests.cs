@@ -3,6 +3,7 @@ using Codex.Api.Contracts.PhaseSets;
 using Codex.Api.Contracts.Users;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
+using Codex.Api.Services.Redis;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -257,8 +258,9 @@ public class UserProfileServiceTests
     public async Task Match_history_ignores_a_match_still_running()
     {
         var ctx = new RoomTestContext();
-        ctx.Db.Matches.Add(new Match { RoomId = ctx.Room.Id, Mode = MatchMode.Live, Status = MatchStatus.Running });
-        ctx.Db.SaveChanges();
+        await ctx.MatchRepo.SetMatchAsync(
+            new Match { RoomId = ctx.Room.Id, Mode = MatchMode.Live, Status = MatchStatus.Running },
+            CancellationToken.None);
 
         var profile = await ctx.Profiles.GetProfileAsync("me", ctx.AsLeader, CancellationToken.None);
 
@@ -278,34 +280,39 @@ public class UserProfileServiceTests
         Assert.Equal("Frações +1", Assert.Single(profile.Matches).SetTitle);
     }
 
-    /// <summary>
-    /// Tira o snapshot da partida semeada, como <c>FinishCoreAsync</c> faz no encerramento.
-    ///
-    /// Necessario desde o passo 4 da migracao-dados: o historico le do banco de documentos, entao
-    /// semear so o lado relacional devolve lista vazia — e isso e o comportamento correto, nao um
-    /// furo do teste. O efeito colateral util e que estes testes passam a exercitar o caminho
-    /// inteiro, do Postgres ao documento.
-    /// </summary>
-    private static async Task Snapshot(RoomTestContext ctx, Match match)
-    {
-        var tracked = await ctx.Db.Matches
-            .Include(m => m.Room)
-            .SingleAsync(m => m.Id == match.Id, CancellationToken.None);
-
-        await ctx.MatchDocuments.CommitAsync(tracked, CancellationToken.None);
-    }
+    private static Task Snapshot(RoomTestContext ctx, Match match)
+        => ctx.MatchDocuments.CommitAsync(match, CancellationToken.None);
 
     private static void SeedQueueSet(RoomTestContext ctx, string title, int order = 0)
     {
-        ctx.Db.RoomQueueSets.Add(new RoomQueueSet
+        var queueSetId = Guid.CreateVersion7().ToString();
+        ctx.RoomRepo.SaveQueueSetAsync(
+            ctx.Room.Id.ToString(),
+            new RoomRedisData.QueueSetData(
+                Id: queueSetId,
+                SourcePhaseSetId: Guid.NewGuid().ToString(),
+                Title: title,
+                Color: "var(--blue-500)",
+                OrderIndex: order),
+            CancellationToken.None).GetAwaiter().GetResult();
+
+        if (order == 0)
         {
-            RoomId = ctx.Room.Id,
-            SourcePhaseSetId = Guid.NewGuid(),
-            Title = title,
-            Color = "var(--blue-500)",
-            OrderIndex = order,
-        });
-        ctx.Db.SaveChanges();
+            ctx.RoomRepo.SaveQueuePhaseAsync(
+                ctx.Room.Id.ToString(),
+                new RoomRedisData.QueuePhaseData(
+                    Id: Guid.CreateVersion7().ToString(),
+                    QueueSetId: queueSetId,
+                    SourcePhaseId: Guid.NewGuid().ToString(),
+                    Kind: "quiz",
+                    Name: "Fase",
+                    BasePoints: 100,
+                    PointsMultiplier: 1.0m,
+                    TimeSeconds: 45,
+                    OrderIndex: 0,
+                    ContentJson: "{}"),
+                CancellationToken.None).GetAwaiter().GetResult();
+        }
     }
 
     private static Match SeedFinishedMatch(RoomTestContext ctx, TimeSpan duration)
@@ -322,38 +329,53 @@ public class UserProfileServiceTests
         // o jeito de ter uma partida com duracao conhecida e criar o registro pela entidade.
         typeof(Match).GetProperty(nameof(Match.StartedAt))!.SetValue(match, startedAt);
 
-        ctx.Db.Matches.Add(match);
-        ctx.Db.SaveChanges();
+        ctx.MatchRepo.SetMatchAsync(match, CancellationToken.None).GetAwaiter().GetResult();
         return match;
     }
 
     private static void SeedSubmission(RoomTestContext ctx, Match match, string participantName, int score, bool correct)
     {
-        var participant = ctx.Db.Participants.Single(p => p.RoomId == ctx.Room.Id && p.DisplayName == participantName);
+        var participant = ctx.RoomRepo
+            .GetParticipantsAsync(ctx.Room.Id.ToString(), CancellationToken.None)
+            .GetAwaiter().GetResult()
+            .Single(p => p.DisplayName == participantName);
 
-        var phase = new RoomQueuePhase
-        {
-            RoomId = ctx.Room.Id,
-            RoomQueueSetId = ctx.Db.RoomQueueSets.First(s => s.RoomId == ctx.Room.Id).Id,
-            SourcePhaseId = Guid.NewGuid(),
-            Kind = PhaseKind.Quiz,
-            Name = "Fase",
-            BasePoints = 100,
-            TimeSeconds = 45,
-            ContentJson = "{}",
-        };
-        ctx.Db.RoomQueuePhases.Add(phase);
+        var queueSet = ctx.RoomRepo
+            .GetQueueSetsAsync(ctx.Room.Id.ToString(), CancellationToken.None)
+            .GetAwaiter().GetResult()
+            .First();
 
-        ctx.Db.Submissions.Add(new Submission
-        {
-            MatchId = match.Id,
-            RoomQueuePhaseId = phase.Id,
-            ParticipantId = participant.Id,
-            AnswerJson = """{"kind":"quiz","optionId":"o1"}""",
-            Grading = GradingStatus.Graded,
-            Correct = correct,
-            Score = score,
-        });
-        ctx.Db.SaveChanges();
+        var existingPhases = ctx.RoomRepo
+            .GetQueuePhasesAsync(ctx.Room.Id.ToString(), CancellationToken.None)
+            .GetAwaiter().GetResult();
+
+        var phaseId = Guid.CreateVersion7();
+        ctx.RoomRepo.SaveQueuePhaseAsync(
+            ctx.Room.Id.ToString(),
+            new RoomRedisData.QueuePhaseData(
+                Id: phaseId.ToString(),
+                QueueSetId: queueSet.Id,
+                SourcePhaseId: Guid.NewGuid().ToString(),
+                Kind: "quiz",
+                Name: "Fase",
+                BasePoints: 100,
+                PointsMultiplier: 1.0m,
+                TimeSeconds: 45,
+                OrderIndex: existingPhases.Count,
+                ContentJson: "{}"),
+            CancellationToken.None).GetAwaiter().GetResult();
+
+        ctx.MatchRepo.PutSubmissionAsync(
+            new Submission
+            {
+                MatchId = match.Id,
+                RoomQueuePhaseId = phaseId,
+                ParticipantId = Guid.Parse(participant.Id),
+                AnswerJson = """{"kind":"quiz","optionId":"o1"}""",
+                Grading = GradingStatus.Graded,
+                Correct = correct,
+                Score = score,
+            },
+            CancellationToken.None).GetAwaiter().GetResult();
     }
 }

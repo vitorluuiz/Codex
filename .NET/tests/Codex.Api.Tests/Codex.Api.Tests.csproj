@@ -24,4 +24,8 @@
     <ProjectReference Include="..\..\src\Codex.Api\Codex.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TestSuite)' == 'PhaseSets'">
+    <Compile Remove="ActiveRoomsTests.cs;MatchDocumentTests.cs;MatchEndingTests.cs;MatchLifecycleTests.cs;MatchStatsTests.cs;MongoMatchDocumentStoreTests.cs;ParticipantServiceTests.cs;PhaseProjectionTests.cs;RealtimePublishingTests.cs;RealtimeSessionServiceTests.cs;RoomQueueMutationTests.cs;RoomServiceTests.cs;SubmissionTests.cs" />
+  </ItemGroup>
+
 </Project>

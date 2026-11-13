@@ -3,7 +3,7 @@
 import { revalidateTag } from 'next/cache';
 
 import { apiRequest } from '@/lib/api/client';
-import type { PhaseSetDraft, PhaseSetSummary } from '@/lib/types';
+import type { PhaseSetDraft, PhaseSetLibraryEntry, PhaseSetSummary } from '@/lib/types';
 
 /* -------------------------------------------------------------------------- */
 /* CRUD de conjuntos                                                           */
@@ -17,14 +17,22 @@ import type { PhaseSetDraft, PhaseSetSummary } from '@/lib/types';
  * o que o autor vê no rail.
  */
 export async function savePhaseSetAction(draft: PhaseSetDraft): Promise<PhaseSetDraft> {
+  const body = {
+    title: draft.title,
+    phases: draft.phases,
+    ...(draft.subject !== undefined ? { subject: draft.subject } : {}),
+    ...(draft.folder !== undefined ? { folder: draft.folder } : {}),
+    ...(draft.coverUrl !== undefined ? { coverUrl: draft.coverUrl } : {}),
+  };
+
   const saved = draft.id
     ? await apiRequest<PhaseSetDraft>(`/phase-sets/${draft.id}/draft`, {
         method: 'PUT',
-        body: { title: draft.title, phases: draft.phases },
+        body,
       })
     : await apiRequest<PhaseSetDraft>('/phase-sets', {
         method: 'POST',
-        body: { title: draft.title, phases: draft.phases },
+        body,
       });
 
   revalidateTag('phase-sets:owned');
@@ -48,4 +56,23 @@ export async function renamePhaseSetAction(
 export async function deletePhaseSetAction(setId: string): Promise<void> {
   await apiRequest(`/phase-sets/${setId}`, { method: 'DELETE' });
   revalidateTag('phase-sets:owned');
+}
+
+/** `POST /phase-sets/{setId}/publish` — publica versão imutável na comunidade. */
+export async function publishPhaseSetAction(setId: string): Promise<PhaseSetLibraryEntry> {
+  const published = await apiRequest<PhaseSetLibraryEntry>(`/phase-sets/${setId}/publish`, {
+    method: 'POST',
+  });
+  revalidateTag('phase-sets:community');
+  revalidateTag('phase-sets:owned');
+  return published;
+}
+
+/** `POST /phase-sets/{setId}/copy` — copia conjunto para os conjuntos privados do usuário. */
+export async function copyPhaseSetAction(setId: string): Promise<PhaseSetDraft> {
+  const copy = await apiRequest<PhaseSetDraft>(`/phase-sets/${setId}/copy`, {
+    method: 'POST',
+  });
+  revalidateTag('phase-sets:owned');
+  return copy;
 }

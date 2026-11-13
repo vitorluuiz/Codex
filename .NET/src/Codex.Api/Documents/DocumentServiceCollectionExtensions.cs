@@ -15,12 +15,14 @@ public static class DocumentServiceCollectionExtensions
         if (options.IsConfigured)
         {
             services.AddSingleton<IMatchDocumentStore, MongoMatchDocumentStore>();
+            services.AddSingleton<IPhaseSetDocumentStore, MongoPhaseSetDocumentStore>();
             return services;
         }
 
         // Ver InMemoryMatchDocumentStore: degradar aqui so vale enquanto o Postgres ainda guarda a
         // partida. No passo 5 isto vira erro de inicializacao.
         services.AddSingleton<IMatchDocumentStore, InMemoryMatchDocumentStore>();
+        services.AddSingleton<IPhaseSetDocumentStore, InMemoryPhaseSetDocumentStore>();
         return services;
     }
 }
