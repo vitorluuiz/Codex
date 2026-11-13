@@ -23,6 +23,6 @@ public class User
     public DateTimeOffset CreatedAt { get; init; } = DateTimeOffset.UtcNow;
 
     public ICollection<UserIdentity> Identities { get; init; } = [];
-    public ICollection<PhaseSet> PhaseSets { get; init; } = [];
+    public ICollection<CommunityPhase> CommunityPhases { get; init; } = [];
     public ICollection<AiGeneration> AiGenerations { get; init; } = [];
 }

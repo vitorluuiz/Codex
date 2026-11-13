@@ -27,7 +27,13 @@ public record PhaseSetDraftResponse(
     string Title,
     IReadOnlyList<DraftPhaseDto> Phases,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    PhaseLimitsDto? Limits = null);
+    PhaseLimitsDto? Limits = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? Subject = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? Folder = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? CoverUrl = null);
 
 /// <summary>
 /// Corpo de POST /phase-sets e de PUT /phase-sets/{setId}/draft — "mesmo corpo" nos dois, diz o
@@ -39,10 +45,17 @@ public record PhaseSetDraftResponse(
 /// </summary>
 public record SavePhaseSetRequest(
     string? Title,
-    IReadOnlyList<DraftPhaseDto>? Phases);
+    IReadOnlyList<DraftPhaseDto>? Phases,
+    string? Subject = null,
+    string? Folder = null,
+    string? CoverUrl = null);
 
-/// <summary>Corpo de PATCH /phase-sets/{setId}: "so renomeia; o conteudo vai pelo PUT".</summary>
-public record RenamePhaseSetRequest(string? Title);
+/// <summary>Corpo de PATCH /phase-sets/{setId}: atualiza título e metadados opcionais.</summary>
+public record RenamePhaseSetRequest(
+    string? Title,
+    string? Subject = null,
+    string? Folder = null,
+    string? CoverUrl = null);
 
 /// <summary>
 /// Uma DraftPhase de types.ts. Os campos comuns sao colunas de <c>phases</c>; os campos por
@@ -101,4 +114,6 @@ public record DraftPhaseDto(
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     bool? IntroShapes = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    AiVariationOptions? VariationSettings = null);
+    AiVariationOptions? VariationSettings = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    Guid? OriginCommunityPhaseId = null);

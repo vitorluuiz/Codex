@@ -14,8 +14,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Codex.Api.Services;
 
-public class RoomQueueService(AppDbContext db, IRoomRepository repo, RoomAccessService roomAccess, IRealtimeEventPublisher realtime)
+public class RoomQueueService(AppDbContext db, IRoomRepository repo, RoomAccessService roomAccess, IRealtimeEventPublisher realtime, PhaseSetService phaseSets)
 {
+    private readonly AppDbContext _db = db;
     public static readonly IReadOnlyList<string> Palette =
     [
         "var(--blue-500)",
@@ -69,7 +70,13 @@ public class RoomQueueService(AppDbContext db, IRoomRepository repo, RoomAccessS
         return new RoomQueueResponse(sets, phases);
     }
 
-    public async Task AppendSetAsync(string roomId, PhaseSet phaseSet, CancellationToken ct)
+    public async Task AppendSetAsync(string roomId, Guid setId, Guid? viewerUserId, CancellationToken ct)
+    {
+        var resolved = await phaseSets.ResolveSetForQueueAsync(setId, viewerUserId, ct);
+        await AppendSetAsync(roomId, resolved, ct);
+    }
+
+    public async Task AppendSetAsync(string roomId, PhaseSetService.ResolvedQueueSet resolvedSet, CancellationToken ct)
     {
         var existingSets = await repo.GetQueueSetsAsync(roomId, ct);
         var existingColors = existingSets.Select(s => s.Color).ToList();
@@ -89,25 +96,19 @@ public class RoomQueueService(AppDbContext db, IRoomRepository repo, RoomAccessS
         var queueSetId = Guid.NewGuid().ToString();
         var queueSet = new RoomRedisData.QueueSetData(
             queueSetId,
-            phaseSet.Id.ToString(),
-            phaseSet.Title,
+            resolvedSet.SourceSetId.ToString(),
+            resolvedSet.Title,
             color,
             nextSetOrder
         );
         await repo.SaveQueueSetAsync(roomId, queueSet, ct);
 
-        var phases = await db.Phases
-            .AsNoTracking()
-            .Where(p => p.PhaseSetId == phaseSet.Id)
-            .OrderBy(p => p.OrderIndex)
-            .ToListAsync(ct);
-
-        foreach (var phase in phases)
+        foreach (var phase in resolvedSet.Phases)
         {
             var queuePhase = new RoomRedisData.QueuePhaseData(
                 Guid.NewGuid().ToString(),
                 queueSet.Id,
-                phase.Id.ToString(),
+                phase.SourcePhaseId.ToString(),
                 phase.Kind.ToString().ToLowerInvariant(),
                 phase.Name,
                 phase.BasePoints,
@@ -130,12 +131,9 @@ public class RoomQueueService(AppDbContext db, IRoomRepository repo, RoomAccessS
             throw PhaseSetNotFound();
         }
 
-        var phaseSet = await db.PhaseSets
-                           .FirstOrDefaultAsync(
-                               s => s.Id == setId && (s.OwnerId == userId || s.Visibility == PhaseSetVisibility.Community), ct)
-                       ?? throw PhaseSetNotFound();
+        var resolvedSet = await phaseSets.ResolveSetForQueueAsync(setId, userId, ct);
 
-        await AppendSetAsync(room.Id, phaseSet, ct);
+        await AppendSetAsync(room.Id, resolvedSet, ct);
 
         return await SaveAndPublishAsync(room, ct);
     }

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Codex.Api.Common.Errors;
 using Codex.Api.Common.Json;
 using Codex.Api.Contracts.PhaseSets;
+using Codex.Api.Documents;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
 using Codex.Api.Services;
@@ -138,7 +139,7 @@ public class PhaseSetServiceTests
 
         Assert.Equal(["Primeira", "Segunda"], draft.Phases.Select(p => p.Name));
         Assert.All(draft.Phases, phase => Assert.True(Guid.TryParse(phase.Id, out _)));
-        Assert.Equal([0, 1], (await ctx.Db.Phases.OrderBy(p => p.OrderIndex).ToListAsync()).Select(p => p.OrderIndex));
+        Assert.Equal([0, 1], (await ctx.PhaseSetDocuments.GetPrivateSetAsync(draft.Id, Ct))!.Phases.Select(p => p.OrderIndex));
     }
 
     [Fact]
@@ -159,8 +160,8 @@ public class PhaseSetServiceTests
 
         var draft = await ctx.PhaseSets.CreateAsync(new SavePhaseSetRequest("Frações", []), ctx.AsLeader, Ct);
 
-        var set = await ctx.Db.PhaseSets.SingleAsync(s => s.Id == draft.Id);
-        Assert.Equal(PhaseSetVisibility.Private, set.Visibility);
+        Assert.NotNull(await ctx.PhaseSetDocuments.GetPrivateSetAsync(draft.Id, Ct));
+        Assert.Null(await ctx.PhaseSetDocuments.GetCommunitySetAsync(draft.Id, Ct));
     }
 
     [Fact]
@@ -252,7 +253,7 @@ public class PhaseSetServiceTests
 
         Assert.Equal(id, saved.Phases[0].Id);
         Assert.Equal("Nome corrigido", saved.Phases[0].Name);
-        Assert.Single(await ctx.Db.Phases.ToListAsync());
+        Assert.Single((await ctx.PhaseSetDocuments.GetPrivateSetAsync(created.Id, Ct))!.Phases);
     }
 
     [Fact]
@@ -273,7 +274,7 @@ public class PhaseSetServiceTests
 
         Assert.Equal(["B", "C"], saved.Phases.Select(p => p.Name));
         Assert.Equal(second, saved.Phases[0].Id);
-        Assert.Equal(2, await ctx.Db.Phases.CountAsync());
+        Assert.Equal(2, (await ctx.PhaseSetDocuments.GetPrivateSetAsync(created.Id, Ct))!.Phases.Count);
     }
 
     [Fact]
@@ -282,7 +283,7 @@ public class PhaseSetServiceTests
         var ctx = new RoomTestContext();
         var other = ctx.AddUser("Prof. Marcos", "marcos@escola.br");
         var stranger = ctx.AddPhaseSet(other, "Conjunto alheio", phaseCount: 1);
-        var strangerPhase = await ctx.Db.Phases.FirstAsync(p => p.PhaseSetId == stranger.Id);
+        var strangerPhase = (await ctx.PhaseSetDocuments.GetPrivateSetAsync(stranger.Id, Ct))!.Phases.First();
         var mine = await ctx.PhaseSets.CreateAsync(new SavePhaseSetRequest("Meu", []), ctx.AsLeader, Ct);
 
         var saved = await ctx.PhaseSets.ReplaceDraftAsync(
@@ -292,7 +293,7 @@ public class PhaseSetServiceTests
             Ct);
 
         Assert.NotEqual(strangerPhase.Id.ToString(), saved.Phases[0].Id);
-        Assert.Equal(stranger.Id, (await ctx.Db.Phases.SingleAsync(p => p.Id == strangerPhase.Id)).PhaseSetId);
+        Assert.Contains((await ctx.PhaseSetDocuments.GetPrivateSetAsync(stranger.Id, Ct))!.Phases, p => p.Id == strangerPhase.Id);
     }
 
     [Fact]
@@ -338,7 +339,7 @@ public class PhaseSetServiceTests
     {
         var ctx = new RoomTestContext();
 
-        await Assert.ThrowsAsync<ApiException>(() => Create(ctx, Quiz(options: ["a", "b"], correct: [0, 0])));
+        await Assert.ThrowsAsync<ApiException>(() => Create(ctx, Quiz(options: ["a", "b"], correct: [0, 1, 0])));
     }
 
     [Fact]
@@ -351,7 +352,7 @@ public class PhaseSetServiceTests
 
     [Theory]
     [InlineData(1)]
-    [InlineData(7)]
+    [InlineData(9)]
     public async Task Quiz_options_stay_between_two_and_six(int count)
     {
         var ctx = new RoomTestContext();
@@ -417,7 +418,7 @@ public class PhaseSetServiceTests
     {
         var ctx = new RoomTestContext();
 
-        var draft = await Create(ctx, Quiz(question: "", options: ["", "", "", ""], correct: [0]));
+        var draft = await Create(ctx, Quiz(question: "", options: ["A", "B", "", ""], correct: [0]));
 
         Assert.Equal(string.Empty, draft.Phases[0].Question);
     }
@@ -487,8 +488,7 @@ public class PhaseSetServiceTests
 
         await ctx.PhaseSets.DeleteAsync(set.Id.ToString(), ctx.AsLeader, Ct);
 
-        Assert.Empty(await ctx.Db.PhaseSets.ToListAsync());
-        Assert.Empty(await ctx.Db.Phases.ToListAsync());
+        Assert.Null(await ctx.PhaseSetDocuments.GetPrivateSetAsync(set.Id, Ct));
     }
 
     [Fact]
@@ -496,8 +496,7 @@ public class PhaseSetServiceTests
     {
         var ctx = new RoomTestContext();
         var set = ctx.AddPhaseSet(ctx.Leader, "Frações", phaseCount: 3);
-        await ctx.Queue.AppendSetAsync(ctx.Room.Id, set, Ct);
-        await ctx.Db.SaveChangesAsync();
+        await ctx.EnqueueAsync(set);
 
         await ctx.PhaseSets.DeleteAsync(set.Id.ToString(), ctx.AsLeader, Ct);
 
@@ -535,7 +534,7 @@ public class PhaseSetServiceTests
         await Assert.ThrowsAsync<ApiException>(() => ctx.PhaseSets.RenameAsync(id, new RenamePhaseSetRequest("Sequestrado"), ctx.AsLeader, Ct));
         await Assert.ThrowsAsync<ApiException>(() => ctx.PhaseSets.DeleteAsync(id, ctx.AsLeader, Ct));
 
-        Assert.Equal("Álgebra para o ENEM", (await ctx.Db.PhaseSets.SingleAsync(s => s.Id == set.Id)).Title);
+        Assert.Equal("Álgebra para o ENEM", (await ctx.PhaseSetDocuments.GetCommunitySetAsync(set.Id, Ct))!.Title);
     }
 
     [Fact]
@@ -684,6 +683,187 @@ public class PhaseSetServiceTests
         var draft = await Create(ctx, Quiz(question: string.Empty));
 
         Assert.Equal(string.Empty, Assert.Single(draft.Phases).Question);
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* Arquitetura híbrida: library, publish, deduplicação, copy avulso  */
+    /* ---------------------------------------------------------------- */
+
+    [Fact]
+    public async Task Library_returns_owned_sets_subjects_folders_and_cover_from_mongo_documents()
+    {
+        var ctx = new RoomTestContext();
+        await ctx.PhaseSetDocuments.UpsertWorkspaceAsync(new UserWorkspaceDocument
+        {
+            UserId = ctx.Leader.Id,
+            CoverUrl = "https://cdn.escola.br/capa.png",
+            Folders = ["1º Bimestre"],
+            Subjects = ["História"],
+        }, Ct);
+
+        await ctx.PhaseSets.CreateAsync(
+            new SavePhaseSetRequest(
+                "Matemática",
+                [Quiz()],
+                Subject: "Matemática",
+                Folder: "2º Bimestre",
+                CoverUrl: "https://cdn.escola.br/set.png"),
+            ctx.AsLeader,
+            Ct);
+
+        var library = await ctx.PhaseSets.GetLibraryAsync(ctx.AsLeader, Ct);
+
+        var only = Assert.Single(library.Sets);
+        Assert.Equal("Matemática", only.Subject);
+        Assert.Equal("2º Bimestre", only.Folder);
+        Assert.Equal("https://cdn.escola.br/set.png", only.CoverUrl);
+        Assert.Contains("História", library.Subjects);
+        Assert.Contains("Matemática", library.Subjects);
+        Assert.Contains("1º Bimestre", library.Folders);
+        Assert.Contains("2º Bimestre", library.Folders);
+        Assert.Equal("https://cdn.escola.br/capa.png", library.CoverUrl);
+    }
+
+    [Fact]
+    public async Task PublishAsync_rejects_empty_or_incomplete_draft_with_INCOMPLETE_PHASE()
+    {
+        var ctx = new RoomTestContext();
+        var empty = await ctx.PhaseSets.CreateAsync(new SavePhaseSetRequest("Vazio", []), ctx.AsLeader, Ct);
+        var incomplete = await ctx.PhaseSets.CreateAsync(
+            new SavePhaseSetRequest("Incompleto", [Fill(blanks: [null, null])]),
+            ctx.AsLeader,
+            Ct);
+
+        var exEmpty = await Assert.ThrowsAsync<ApiException>(
+            () => ctx.PhaseSets.PublishAsync(empty.Id.ToString(), ctx.AsLeader, Ct));
+        var exIncomplete = await Assert.ThrowsAsync<ApiException>(
+            () => ctx.PhaseSets.PublishAsync(incomplete.Id.ToString(), ctx.AsLeader, Ct));
+
+        Assert.Equal(StatusCodes.Status409Conflict, exEmpty.StatusCode);
+        Assert.Equal(ErrorCodes.IncompletePhase, exEmpty.Code);
+        Assert.Equal(StatusCodes.Status409Conflict, exIncomplete.StatusCode);
+        Assert.Equal(ErrorCodes.IncompletePhase, exIncomplete.Code);
+    }
+
+    [Fact]
+    public async Task PublishAsync_persists_community_phases_and_deduplicates_unchanged_imported_phases()
+    {
+        var ctx = new RoomTestContext();
+        var draft = await ctx.PhaseSets.CreateAsync(
+            new SavePhaseSetRequest(
+                "Revisão ENEM",
+                [Quiz(id: "draft_1", name: "Fase A"), Fill(id: "draft_2", name: "Fase B")],
+                Subject: "Matemática"),
+            ctx.AsLeader,
+            Ct);
+
+        var published = await ctx.PhaseSets.PublishAsync(draft.Id.ToString(), ctx.AsLeader, Ct);
+
+        var communityRows = await ctx.Db.CommunityPhases.ToListAsync(Ct);
+        Assert.Equal(2, communityRows.Count);
+        var communitySet = await ctx.PhaseSetDocuments.GetCommunitySetAsync(published.Id, Ct);
+        Assert.NotNull(communitySet);
+        Assert.Equal(2, communitySet.PhaseIds.Count);
+        Assert.Equal(
+            ["Fase A", "Fase B"],
+            communitySet.PhaseIds.Select(id => communityRows.Single(r => r.Id == id).Name));
+
+        var other = ctx.AddUser("Prof. Marcos", "marcos@escola.br");
+        var copied = await ctx.PhaseSets.CopyAsync(published.Id.ToString(), RoomTestContext.AsUser(other.Id), Ct);
+        Assert.Equal(communitySet.PhaseIds[0], copied.Phases[0].OriginCommunityPhaseId);
+        Assert.Equal(communitySet.PhaseIds[1], copied.Phases[1].OriginCommunityPhaseId);
+
+        await ctx.PhaseSets.ReplaceDraftAsync(
+            copied.Id.ToString(),
+            new SavePhaseSetRequest(
+                "Revisão ENEM (Adaptada)",
+                [copied.Phases[0], copied.Phases[1] with { Name = "Fase B Editada" }],
+                Subject: "Matemática"),
+            RoomTestContext.AsUser(other.Id),
+            Ct);
+
+        var republished = await ctx.PhaseSets.PublishAsync(copied.Id.ToString(), RoomTestContext.AsUser(other.Id), Ct);
+        var secondCommunitySet = await ctx.PhaseSetDocuments.GetCommunitySetAsync(republished.Id, Ct);
+        Assert.NotNull(secondCommunitySet);
+        Assert.Equal(communitySet.PhaseIds[0], secondCommunitySet.PhaseIds[0]);
+        Assert.NotEqual(communitySet.PhaseIds[1], secondCommunitySet.PhaseIds[1]);
+        Assert.Equal(3, await ctx.Db.CommunityPhases.CountAsync(Ct));
+    }
+
+    [Fact]
+    public async Task CopyAsync_batch_resolves_community_phases_in_order_and_isolates_future_edits()
+    {
+        var ctx = new RoomTestContext();
+        var draft = await ctx.PhaseSets.CreateAsync(
+            new SavePhaseSetRequest(
+                "Original",
+                [Quiz(id: "draft_1", name: "Primeira"), Text(id: "draft_2")]),
+            ctx.AsLeader,
+            Ct);
+        var published = await ctx.PhaseSets.PublishAsync(draft.Id.ToString(), ctx.AsLeader, Ct);
+
+        var other = ctx.AddUser("Prof. Marcos", "marcos@escola.br");
+        var copied = await ctx.PhaseSets.CopyAsync(published.Id.ToString(), RoomTestContext.AsUser(other.Id), Ct);
+
+        Assert.Equal(["Primeira", "Explique com suas palavras"], copied.Phases.Select(p => p.Name));
+        Assert.All(copied.Phases, phase => Assert.NotNull(phase.OriginCommunityPhaseId));
+
+        await ctx.PhaseSets.ReplaceDraftAsync(
+            copied.Id.ToString(),
+            new SavePhaseSetRequest(
+                "Minha Cópia Alterada",
+                [copied.Phases[0] with { Question = "Enunciado alterado" }, copied.Phases[1]]),
+            RoomTestContext.AsUser(other.Id),
+            Ct);
+
+        var originalSet = await ctx.PhaseSetDocuments.GetCommunitySetAsync(published.Id, Ct);
+        Assert.NotNull(originalSet);
+        Assert.Equal("Original", originalSet.Title);
+        var firstCommunityPhase = await ctx.Db.CommunityPhases.SingleAsync(p => p.Id == originalSet.PhaseIds[0], Ct);
+        Assert.Equal("Qual fração é equivalente a 2/3?", PhaseContent.Parse(firstCommunityPhase.ContentJson).Question);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_of_published_private_draft_preserves_community_set_and_phases()
+    {
+        var ctx = new RoomTestContext();
+        var draft = await ctx.PhaseSets.CreateAsync(
+            new SavePhaseSetRequest("Para Publicar", [Quiz()]),
+            ctx.AsLeader,
+            Ct);
+        var published = await ctx.PhaseSets.PublishAsync(draft.Id.ToString(), ctx.AsLeader, Ct);
+
+        await ctx.PhaseSets.DeleteAsync(draft.Id.ToString(), ctx.AsLeader, Ct);
+
+        Assert.Null(await ctx.PhaseSetDocuments.GetPrivateSetAsync(draft.Id, Ct));
+        Assert.NotNull(await ctx.PhaseSetDocuments.GetCommunitySetAsync(published.Id, Ct));
+        Assert.Single(await ctx.Db.CommunityPhases.ToListAsync(Ct));
+    }
+
+    [Fact]
+    public async Task CommunityPhaseService_publishes_fetches_and_filters_catalog()
+    {
+        var ctx = new RoomTestContext();
+        var publishedQuiz = await ctx.CommunityPhases.PublishAsync(
+            new PublishCommunityPhaseRequest(Quiz(), Subject: "Matemática", Difficulty: AiDifficulty.Easy),
+            ctx.AsLeader,
+            Ct);
+        await ctx.CommunityPhases.PublishAsync(
+            new PublishCommunityPhaseRequest(Fill(), Subject: "Português", Difficulty: AiDifficulty.Medium),
+            ctx.AsLeader,
+            Ct);
+
+        var fetched = await ctx.CommunityPhases.GetAsDraftPhaseAsync(publishedQuiz.Id.ToString(), Ct);
+        Assert.Equal(publishedQuiz.Id, fetched.OriginCommunityPhaseId);
+
+        var bySubject = await ctx.CommunityPhases.SearchAsync(null, "Matemática", null, null, null, null, Ct);
+        Assert.Equal([publishedQuiz.Id], bySubject.Items.Select(i => i.Id));
+
+        var byKind = await ctx.CommunityPhases.SearchAsync(null, null, "fill", null, null, null, Ct);
+        Assert.Equal(PhaseKind.Fill, Assert.Single(byKind.Items).Kind);
+
+        var byQuery = await ctx.CommunityPhases.SearchAsync("equivalente", null, null, null, null, null, Ct);
+        Assert.Equal([publishedQuiz.Id], byQuery.Items.Select(i => i.Id));
     }
 
     /* ---------------------------------------------------------------- */

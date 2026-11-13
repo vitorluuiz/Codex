@@ -1,6 +1,6 @@
 # Contrato de Banco Orientado a Documentos (MongoDB) — Codex
 
-Este documento define o contrato e a modelagem do banco orientado a documentos (MongoDB 7+) do Codex. O MongoDB atua como repositório para **Partidas Finalizadas**, **Histórico Detalhado de Submissões por Participante**, **Métricas Analíticas Congeladas** e **Rascunhos de Autoria**.
+Este documento define o contrato e a modelagem do banco orientado a documentos (MongoDB 7+) do Codex. O MongoDB atua como repositório para **Partidas Finalizadas (`matches`)**, **Espaço de Trabalho da Biblioteca do Usuário (`user_workspaces`)**, **Conjuntos Privados do Usuário (`private_phase_sets`)** e **Conjuntos Publicados na Comunidade (`community_phase_sets`)**.
 
 ---
 
@@ -12,6 +12,9 @@ Este documento define o contrato e a modelagem do banco orientado a documentos (
    * O relatório da partida (participantes × fases) sai de uma única leitura.
    * **Limite de 16 MB aceito conscientemente:** com todas as submissões dentro do documento da partida, o pior caso teórico permitido pelo sistema (400 fases × 500 participantes = 200.000 submissões) excede o teto rígido de 16 MB por documento do MongoDB. Essa limitação foi assumida como decisão de projeto em troca da simplicidade e da atomicidade do modelo de documento único.
 3. **Ponteiro Interno de Fase:** As submissões do aluno apontam para o identificador `phaseId` presente no array `phases[]` do próprio documento da partida, garantindo integridade contra qualquer alteração futura em conjuntos ou no catálogo relacional.
+4. **Isolamento por Cópia nos Conjuntos Privados (`private_phase_sets`):** Cada conjunto privado é um documento independente (evitando o limite de 16 MB que ocorreria se todos os conjuntos ficassem aninhados em um único documento do usuário) e armazena a **cópia completa e embutida** de suas fases (`phases[]`). Quando um usuário adiciona um desafio da comunidade ao seu conjunto privado, o conteúdo do desafio é copiado para dentro do documento privado (registrando `originCommunityPhaseId` e `contentHash`), garantindo que alterações futuras jamais afetem o conjunto do usuário.
+5. **Conjuntos da Comunidade por Ponteiros Imutáveis (`community_phase_sets`):** Um conjunto publicado na comunidade armazena seus metadados, um subdocumento `summary` pré-calculado e o array ordenado `phaseIds[]` (máximo 50 UUIDs) apontando para os registros imutáveis da tabela `community_phases` no PostgreSQL. A posição no array define a ordem (`orderIndex`) do desafio no conjunto.
+6. **Leitura de Biblioteca sem Joins Cross-DB:** Tanto `private_phase_sets` quanto `community_phase_sets` mantêm o objeto `summary` (`phaseCount`, `phaseKindCounts`, `totalTimeSeconds`, `useCount`, `accuracyRate`). Assim, `GET /phase-sets/library` e `GET /phase-sets` leem exclusivamente do MongoDB (projetando `{ phases: 0 }` nos conjuntos privados), com **zero consultas ao PostgreSQL**.
 
 ---
 
@@ -148,35 +151,125 @@ Um índice único não impede elementos repetidos dentro de um mesmo array. A re
 
 ---
 
-### 2.3 Coleção `draft_phase_sets` (Autoria)
-Repositório flexível para rascunhos de autores.
+### 2.3 Coleção `user_workspaces` (Organização Pessoal da Biblioteca)
+Armazena os metadados pessoais de organização da biblioteca de cada usuário (1 documento por `userId`). Pastas vazias e disciplinas personalizadas ficam aqui para permanecerem selecionáveis mesmo quando nenhum conjunto privado ainda está vinculado a elas.
 
 ```jsonc
 {
-  "_id": "01a069f5-8351-7c3f-aa88-50364832e5c1",
+  "_id": "01a069ee-9029-76e7-b874-9508fa1a2f13", // userId (UUID do usuário no PostgreSQL)
+  "folders": ["Matemática 2º ano", "Programação", "Provas"],
+  "subjects": ["Matemática", "Programação", "Estatística"],
+  "coverUrl": null,
+  "savedCommunitySetIds": ["01a07000-1111-7000-8000-000000000001"],
+  "updatedAt": ISODate("2026-11-13T14:00:00Z")
+}
+```
+
+---
+
+### 2.4 Coleção `private_phase_sets` (Conjuntos Privados com Fases Embutidas)
+Repositório dos conjuntos privados de cada autor. Cada conjunto é um documento independente (evitando o limite de 16 MB por documento caso todos os conjuntos ficassem aninhados no documento do usuário) e contém a **cópia completa e isolada** das fases em `phases[]`.
+
+```jsonc
+{
+  "_id": "01a069f5-8351-7c3f-aa88-50364832e5c1", // setId (UUID v7)
   "ownerId": "01a069ee-9029-76e7-b874-9508fa1a2f13",
-  "title": "Conjunto de Introdução",
-  "createdAt": ISODate("2026-09-20T10:00:00Z"),
-  "updatedAt": ISODate("2026-09-25T11:30:00Z"),
+  "title": "Revisão para o simulado",
+  "subject": "Matemática",
+  "folder": "Provas",
+  "coverUrl": null,
+  "createdAt": ISODate("2026-11-10T10:00:00Z"),
+  "updatedAt": ISODate("2026-11-12T15:30:00Z"),
+
+  "publishedSetId": null,
   "publishedVersion": null,
+
+  // Resumo pré-calculado ao salvar (permite montar os cards da biblioteca projetando { phases: 0 })
+  "summary": {
+    "phaseCount": 14,
+    "phaseKindCounts": { "quiz": 9, "fill": 3, "text": 2 },
+    "totalTimeSeconds": 4200,
+    "useCount": 3,
+    "submissionsCount": 90,
+    "correctSubmissionsCount": 64,
+    "accuracyRate": 71
+  },
+
+  // Cópia completa e isolada das fases (seja criada do zero ou copiada de community_phases)
   "phases": [
     {
       "id": "01a069f5-835e-73d4-9f5d-b86c84c20733",
+      "originCommunityPhaseId": "01a05555-2222-7000-8000-999999999999",
+      "contentHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "kind": "quiz",
-      "name": "Soma Simples",
-      "basePoints": 50,
+      "name": "Soma de Frações",
+      "basePoints": 100,
       "pointsMultiplier": 1.0,
-      "timeSeconds": 15,
+      "timeSeconds": 30,
       "orderIndex": 0,
       "content": {
-        "question": "Quanto é 1 + 2?",
+        "question": "Quanto é 1/2 + 1/4?",
         "fromAI": false,
-        "options": ["3", "2", "1", "4"],
+        "options": ["3/4", "2/6", "1/6", "2/4"],
         "correctIndexes": [0]
       }
     }
   ]
 }
+```
+
+#### Índices da Coleção `private_phase_sets`
+```javascript
+db.private_phase_sets.createIndex({ ownerId: 1, updatedAt: -1 });
+db.private_phase_sets.createIndex({ ownerId: 1, folder: 1, updatedAt: -1 });
+```
+
+---
+
+### 2.5 Coleção `community_phase_sets` (Catálogo de Conjuntos da Comunidade)
+Armazena conjuntos imutáveis publicados na comunidade. Em vez de duplicar o conteúdo completo das fases, aponta ordenadamente via `phaseIds[]` para a tabela imutável `community_phases` no PostgreSQL.
+
+```jsonc
+{
+  "_id": "01a07000-1111-7000-8000-000000000001", // UUID v7
+  "sourcePrivateSetId": "01a069f5-8351-7c3f-aa88-50364832e5c1",
+  "version": 1,
+  "authorId": "01a069ee-9029-76e7-b874-9508fa1a2f13",
+  "authorName": "Marina Duarte",
+  "title": "Big-O sem sofrimento",
+  "subject": "Programação",
+  "coverUrl": "/mock/cover-5.svg",
+  "status": "published", // "published" | "delisted"
+  "publishedAt": ISODate("2026-11-01T18:00:00Z"),
+
+  // Vetor ordenado com os IDs dos desafios em `community_phases` (PostgreSQL).
+  // A posição no array (0..N-1) define a ordem de execução das fases no conjunto.
+  "phaseIds": [
+    "01a05555-2222-7000-8000-999999999999",
+    "01a05555-3333-7000-8000-888888888888"
+  ],
+
+  // Resumo pré-calculado na publicação para listagem e filtros instantâneos da aba Comunidade
+  "summary": {
+    "phaseCount": 10,
+    "phaseKindCounts": { "code": 6, "quiz": 4 },
+    "kinds": ["code", "quiz"],
+    "totalTimeSeconds": 2700,
+    "useCount": 1840,
+    "submissionsCount": 18400,
+    "correctSubmissionsCount": 11776,
+    "accuracyRate": 64
+  }
+}
+```
+
+#### Índices da Coleção `community_phase_sets`
+```javascript
+db.community_phase_sets.createIndex({ status: 1, subject: 1, "summary.useCount": -1 });
+db.community_phase_sets.createIndex({ status: 1, publishedAt: -1 });
+db.community_phase_sets.createIndex({ authorId: 1, status: 1, publishedAt: -1 });
+db.community_phase_sets.createIndex({ phaseIds: 1 }); // Multikey: localiza conjuntos que contêm um desafio
+db.community_phase_sets.createIndex({ title: "text" }, { default_language: "portuguese" });
 ```
 
 ---
@@ -197,8 +290,20 @@ Partidas gravadas no layout antigo (`schemaVersion: 1`, participantes em `match_
 
 ---
 
-## 4. Invariantes de Dados
+## 4. Protocolo de Publicação e Reuso entre MongoDB e PostgreSQL
+
+1. **Importação de desafio avulso da comunidade para conjunto privado:** Ao escolher um desafio em `community_phases` (PostgreSQL), o conteúdo completo é copiado para dentro de `private_phase_sets.phases[]` (MongoDB) registrando `originCommunityPhaseId` e `contentHash`. O conjunto privado permanece isolado de quaisquer versões futuras na comunidade.
+2. **Publicação de conjunto privado na comunidade:**
+   * Para cada item em `private_phase_sets.phases[]`:
+     * Se `originCommunityPhaseId != null` e o `contentHash` canônico atual for idêntico ao registro original em `community_phases`, reutiliza-se o mesmo UUID em `phaseIds[]` (sem duplicar linhas no PostgreSQL).
+     * Caso contrário (fase inédita do autor ou cópia modificada), insere-se um novo registro imutável em `community_phases` no PostgreSQL (mantendo `OriginPhaseId = originCommunityPhaseId` se derivado) e adiciona-se o novo UUID em `phaseIds[]`.
+   * Somente após o `COMMIT` no PostgreSQL o documento imutável em `community_phase_sets` é gravado no MongoDB, evitando referências órfãs a desafios inexistentes.
+
+---
+
+## 5. Invariantes de Dados
 
 1. **Cálculo Único de Estatísticas:** Os valores de `matches.stats` (`avgScore`, `accuracyRate`, `phaseAccuracy`) são calculados estritamente uma única vez durante a gravação inicial do encerramento da partida, utilizando arredondamento `MidpointRounding.AwayFromZero`. O documento nunca é recalculado dinamicamente para impedir divergência entre o placar ao vivo e o histórico gravado.
 2. **Desacoplamento de Contas Anônimas:** Participantes convidados não possuem `userId` (o campo é omitido). Seus dados de pontuação e apelido são preservados no item de `participants[]` da partida, porém não são alcançados por consultas por usuário no índice `{ "participants.userId": 1, finishedAt: -1 }`.
 3. **Ordem do Pódio Gravada:** `participants[]` é gravado ordenado por `totalScore` decrescente, `totalElapsedSeconds` crescente e `joinedAt` crescente. Como o MongoDB preserva a ordem dos arrays, toda leitura devolve o pódio sem reordenação.
+4. **Imutabilidade do Conteúdo Publicado:** Documentos em `community_phase_sets` nunca têm `phaseIds[]`, `title` ou `version` alterados após publicação; atualizações em `summary` afetam exclusivamente métricas de uso e acerto (`useCount`, `submissionsCount`, `correctSubmissionsCount`, `accuracyRate`).

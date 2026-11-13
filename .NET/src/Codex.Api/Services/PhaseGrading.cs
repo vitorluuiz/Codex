@@ -34,27 +34,30 @@ public static class PhaseGrading
     /// sao erradas de jeitos diferentes. Com ele, a correcao assume gabarito presente.
     /// </summary>
     public static void EnsureComplete(RoomQueuePhase phase)
+        => EnsureComplete(phase.Kind, phase.Name, phase.OrderIndex, PhaseContent.Parse(phase.ContentJson));
+
+    public static void EnsureComplete(PhaseKind kind, string name, int orderIndex, PhaseContent content)
     {
-        var content = PhaseContent.Parse(phase.ContentJson);
+        _ = orderIndex;
 
         if (string.IsNullOrWhiteSpace(content.Question))
         {
-            throw Incomplete(phase, "esta sem enunciado");
+            throw Incomplete(name, "esta sem enunciado");
         }
 
-        switch (phase.Kind)
+        switch (kind)
         {
             case PhaseKind.Quiz:
                 var options = content.Options ?? [];
                 if (options.Count < 2)
                 {
-                    throw Incomplete(phase, "precisa de pelo menos duas alternativas");
+                    throw Incomplete(name, "precisa de pelo menos duas alternativas");
                 }
 
                 var correct = content.CorrectIndexes ?? [];
                 if (correct.Count is 0 || correct.Any(index => index < 0 || index >= options.Count))
                 {
-                    throw Incomplete(phase, "esta sem alternativa correta marcada");
+                    throw Incomplete(name, "esta sem alternativa correta marcada");
                 }
 
                 break;
@@ -63,13 +66,13 @@ public static class PhaseGrading
                 var blankCount = PhaseContent.CountBlanks(content.Question);
                 if (blankCount is 0)
                 {
-                    throw Incomplete(phase, "nao tem nenhuma lacuna no enunciado");
+                    throw Incomplete(name, "nao tem nenhuma lacuna no enunciado");
                 }
 
                 var blanks = content.Blanks ?? [];
                 if (blanks.Count != blankCount || blanks.Any(string.IsNullOrWhiteSpace))
                 {
-                    throw Incomplete(phase, "tem lacuna sem palavra definida");
+                    throw Incomplete(name, "tem lacuna sem palavra definida");
                 }
 
                 break;
@@ -77,7 +80,7 @@ public static class PhaseGrading
             case PhaseKind.Text:
                 if (string.IsNullOrWhiteSpace(content.ExpectedAnswer))
                 {
-                    throw Incomplete(phase, "esta sem resposta esperada");
+                    throw Incomplete(name, "esta sem resposta esperada");
                 }
 
                 break;
@@ -89,7 +92,7 @@ public static class PhaseGrading
                 // ser corrigida nem quando o sandbox existir.
                 if (string.IsNullOrWhiteSpace(content.TestCases))
                 {
-                    throw Incomplete(phase, "esta sem casos de teste");
+                    throw Incomplete(name, "esta sem casos de teste");
                 }
 
                 break;
@@ -326,8 +329,8 @@ public static class PhaseGrading
     private static bool Matches(string? expected, string? given)
         => string.Equals((expected ?? string.Empty).Trim(), (given ?? string.Empty).Trim(), StringComparison.OrdinalIgnoreCase);
 
-    private static ApiException Incomplete(RoomQueuePhase phase, string problem)
-        => new(StatusCodes.Status409Conflict, ErrorCodes.IncompletePhase, $"A fase \"{phase.Name}\" {problem}.");
+    private static ApiException Incomplete(string phaseName, string problem)
+        => new(StatusCodes.Status409Conflict, ErrorCodes.IncompletePhase, $"A fase \"{phaseName}\" {problem}.");
 
     private static ApiException Validation(string message)
         => new(StatusCodes.Status400BadRequest, ErrorCodes.ValidationError, message);

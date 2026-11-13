@@ -35,6 +35,8 @@ interface SetCardProps {
   selected: boolean;
   onToggleSelect: () => void;
   onStartRoom: () => void;
+  onPublish?: () => void;
+  onCopy?: () => void;
   onDelete: () => void;
 }
 
@@ -44,6 +46,8 @@ export function SetCard({
   selected,
   onToggleSelect,
   onStartRoom,
+  onPublish,
+  onCopy,
   onDelete,
 }: SetCardProps) {
   const router = useRouter();
@@ -60,13 +64,13 @@ export function SetCard({
     ? [
         { label: 'Iniciar sala com este conjunto', icon: <Icon.Power size={16} />, onSelect: onStartRoom },
         { label: 'Editar conjunto', icon: <Icon.Pencil size={16} />, onSelect: () => router.push(href) },
-        { label: 'Compartilhar', icon: <Icon.Globe size={16} /> },
+        { label: 'Compartilhar', icon: <Icon.Globe size={16} />, onSelect: onPublish },
         { label: 'Exportar', icon: <Icon.Download size={16} /> },
         { label: 'Excluir', icon: <Icon.Close size={16} />, onSelect: onDelete, danger: true },
       ]
     : [
         { label: 'Abrir conjunto', icon: <Icon.Eye size={16} />, onSelect: () => router.push(href) },
-        { label: 'Copiar para meus conjuntos', icon: <Icon.Copy size={16} /> },
+        { label: 'Copiar para meus conjuntos', icon: <Icon.Copy size={16} />, onSelect: onCopy },
         { label: 'Compartilhar', icon: <Icon.Globe size={16} /> },
         { label: 'Exportar', icon: <Icon.Download size={16} /> },
       ];

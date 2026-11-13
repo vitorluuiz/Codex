@@ -310,6 +310,8 @@ interface DraftPhaseBase {
   introShapes?: boolean;
   /** Preferências de geração de variações por IA salvas junto da fase. */
   variationSettings?: AiVariationOptions;
+  /** Identificador do desafio original em `community_phases` quando importado da comunidade. */
+  originCommunityPhaseId?: string | null;
 }
 
 export interface QuizDraftPhase extends DraftPhaseBase {
@@ -356,6 +358,9 @@ export interface PhaseSetDraft {
   title: string;
   phases: DraftPhase[];
   limits?: PhaseLimits;
+  subject?: string;
+  folder?: string | null;
+  coverUrl?: string | null;
 }
 
 /** Dificuldade pedida na geração por IA. */

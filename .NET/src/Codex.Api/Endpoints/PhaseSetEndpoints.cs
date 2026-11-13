@@ -23,6 +23,9 @@ public static class PhaseSetEndpoints
 
         group.MapGet("/limits", () => Results.Ok(new PhaseLimitsDto()));
 
+        group.MapGet("/library", async (ClaimsPrincipal principal, PhaseSetService sets, CancellationToken ct)
+            => Results.Ok(await sets.GetLibraryAsync(principal, ct)));
+
         group.MapGet("", async (string? scope, string? q, ClaimsPrincipal principal, PhaseSetService sets, CancellationToken ct)
             => Results.Ok(await sets.ListAsync(scope, q, principal, ct)));
 
@@ -45,6 +48,18 @@ public static class PhaseSetEndpoints
         {
             await sets.DeleteAsync(setId, principal, ct);
             return Results.NoContent();
+        });
+
+        group.MapPost("/{setId}/publish", async (string setId, ClaimsPrincipal principal, PhaseSetService sets, CancellationToken ct) =>
+        {
+            var published = await sets.PublishAsync(setId, principal, ct);
+            return Results.Created($"/phase-sets/{setId}", published);
+        });
+
+        group.MapPost("/{setId}/copy", async (string setId, ClaimsPrincipal principal, PhaseSetService sets, CancellationToken ct) =>
+        {
+            var copy = await sets.CopyAsync(setId, principal, ct);
+            return Results.Created($"/phase-sets/{copy.Id}/draft", copy);
         });
     }
 }

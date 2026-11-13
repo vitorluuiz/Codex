@@ -3,7 +3,6 @@ using Codex.Api.Contracts.Rooms;
 using Codex.Api.Domain;
 using Codex.Api.Services;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 
 namespace Codex.Api.Tests;
 
@@ -59,20 +58,19 @@ public class RoomCreationTests
 
         var room = await ctx.Rooms.CreateAsync(new CreateRoomRequest(set.Id), ctx.AsLeader, CancellationToken.None);
 
-        var queueSet = await ctx.Db.RoomQueueSets.SingleAsync(s => s.RoomId == room.Id);
+        var queueSet = Assert.Single(await ctx.RoomRepo.GetQueueSetsAsync(room.Id.ToString(), CancellationToken.None));
         Assert.Equal("Frações & Funções Básicas", queueSet.Title);
-        Assert.Equal(set.Id, queueSet.SourcePhaseSetId);
+        Assert.Equal(set.Id.ToString(), queueSet.SourcePhaseSetId);
         Assert.Equal(RoomQueueService.Palette[0], queueSet.Color);
 
-        var phases = await ctx.Db.RoomQueuePhases
-            .Where(p => p.RoomId == room.Id)
+        var phases = (await ctx.RoomRepo.GetQueuePhasesAsync(room.Id.ToString(), CancellationToken.None))
             .OrderBy(p => p.OrderIndex)
-            .ToListAsync();
+            .ToList();
 
         Assert.Equal(["Fase 1", "Fase 2", "Fase 3"], phases.Select(p => p.Name));
         Assert.Equal([0, 1, 2], phases.Select(p => p.OrderIndex));
         // Copia, nao referencia (decisao 1 da secao 13): editar o conjunto depois nao muda a fila.
-        Assert.All(phases, phase => Assert.NotEqual(Guid.Empty, phase.SourcePhaseId));
+        Assert.All(phases, phase => Assert.NotEqual(Guid.Empty, Guid.Parse(phase.SourcePhaseId)));
     }
 
     [Fact]
@@ -82,21 +80,21 @@ public class RoomCreationTests
 
         var room = await ctx.Rooms.CreateAsync(new CreateRoomRequest(null), ctx.AsLeader, CancellationToken.None);
 
-        Assert.False(await ctx.Db.RoomQueueSets.AnyAsync(s => s.RoomId == room.Id));
+        Assert.Empty(await ctx.RoomRepo.GetQueueSetsAsync(room.Id.ToString(), CancellationToken.None));
     }
 
     [Fact]
     public async Task Unknown_setId_creates_no_room_at_all()
     {
         var ctx = new RoomTestContext();
-        var roomsBefore = await ctx.Db.Rooms.CountAsync();
+        var roomsBefore = (await ctx.RoomRepo.GetLedRoomIdsAsync(ctx.Leader.Id.ToString(), CancellationToken.None)).Count;
 
         var exception = await Assert.ThrowsAsync<ApiException>(
             () => ctx.Rooms.CreateAsync(new CreateRoomRequest(Guid.NewGuid()), ctx.AsLeader, CancellationToken.None));
 
         Assert.Equal(ErrorCodes.PhaseSetNotFound, exception.Code);
         Assert.Equal(StatusCodes.Status404NotFound, exception.StatusCode);
-        Assert.Equal(roomsBefore, await ctx.Db.Rooms.CountAsync());
+        Assert.Equal(roomsBefore, (await ctx.RoomRepo.GetLedRoomIdsAsync(ctx.Leader.Id.ToString(), CancellationToken.None)).Count);
     }
 
     [Fact]
@@ -121,7 +119,9 @@ public class RoomCreationTests
 
         var room = await ctx.Rooms.CreateAsync(new CreateRoomRequest(set.Id), ctx.AsLeader, CancellationToken.None);
 
-        Assert.True(await ctx.Db.RoomQueueSets.AnyAsync(s => s.RoomId == room.Id && s.SourcePhaseSetId == set.Id));
+        Assert.Contains(
+            await ctx.RoomRepo.GetQueueSetsAsync(room.Id.ToString(), CancellationToken.None),
+            s => s.SourcePhaseSetId == set.Id.ToString());
     }
 
     [Fact]
@@ -132,11 +132,12 @@ public class RoomCreationTests
         for (var index = 0; index < RoomQueueService.MaxSetsPerRoom; index++)
         {
             var set = ctx.AddPhaseSet(ctx.Leader, $"Conjunto {index}", phaseCount: 1);
-            await ctx.Queue.AppendSetAsync(ctx.Room.Id, set, CancellationToken.None);
-            await ctx.Db.SaveChangesAsync();
+            await ctx.EnqueueAsync(set);
         }
 
-        var colors = await ctx.Db.RoomQueueSets.Where(s => s.RoomId == ctx.Room.Id).Select(s => s.Color).ToListAsync();
+        var colors = (await ctx.RoomRepo.GetQueueSetsAsync(ctx.Room.Id.ToString(), CancellationToken.None))
+            .Select(s => s.Color)
+            .ToList();
 
         Assert.Equal(RoomQueueService.MaxSetsPerRoom, colors.Count);
         Assert.Equal(colors.Count, colors.Distinct().Count());
@@ -150,14 +151,12 @@ public class RoomCreationTests
         for (var index = 0; index < RoomQueueService.MaxSetsPerRoom; index++)
         {
             var seeded = ctx.AddPhaseSet(ctx.Leader, $"Conjunto {index}", phaseCount: 1);
-            await ctx.Queue.AppendSetAsync(ctx.Room.Id, seeded, CancellationToken.None);
-            await ctx.Db.SaveChangesAsync();
+            await ctx.EnqueueAsync(seeded);
         }
 
         var extra = ctx.AddPhaseSet(ctx.Leader, "Um a mais", phaseCount: 1);
 
-        var exception = await Assert.ThrowsAsync<ApiException>(
-            () => ctx.Queue.AppendSetAsync(ctx.Room.Id, extra, CancellationToken.None));
+        var exception = await Assert.ThrowsAsync<ApiException>(() => ctx.EnqueueAsync(extra));
 
         Assert.Equal(ErrorCodes.TooManySets, exception.Code);
         Assert.Equal(StatusCodes.Status409Conflict, exception.StatusCode);
@@ -170,16 +169,13 @@ public class RoomCreationTests
         var first = ctx.AddPhaseSet(ctx.Leader, "Primeiro", phaseCount: 2);
         var second = ctx.AddPhaseSet(ctx.Leader, "Segundo", phaseCount: 2);
 
-        await ctx.Queue.AppendSetAsync(ctx.Room.Id, first, CancellationToken.None);
-        await ctx.Db.SaveChangesAsync();
-        await ctx.Queue.AppendSetAsync(ctx.Room.Id, second, CancellationToken.None);
-        await ctx.Db.SaveChangesAsync();
+        await ctx.EnqueueAsync(first);
+        await ctx.EnqueueAsync(second);
 
-        var orders = await ctx.Db.RoomQueuePhases
-            .Where(p => p.RoomId == ctx.Room.Id)
+        var orders = (await ctx.RoomRepo.GetQueuePhasesAsync(ctx.Room.Id.ToString(), CancellationToken.None))
             .OrderBy(p => p.OrderIndex)
             .Select(p => p.OrderIndex)
-            .ToListAsync();
+            .ToList();
 
         Assert.Equal([0, 1, 2, 3], orders);
     }

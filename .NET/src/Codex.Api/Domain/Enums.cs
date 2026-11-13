@@ -123,3 +123,9 @@ public enum QuizSuggestionMode
     Correct,
     Any,
 }
+
+public enum CommunityResourceStatus
+{
+    Published,
+    Delisted,
+}

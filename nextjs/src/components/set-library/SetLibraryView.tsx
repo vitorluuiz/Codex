@@ -9,7 +9,11 @@ import { ImageSlot } from '@/components/media/ImageSlot';
 import { AppSidebar } from '@/components/nav/AppSidebar';
 import { AUDIENCE_LABEL } from '@/components/nav/audienceLabels';
 import { logoutAction } from '@/lib/actions/auth';
-import { deletePhaseSetAction } from '@/lib/actions/phaseSets';
+import {
+  copyPhaseSetAction,
+  deletePhaseSetAction,
+  publishPhaseSetAction,
+} from '@/lib/actions/phaseSets';
 import { createRoomAction } from '@/lib/actions/profile';
 import { cx } from '@/lib/cx';
 import type { PhaseSetLibrary, User } from '@/lib/types';
@@ -81,6 +85,40 @@ export function SetLibraryView({ user, library, sampleData = false }: SetLibrary
     }
     startTransition(async () => {
       router.push(`/sala/${await createRoomAction(setId)}/lobby`);
+    });
+  }
+
+  function publishSet(setId: string) {
+    if (sampleData) {
+      setToast('Publicar conjunto precisa da API — os dados desta tela são de exemplo.');
+      return;
+    }
+    startTransition(async () => {
+      try {
+        const published = await publishPhaseSetAction(setId);
+        setSets((current) => [
+          published,
+          ...current.filter((item) => !(item.id === published.id && item.source === 'community')),
+        ]);
+        setToast('Conjunto publicado na comunidade.');
+      } catch (err) {
+        setToast(err instanceof Error ? err.message : 'Não foi possível publicar o conjunto.');
+      }
+    });
+  }
+
+  function copySet(setId: string) {
+    if (sampleData) {
+      setToast('Copiar conjunto precisa da API — os dados desta tela são de exemplo.');
+      return;
+    }
+    startTransition(async () => {
+      try {
+        const copied = await copyPhaseSetAction(setId);
+        router.push(`/conjunto/${copied.id}`);
+      } catch (err) {
+        setToast(err instanceof Error ? err.message : 'Não foi possível copiar o conjunto.');
+      }
     });
   }
 
@@ -202,6 +240,8 @@ export function SetLibraryView({ user, library, sampleData = false }: SetLibrary
                 )
               }
               onStartRoom={() => startRoom(set.id)}
+              onPublish={set.source === 'owned' ? () => publishSet(set.id) : undefined}
+              onCopy={set.source === 'community' ? () => copySet(set.id) : undefined}
               onDelete={() => setPendingDelete([set.id])}
             />
           ))}

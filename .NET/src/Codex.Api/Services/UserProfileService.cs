@@ -19,7 +19,12 @@ namespace Codex.Api.Services;
 /// api-rest.md secao 2: PATCH /users/me (dialogo "Editar perfil") e GET /users/{userId}/profile
 /// (a tela de perfil inteira).
 /// </summary>
-public class UserProfileService(AppDbContext db, LabelFormatter labels, IMatchDocumentStore matches, DocumentOptions documents)
+public class UserProfileService(
+    AppDbContext db,
+    LabelFormatter labels,
+    IMatchDocumentStore matches,
+    DocumentOptions documents,
+    IPhaseSetDocumentStore phaseSets)
 {
     private const int MaxNameLength = 120;
     private const int MaxEmailLength = 256;
@@ -126,26 +131,32 @@ public class UserProfileService(AppDbContext db, LabelFormatter labels, IMatchDo
     /// </summary>
     private async Task<IReadOnlyList<PhaseSetSummaryDto>> GetSetsAsync(User user, bool isSelf, CancellationToken ct)
     {
-        var query = db.PhaseSets.AsNoTracking().Where(s => s.OwnerId == user.Id);
-
-        if (!isSelf)
+        if (isSelf)
         {
-            query = query.Where(s => s.Visibility == PhaseSetVisibility.Community);
+            var privateSets = await phaseSets.ListPrivateSetsByOwnerAsync(user.Id, null, PhaseSetService.MaxResults, ct);
+            return
+            [
+                .. privateSets.Select(s => new PhaseSetSummaryDto(
+                    s.Id,
+                    s.Title,
+                    s.Summary.PhaseCount,
+                    PhaseSetSource.Owned,
+                    labels.EditedLabel(new DateTimeOffset(DateTime.SpecifyKind(s.UpdatedAt, DateTimeKind.Utc))),
+                    null)),
+            ];
         }
 
-        var sets = await query
-            .OrderByDescending(s => s.UpdatedAt)
-            .Select(s => new { s.Id, s.Title, s.UpdatedAt, PhaseCount = s.Phases.Count })
-            .ToListAsync(ct);
-
-        return sets.Select(s => new PhaseSetSummaryDto(
+        var communitySets = await phaseSets.ListCommunitySetsByAuthorAsync(user.Id, PhaseSetService.MaxResults, ct);
+        return
+        [
+            .. communitySets.Select(s => new PhaseSetSummaryDto(
                 s.Id,
                 s.Title,
-                s.PhaseCount,
-                isSelf ? PhaseSetSource.Owned : PhaseSetSource.Community,
-                isSelf ? labels.EditedLabel(s.UpdatedAt) : null,
-                isSelf ? null : user.Name))
-            .ToList();
+                s.Summary.PhaseCount,
+                PhaseSetSource.Community,
+                null,
+                user.Name)),
+        ];
     }
 
     /// <summary>

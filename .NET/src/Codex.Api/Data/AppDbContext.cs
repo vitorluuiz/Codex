@@ -13,8 +13,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<UserIdentity> UserIdentities => Set<UserIdentity>();
-    public DbSet<PhaseSet> PhaseSets => Set<PhaseSet>();
-    public DbSet<Phase> Phases => Set<Phase>();
+    public DbSet<CommunityPhase> CommunityPhases => Set<CommunityPhase>();
     public DbSet<AiGeneration> AiGenerations => Set<AiGeneration>();
 
 
