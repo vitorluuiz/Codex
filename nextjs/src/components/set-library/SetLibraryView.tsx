@@ -37,22 +37,22 @@ const TABS: { id: LibraryScope; label: string }[] = [
 interface SetLibraryViewProps {
   user: User;
   library: PhaseSetLibrary;
-  /**
-   * Temporário: `true` quando o conteúdo veio de `mockLibrary.ts` porque a API
-   * ainda não existe. Além da tarja de aviso, segura as chamadas ao servidor —
-   * criar sala ou excluir conjunto estouraria em `API_BASE_URL não configurada`
-   * e derrubaria a tela que se está tentando olhar.
-   */
-  sampleData?: boolean;
 }
 
-export function SetLibraryView({ user, library, sampleData = false }: SetLibraryViewProps) {
+export function SetLibraryView({ user, library }: SetLibraryViewProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
   // A lista vive no estado para que excluir um conjunto tire o card na hora; o
-  // servidor confirma depois e revalida a rota.
+  // servidor confirma depois e revalida a rota. Quando chega uma biblioteca nova
+  // do servidor (`router.refresh()`, nova navegação), ela substitui o estado —
+  // senão o `useState` congelaria a primeira resposta.
   const [sets, setSets] = useState(library.sets);
+  const [syncedSets, setSyncedSets] = useState(library.sets);
+  if (library.sets !== syncedSets) {
+    setSyncedSets(library.sets);
+    setSets(library.sets);
+  }
   const [filters, setFilters] = useState<LibraryFilterState>(INITIAL_FILTERS);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
@@ -62,10 +62,7 @@ export function SetLibraryView({ user, library, sampleData = false }: SetLibrary
   const visible = useMemo(() => filterSets(sets, filters), [sets, filters]);
   const owned = filters.scope === 'owned';
   const featured = sets.find((set) => set.source === 'owned') ?? null;
-
-  const ownedCount = sets.filter((set) => set.source === 'owned').length;
-  const communityCount = sets.length - ownedCount;
-
+  
   function patchFilters(patch: Partial<LibraryFilterState>) {
     setFilters((current) => ({ ...current, ...patch }));
   }
@@ -79,27 +76,18 @@ export function SetLibraryView({ user, library, sampleData = false }: SetLibrary
   }
 
   function startRoom(setId: string) {
-    if (sampleData) {
-      setToast('Criar sala precisa da API — os dados desta tela são de exemplo.');
-      return;
-    }
     startTransition(async () => {
       router.push(`/sala/${await createRoomAction(setId)}/lobby`);
     });
   }
 
   function publishSet(setId: string) {
-    if (sampleData) {
-      setToast('Publicar conjunto precisa da API — os dados desta tela são de exemplo.');
-      return;
-    }
     startTransition(async () => {
       try {
-        const published = await publishPhaseSetAction(setId);
-        setSets((current) => [
-          published,
-          ...current.filter((item) => !(item.id === published.id && item.source === 'community')),
-        ]);
+        await publishPhaseSetAction(setId);
+        // A comunidade guarda só a versão mais recente de cada conjunto; quem
+        // decide o que sai e o que entra é o servidor, não uma inserção local.
+        router.refresh();
         setToast('Conjunto publicado na comunidade.');
       } catch (err) {
         setToast(err instanceof Error ? err.message : 'Não foi possível publicar o conjunto.');
@@ -108,10 +96,6 @@ export function SetLibraryView({ user, library, sampleData = false }: SetLibrary
   }
 
   function copySet(setId: string) {
-    if (sampleData) {
-      setToast('Copiar conjunto precisa da API — os dados desta tela são de exemplo.');
-      return;
-    }
     startTransition(async () => {
       try {
         const copied = await copyPhaseSetAction(setId);
@@ -128,10 +112,6 @@ export function SetLibraryView({ user, library, sampleData = false }: SetLibrary
     setSets((current) => current.filter((set) => !ids.includes(set.id)));
     setSelected((current) => current.filter((id) => !ids.includes(id)));
     const done = ids.length === 1 ? 'Conjunto excluído.' : `${ids.length} conjuntos excluídos.`;
-    if (sampleData) {
-      setToast(done);
-      return;
-    }
     startTransition(async () => {
       await Promise.all(ids.map((id) => deletePhaseSetAction(id)));
       setToast(done);
@@ -140,13 +120,6 @@ export function SetLibraryView({ user, library, sampleData = false }: SetLibrary
 
   return (
     <div className={styles.layout}>
-      {sampleData && (
-        <p className={styles.sampleNotice}>
-          Dados de exemplo — a rota <code>GET /phase-sets/library</code> ainda não existe. Nada
-          nesta tela vem do servidor.
-        </p>
-      )}
-
       <AppSidebar
         user={user}
         audienceLabel={AUDIENCE_LABEL[user.audience]}
@@ -175,9 +148,6 @@ export function SetLibraryView({ user, library, sampleData = false }: SetLibrary
           <header className={styles.header}>
             <div>
               <h1 className={styles.title}>Conjuntos de desafios</h1>
-              <p className={styles.subtitle}>
-                {ownedCount} conjuntos seus · {communityCount} na comunidade
-              </p>
             </div>
             <Button onClick={() => router.push('/conjunto/novo')}>Criar conjunto</Button>
           </header>

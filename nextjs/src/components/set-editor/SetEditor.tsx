@@ -371,7 +371,7 @@ export function SetEditor({
 
   function cancel() {
     clearStoredDraft();
-    router.push('/perfil');
+    router.push(initialDraft.id ? `/conjunto/${initialDraft.id}` : '/conjuntos');
   }
 
   function handleDelete() {
@@ -423,9 +423,14 @@ export function SetEditor({
     const preparedPhases = preparePhasesForSave(phases);
     startTransition(async () => {
       try {
-        await savePhaseSetAction({ id: initialDraft.id, title: title.trim(), phases: preparedPhases });
+        const saved = await savePhaseSetAction({
+          id: initialDraft.id,
+          title: title.trim(),
+          phases: preparedPhases,
+        });
         clearStoredDraft();
-        router.push('/perfil');
+        const targetId = saved.id ?? initialDraft.id;
+        router.push(targetId ? `/conjunto/${targetId}` : '/conjuntos');
       } catch {
         setSaveError('Não foi possível salvar o conjunto. Tente novamente.');
       }
@@ -453,9 +458,9 @@ export function SetEditor({
             <button
               type="button"
               className={styles.backButton}
-              onClick={() => router.push('/perfil')}
+              onClick={() => router.push(initialDraft.id ? `/conjunto/${initialDraft.id}` : '/conjuntos')}
               title="Voltar"
-              aria-label="Voltar para o perfil"
+              aria-label={initialDraft.id ? 'Voltar para o conjunto' : 'Voltar para conjuntos'}
             >
               <Icon.ArrowLeft size={17} />
             </button>

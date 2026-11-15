@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button, Dialog } from '@/components/ds';
@@ -76,7 +77,11 @@ export function SetsSection({ sets, onCreate, onEdit, onStart }: SetsSectionProp
                     <Icon.Grid size={20} />
                   </span>
                   <div className={styles.cardText}>
-                    <h3 className={styles.cardTitle}>{set.title}</h3>
+                    <h3 className={styles.cardTitle}>
+                      <Link href={`/conjunto/${set.id}`} className={styles.cardLink}>
+                        {set.title}
+                      </Link>
+                    </h3>
                     {set.updatedLabel && <p className={styles.cardMeta}>{set.updatedLabel}</p>}
                   </div>
                 </div>

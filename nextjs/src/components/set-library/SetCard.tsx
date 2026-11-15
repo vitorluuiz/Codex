@@ -56,21 +56,24 @@ export function SetCard({
 
   const owned = set.source === 'owned';
   const href = `/conjunto/${set.id}`;
+  const editHref = `/conjunto/${set.id}/editar`;
 
   // Ações sem rota no contrato aparecem desabilitadas em vez de sumirem — é o
   // mesmo critério da barra lateral: o menu mostra o que o conjunto vai poder
   // fazer, e some só o que nunca vai existir aqui.
   const actions: MenuAction[] = owned
     ? [
+        { label: 'Abrir conjunto', icon: <Icon.Eye size={16} />, onSelect: () => router.push(href) },
         { label: 'Iniciar sala com este conjunto', icon: <Icon.Power size={16} />, onSelect: onStartRoom },
-        { label: 'Editar conjunto', icon: <Icon.Pencil size={16} />, onSelect: () => router.push(href) },
+        { label: 'Editar conjunto', icon: <Icon.Pencil size={16} />, onSelect: () => router.push(editHref) },
         { label: 'Compartilhar', icon: <Icon.Globe size={16} />, onSelect: onPublish },
         { label: 'Exportar', icon: <Icon.Download size={16} /> },
         { label: 'Excluir', icon: <Icon.Close size={16} />, onSelect: onDelete, danger: true },
       ]
     : [
         { label: 'Abrir conjunto', icon: <Icon.Eye size={16} />, onSelect: () => router.push(href) },
-        { label: 'Copiar para meus conjuntos', icon: <Icon.Copy size={16} />, onSelect: onCopy },
+        { label: 'Iniciar sala com este conjunto', icon: <Icon.Power size={16} />, onSelect: onStartRoom },
+        { label: 'Importar conjunto', icon: <Icon.Copy size={16} />, onSelect: onCopy },
         { label: 'Compartilhar', icon: <Icon.Globe size={16} /> },
         { label: 'Exportar', icon: <Icon.Download size={16} /> },
       ];

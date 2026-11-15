@@ -99,6 +99,27 @@ public sealed class NamedEnumSerializer<T> : StructSerializerBase<T>
     public override T Deserialize(BsonDeserializationContext context, BsonDeserializationArgs args)
     {
         var type = context.Reader.GetCurrentBsonType();
+
+        // Documentos gravados antes do registro de NamedEnumSerializer<T> trazem o enum como inteiro
+        // (ex.: aspects/difficulty em variationSettings); aceitar numeros definidos evita quebrar o historico.
+        if (type is BsonType.Int32 or BsonType.Int64)
+        {
+            var numeric = type is BsonType.Int32
+                ? context.Reader.ReadInt32()
+                : context.Reader.ReadInt64();
+
+            if (numeric is >= int.MinValue and <= int.MaxValue)
+            {
+                var enumValue = (T)Enum.ToObject(typeof(T), (int)numeric);
+                if (Enum.IsDefined(typeof(T), enumValue))
+                {
+                    return enumValue;
+                }
+            }
+
+            throw new FormatException($"{numeric} nao e um valor de {typeof(T).Name}.");
+        }
+
         if (type is not BsonType.String)
         {
             throw new FormatException($"{typeof(T).Name} esperava uma string no BSON, veio {type}.");

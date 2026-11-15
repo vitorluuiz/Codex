@@ -55,7 +55,7 @@ public sealed record MatchDocument
 
     public required IReadOnlyList<MatchPhaseDocument> Phases { get; init; }
 
-    public required MatchStatsDocument Stats { get; init; }
+    public required MatchStatsDocument Stats { get; init; } 
 
     /// <summary>
     /// Os participantes aprovados, cada um com as proprias submissoes, <b>gravados na ordem do
