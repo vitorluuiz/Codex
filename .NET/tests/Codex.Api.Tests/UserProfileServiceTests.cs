@@ -1,11 +1,16 @@
 using Codex.Api.Common.Errors;
+using Codex.Api.Contracts.Ai;
 using Codex.Api.Contracts.PhaseSets;
 using Codex.Api.Contracts.Users;
+using Codex.Api.Documents;
 using Codex.Api.Domain;
 using Codex.Api.Domain.Entities;
+using Codex.Api.Services;
 using Codex.Api.Services.Redis;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
 
 namespace Codex.Api.Tests;
 
@@ -278,6 +283,103 @@ public class UserProfileServiceTests
         var profile = await ctx.Profiles.GetProfileAsync("me", ctx.AsLeader, CancellationToken.None);
 
         Assert.Equal("Frações +1", Assert.Single(profile.Matches).SetTitle);
+    }
+
+    [Fact]
+    public void Variation_settings_enums_deserialize_both_camelCase_strings_and_legacy_bson_integers()
+    {
+        DocumentConventions.Register();
+
+        var withStrings = new BsonDocument
+        {
+            { "question", "Questao" },
+            { "fromAI", true },
+            {
+                "variationSettings",
+                new BsonDocument
+                {
+                    { "count", 3 },
+                    { "aspects", new BsonArray { "wording", "values", "context", "distractors" } },
+                    { "difficulty", "harder" },
+                    { "keepSettings", true },
+                    { "notes", "" },
+                }
+            },
+        };
+
+        var withLegacyInts = new BsonDocument
+        {
+            { "question", "Questao" },
+            { "fromAI", true },
+            {
+                "variationSettings",
+                new BsonDocument
+                {
+                    { "count", 3 },
+                    { "aspects", new BsonArray { 0, 1L, 2, 3 } },
+                    { "difficulty", 2 },
+                    { "keepSettings", true },
+                    { "notes", "" },
+                }
+            },
+        };
+
+        var withLegacyInt64Difficulty = new BsonDocument
+        {
+            { "question", "Questao" },
+            { "fromAI", true },
+            {
+                "variationSettings",
+                new BsonDocument
+                {
+                    { "count", 2 },
+                    { "aspects", new BsonArray { 0, 1 } },
+                    { "difficulty", 0L },
+                    { "keepSettings", true },
+                    { "notes", "" },
+                }
+            },
+        };
+
+        var fromStrings = BsonSerializer.Deserialize<PhaseContent>(withStrings);
+        var fromLegacyInts = BsonSerializer.Deserialize<PhaseContent>(withLegacyInts);
+        var fromLegacyInt64 = BsonSerializer.Deserialize<PhaseContent>(withLegacyInt64Difficulty);
+
+        var expectedAspects = new[]
+        {
+            AiVariationAspect.Wording,
+            AiVariationAspect.Values,
+            AiVariationAspect.Context,
+            AiVariationAspect.Distractors,
+        };
+
+        Assert.NotNull(fromStrings.VariationSettings);
+        Assert.Equal(expectedAspects, fromStrings.VariationSettings.Aspects);
+        Assert.Equal(AiDifficultyShift.Harder, fromStrings.VariationSettings.Difficulty);
+
+        Assert.NotNull(fromLegacyInts.VariationSettings);
+        Assert.Equal(expectedAspects, fromLegacyInts.VariationSettings.Aspects);
+        Assert.Equal(AiDifficultyShift.Harder, fromLegacyInts.VariationSettings.Difficulty);
+
+        Assert.NotNull(fromLegacyInt64.VariationSettings);
+        Assert.Equal([AiVariationAspect.Wording, AiVariationAspect.Values], fromLegacyInt64.VariationSettings.Aspects);
+        Assert.Equal(AiDifficultyShift.Same, fromLegacyInt64.VariationSettings.Difficulty);
+
+        var withUndefinedInt = new BsonDocument
+        {
+            { "question", "Questao" },
+            { "fromAI", true },
+            {
+                "variationSettings",
+                new BsonDocument
+                {
+                    { "count", 3 },
+                    { "difficulty", 99 },
+                }
+            },
+        };
+
+        Assert.Throws<FormatException>(() => BsonSerializer.Deserialize<PhaseContent>(withUndefinedInt));
     }
 
     private static Task Snapshot(RoomTestContext ctx, Match match)

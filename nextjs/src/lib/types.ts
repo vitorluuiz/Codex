@@ -148,7 +148,7 @@ export interface PhaseSetSummary {
 }
 
 /**
- * Um conjunto como a biblioteca o mostra (`GET /phase-sets/library`).
+ * Um conjunto como a biblioteca o mostra (`GET /phase-sets/owned` e `GET /phase-sets/community`).
  *
  * É o `PhaseSetSummary` do seletor da sala mais o que só o card da biblioteca
  * usa: capa, disciplina, pasta e os números do rodapé. Ficou em outra rota
@@ -171,8 +171,24 @@ export interface PhaseSetLibraryEntry extends PhaseSetSummary {
   coverUrl: string | null;
 }
 
+export type PhaseSetVisibility = 'private' | 'public';
+
 /**
- * Payload de `GET /phase-sets/library`.
+ * Detalhe completo de um conjunto privado ou público (`GET /phase-sets/{setId}`).
+ */
+export interface PhaseSetDetail extends PhaseSetLibraryEntry {
+  visibility: PhaseSetVisibility;
+  isOwner: boolean;
+  authorId: string | null;
+  publishedSetId?: string | null;
+  sourcePrivateSetId?: string | null;
+  version?: number | null;
+  phases: DraftPhase[];
+}
+
+/**
+ * O que a tela `/conjuntos` consome, montado a partir de `GET /phase-sets/owned`
+ * e `GET /phase-sets/community`.
  *
  * As listas de disciplinas e pastas vêm do servidor em vez de saírem de `sets`:
  * uma pasta recém-esvaziada tem que continuar clicável, senão o filtro some
@@ -184,6 +200,22 @@ export interface PhaseSetLibrary {
   folders: string[];
   /** Capa do topo da tela. */
   coverUrl: string | null;
+}
+
+/** Payload de `GET /phase-sets/owned`. Todos os `sets` têm `source: 'owned'`. */
+export type OwnedPhaseSetList = PhaseSetLibrary;
+
+/** Payload de `GET /phase-sets/community`. Todos os `sets` têm `source: 'community'`. */
+export interface CommunityPhaseSetSearch {
+  sets: PhaseSetLibraryEntry[];
+}
+
+/** Query string de `GET /phase-sets/community`. */
+export interface CommunityPhaseSetSearchParams {
+  q?: string;
+  subject?: string;
+  kind?: PhaseKind;
+  sort?: 'recent' | 'popular';
 }
 
 export type PhaseTheme = 'default' | 'cyberpunk' | 'emerald' | 'sunset' | 'crimson';

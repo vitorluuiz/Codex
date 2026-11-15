@@ -1,0 +1,620 @@
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+  background: var(--surface-page);
+  font-family: var(--font-body);
+}
+
+.sampleNotice {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px clamp(20px, 3vw, 40px);
+  background: var(--tone-amber-surface);
+  color: var(--amber-600);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+  text-align: center;
+}
+
+.sampleNotice code {
+  font-family: var(--font-mono);
+  font-size: var(--text-body-s);
+}
+
+.main {
+  padding: clamp(20px, 3.5vw, 40px);
+  min-width: 0;
+}
+
+.container {
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* --- Bloco 1: Topo e seletor de protótipo --------------------------------- */
+
+.topBar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+}
+
+.backLink:hover {
+  color: var(--text-primary);
+}
+
+.protoBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-m);
+  border: 1px dashed var(--border-strong);
+  background: var(--surface-card);
+}
+
+.protoLabel {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.protoModes {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.protoButton {
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-page);
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  cursor: pointer;
+}
+
+.protoButton:hover {
+  color: var(--text-primary);
+}
+
+.protoButtonActive,
+.protoButtonActive:hover {
+  background: var(--surface-inverse);
+  border-color: transparent;
+  color: var(--text-inverse);
+}
+
+/* --- Bloco 2: Cabeçalho vertical e ações ---------------------------------- */
+
+.heroCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-s);
+  display: flex;
+  flex-direction: column;
+}
+
+.coverSlot {
+  width: 100%;
+  height: 150px;
+  position: relative;
+  overflow: hidden;
+}
+
+.coverImage {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+}
+
+.coverSolid {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    135deg,
+    var(--set-color, var(--accent-primary)) 0%,
+    color-mix(in srgb, var(--set-color, var(--accent-primary)) 65%, #0a0c14) 100%
+  );
+}
+
+.heroBody {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-display-s);
+  line-height: var(--lh-snug);
+  color: var(--text-primary);
+}
+
+.byline {
+  margin: 0;
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+}
+
+.actionsBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.secondaryActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* --- Bloco 3: Resumo vertical de métricas --------------------------------- */
+
+.summaryCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sectionHeading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-heading);
+  color: var(--text-primary);
+}
+
+.sectionHint {
+  margin: 2px 0 0;
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+}
+
+.metricsList {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.metricItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3);
+  border-radius: var(--radius-m);
+  background: var(--surface-page);
+  border: 1px solid var(--border-subtle);
+}
+
+.metricLabel {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.metricValue {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-body-l);
+  color: var(--text-primary);
+}
+
+.kindsRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.kindChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--kind-color) 12%, transparent);
+  color: var(--text-primary);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+}
+
+.kindDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--kind-color);
+}
+
+/* --- Bloco 4: Lista vertical de fases ------------------------------------- */
+
+.phasesSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.phasesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.emptyCard {
+  background: var(--surface-card);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-xl);
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.emptyText {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-body-s);
+}
+
+.phaseList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.phaseCard {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.phaseTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.phaseIdentity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.phaseNumber {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+}
+
+.phaseKindTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--kind-color) 14%, transparent);
+  color: var(--kind-color);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+}
+
+.phaseTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-body-l);
+  color: var(--text-primary);
+}
+
+.phaseMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.metaPill {
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-page);
+  border: 1px solid var(--border-subtle);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+}
+
+.question {
+  margin: 0;
+  font-size: var(--text-body);
+  line-height: var(--lh-relaxed);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.blankChip {
+  display: inline-block;
+  padding: 1px 8px;
+  margin: 0 3px;
+  border-radius: var(--radius-s);
+  border: 1px dashed var(--border-strong);
+  background: var(--surface-page);
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+}
+
+.blankChipRevealed {
+  border-style: solid;
+  border-color: var(--accent-success);
+  background: var(--tone-green-surface);
+  color: var(--green-600);
+}
+
+.optionsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.optionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px 14px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-page);
+}
+
+.optionRowCorrect {
+  border-color: var(--accent-success);
+  background: var(--tone-green-surface);
+}
+
+.optionBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.optionBadgeCorrect {
+  background: var(--accent-success);
+  border-color: transparent;
+  color: var(--ink-0);
+}
+
+.optionText {
+  flex: 1;
+  font-size: var(--text-body-s);
+  color: var(--text-primary);
+}
+
+.subSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.subLabel {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.wordBank {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.wordChip {
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-page);
+  font-size: var(--text-body-s);
+  color: var(--text-primary);
+}
+
+.wordChipCorrect {
+  border-color: var(--accent-success);
+  background: var(--tone-green-surface);
+  font-weight: var(--fw-semibold);
+}
+
+.answerBox {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-m);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-page);
+  font-size: var(--text-body-s);
+  line-height: var(--lh-normal);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.hiddenHint {
+  margin: 0;
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.codeBlock {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-m);
+  background: var(--ink-900);
+  color: var(--ink-50);
+  font-family: var(--font-mono);
+  font-size: var(--text-body-s);
+  line-height: var(--lh-normal);
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.tipRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 12px;
+  border-radius: var(--radius-m);
+  background: var(--surface-page);
+  color: var(--text-secondary);
+  font-size: var(--text-body-s);
+}
+
+/* --- Diálogos ------------------------------------------------------------- */
+
+.dialogStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.dialogSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-m);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-page);
+}
+
+.dialogText {
+  margin: 0;
+  font-size: var(--text-body-s);
+  line-height: var(--lh-normal);
+  color: var(--text-secondary);
+}
+
+.shareLinkRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.shareInput {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-body-s);
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .metricsList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .heroBody,
+  .summaryCard,
+  .phaseCard {
+    padding: var(--space-4);
+  }
+}

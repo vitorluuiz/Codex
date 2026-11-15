@@ -334,8 +334,8 @@ Encerra a sala e desconecta os participantes (apenas líder).
 #### `GET /phase-sets?scope=owned|community&q={termo}`
 Busca conjuntos para o seletor de sala. Retorna resumos (`PhaseSetSummary[]`) com contagem de fases e títulos, lendo exclusivamente de `private_phase_sets` (`scope=owned`) ou `community_phase_sets` (`scope=community`) no MongoDB.
 
-#### `GET /phase-sets/library`
-Retorna a biblioteca completa do usuário para a tela `/conjuntos` em uma única leitura no MongoDB (`user_workspaces`, `private_phase_sets` com projeção `{ phases: 0 }` e `community_phase_sets`).
+#### `GET /phase-sets/owned`
+Retorna os conjuntos privados do usuário e os metadados do workspace (disciplinas, pastas e capa) para a aba "Meus conjuntos" da tela `/conjuntos` em uma leitura exclusiva no MongoDB (`user_workspaces` e `private_phase_sets` com projeção `{ phases: 0 }`).
 * **Resposta `200`:**
 ```json
 {
@@ -359,6 +359,32 @@ Retorna a biblioteca completa do usuário para a tela `/conjuntos` em uma única
   "subjects": ["Matemática", "Programação"],
   "folders": ["Matemática 2º ano", "Provas"],
   "coverUrl": null
+}
+```
+
+#### `GET /phase-sets/community?q={termo}&subject={disciplina}&kind={tipo}&sort=recent|popular`
+Busca conjuntos publicados na comunidade para a aba "Comunidade" da tela `/conjuntos`. Retorna a versão mais recente de cada conjunto publicado (inclusive do próprio usuário), lendo exclusivamente de `community_phase_sets` no MongoDB.
+* **Resposta `200`:**
+```json
+{
+  "sets": [
+    {
+      "id": "01a069f5-8351-7c3f-aa88-50364832e5c2",
+      "title": "Introdução a Algoritmos",
+      "phaseCount": 6,
+      "source": "community",
+      "updatedLabel": null,
+      "authorName": "Prof. Carlos",
+      "phaseKindCounts": { "code": 4, "quiz": 2 },
+      "accuracyRate": 85,
+      "durationLabel": "25 min",
+      "subject": "Programação",
+      "folder": null,
+      "useCount": 45,
+      "coverUrl": null,
+      "version": 1
+    }
+  ]
 }
 ```
 

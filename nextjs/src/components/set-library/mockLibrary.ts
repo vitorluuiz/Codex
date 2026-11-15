@@ -1,9 +1,17 @@
-import type { PhaseSetLibrary, User } from '@/lib/types';
+import type {
+  DraftPhase,
+  PhaseKind,
+  PhaseSetDetail,
+  PhaseSetDraft,
+  PhaseSetLibrary,
+  PhaseSetLibraryEntry,
+  User,
+} from '@/lib/types';
 
 /**
  * Dados de exemplo da biblioteca — **temporários**.
  *
- * Existem para validar o layout de `/conjuntos` antes de `GET /phase-sets/library`
+ * Existem para validar o layout de `/conjuntos` antes de `GET /phase-sets/owned` e `GET /phase-sets/community`
  * existir. A tela só cai aqui quando a API não está configurada, e quando cai
  * mostra uma tarja avisando que o conteúdo é fictício: o resto do projeto não
  * inventa dado (ver o cabeçalho de `src/lib/types.ts`), e esta é a exceção com
@@ -215,3 +223,129 @@ export const MOCK_LIBRARY: PhaseSetLibrary = {
     },
   ],
 };
+
+function buildMockPhase(entry: PhaseSetLibraryEntry, kind: PhaseKind, index: number): DraftPhase {
+  const id = `${entry.id}_phase_${index + 1}`;
+  const isCodeSubject = entry.subject === 'Programação';
+  const order = index + 1;
+
+  switch (kind) {
+    case 'quiz':
+      return {
+        id,
+        kind: 'quiz',
+        name: `Questão ${order} · ${entry.subject}`,
+        basePoints: 100,
+        pointsMultiplier: 1,
+        timeSeconds: 45,
+        fromAI: false,
+        question: isCodeSubject
+          ? `(${entry.title}) Qual afirmação descreve corretamente o comportamento analisado no passo ${order}?`
+          : `(${entry.title}) Qual alternativa resolve corretamente o exercício ${order} de ${entry.subject}?`,
+        options: isCodeSubject
+          ? [
+              'Executa em tempo linear O(n) com memória constante',
+              'Depende de recursão infinita sem caso base',
+              'Altera a ordem original sem percorrer os itens',
+              'Ignora entradas vazias e retorna undefined',
+            ]
+          : [
+              'A relação proporcional mantém o mesmo quociente',
+              'A soma dos termos altera a razão original',
+              'O denominador deve ser sempre menor que o numerador',
+              'Nenhuma das alternativas anteriores',
+            ],
+        correctIndexes: [0],
+        introTip: index === 0 ? `Leia o enunciado de "${entry.title}" com atenção antes de responder.` : undefined,
+      };
+    case 'fill':
+      return {
+        id,
+        kind: 'fill',
+        name: `Completar ${order} · ${entry.subject}`,
+        basePoints: 100,
+        pointsMultiplier: 1,
+        timeSeconds: 60,
+        fromAI: false,
+        question: isCodeSubject
+          ? 'Para evitar estouro de pilha em uma função recursiva, definimos um ___ antes da chamada ___.'
+          : 'Uma expressão equivalente preserva a ___ quando aplicamos o mesmo ___ em ambos os termos.',
+        words: isCodeSubject
+          ? ['caso base', 'recursiva', 'laço infinito', 'ponteiro nulo']
+          : ['proporção', 'fator', 'subtração', 'expoente'],
+        blanks: isCodeSubject ? ['caso base', 'recursiva'] : ['proporção', 'fator'],
+      };
+    case 'text':
+      return {
+        id,
+        kind: 'text',
+        name: `Dissertativa ${order} · ${entry.subject}`,
+        basePoints: 120,
+        pointsMultiplier: 1.25,
+        timeSeconds: 120,
+        fromAI: false,
+        question: `Explique, com suas palavras, o raciocínio principal aplicado na etapa ${order} de "${entry.title}".`,
+        expectedAnswer:
+          'Espera-se que o participante identifique os dados iniciais, justifique a estratégia escolhida e apresente a conclusão de forma clara.',
+      };
+    case 'code':
+      return {
+        id,
+        kind: 'code',
+        name: `Código ${order} · ${entry.title}`,
+        basePoints: 150,
+        pointsMultiplier: 1.5,
+        timeSeconds: 300,
+        fromAI: false,
+        question: `Implemente a função \`solucao\` para resolver o desafio ${order} de "${entry.title}".`,
+        starterCode: 'function solucao(entrada) {\n  // Escreva sua solução aqui\n  return entrada;\n}\n',
+        testCases: 'Entrada: [2, 4, 6]\nSaída: 12\n\nEntrada: [1, 3]\nSaída: 4',
+      };
+  }
+}
+
+function buildMockPhasesForEntry(entry: PhaseSetLibraryEntry): DraftPhase[] {
+  const kinds: PhaseKind[] = ['quiz', 'code', 'text', 'fill'];
+  const phases: DraftPhase[] = [];
+
+  for (const kind of kinds) {
+    const count = entry.phaseKindCounts[kind] ?? 0;
+    for (let i = 0; i < count; i += 1) {
+      phases.push(buildMockPhase(entry, kind, phases.length));
+    }
+  }
+
+  return phases;
+}
+
+export function getMockPhaseSetDetail(setId: string): PhaseSetDetail | null {
+  const entry = MOCK_LIBRARY.sets.find((item) => item.id === setId);
+  if (!entry) return null;
+
+  const isOwned = entry.source === 'owned';
+  return {
+    ...entry,
+    visibility: isOwned ? 'private' : 'public',
+    isOwner: isOwned,
+    authorId: isOwned ? MOCK_USER.id : `author_${entry.id}`,
+    authorName: isOwned ? MOCK_USER.name : entry.authorName,
+    publishedSetId: isOwned ? null : entry.id,
+    sourcePrivateSetId: isOwned ? entry.id : null,
+    version: isOwned ? null : 1,
+    phases: buildMockPhasesForEntry(entry),
+  };
+}
+
+export function getMockPhaseSetDraft(setId: string): PhaseSetDraft | null {
+  const entry = MOCK_LIBRARY.sets.find((item) => item.id === setId);
+  if (!entry || entry.source !== 'owned') return null;
+
+  return {
+    id: entry.id,
+    title: entry.title,
+    subject: entry.subject,
+    folder: entry.folder,
+    coverUrl: entry.coverUrl,
+    phases: buildMockPhasesForEntry(entry),
+  };
+}

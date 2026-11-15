@@ -127,7 +127,7 @@ export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: Profile
                 <SetsSection
                   sets={profile.sets}
                   onCreate={() => router.push('/conjunto/novo')}
-                  onEdit={(setId) => router.push(`/conjunto/${setId}`)}
+                  onEdit={(setId) => router.push(`/conjunto/${setId}/editar`)}
                   onStart={(setId) => openRoom(setId)}
                 />
                 <MatchHistorySection

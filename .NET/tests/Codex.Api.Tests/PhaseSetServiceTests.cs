@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text.Json;
 using Codex.Api.Common.Errors;
 using Codex.Api.Common.Json;
@@ -711,9 +712,10 @@ public class PhaseSetServiceTests
             ctx.AsLeader,
             Ct);
 
-        var library = await ctx.PhaseSets.GetLibraryAsync(ctx.AsLeader, Ct);
+        var library = await ctx.PhaseSets.ListOwnedAsync(ctx.AsLeader, Ct);
 
         var only = Assert.Single(library.Sets);
+        Assert.Equal(PhaseSetSource.Owned, only.Source);
         Assert.Equal("Matemática", only.Subject);
         Assert.Equal("2º Bimestre", only.Folder);
         Assert.Equal("https://cdn.escola.br/set.png", only.CoverUrl);
@@ -722,6 +724,75 @@ public class PhaseSetServiceTests
         Assert.Contains("1º Bimestre", library.Folders);
         Assert.Contains("2º Bimestre", library.Folders);
         Assert.Equal("https://cdn.escola.br/capa.png", library.CoverUrl);
+    }
+
+    [Fact]
+    public async Task ListOwnedAsync_requires_account()
+    {
+        var ctx = new RoomTestContext();
+
+        var ex = await Assert.ThrowsAsync<ApiException>(
+            () => ctx.PhaseSets.ListOwnedAsync(new ClaimsPrincipal(new ClaimsIdentity()), Ct));
+
+        Assert.Equal(ErrorCodes.AccountRequired, ex.Code);
+    }
+
+    [Fact]
+    public async Task SearchCommunityAsync_returns_only_latest_version_including_viewers_own()
+    {
+        var ctx = new RoomTestContext();
+        var draft = await ctx.PhaseSets.CreateAsync(
+            new SavePhaseSetRequest("Revisão", [Quiz()], Subject: "Matemática"),
+            ctx.AsLeader,
+            Ct);
+
+        await ctx.PhaseSets.PublishAsync(draft.Id.ToString(), ctx.AsLeader, Ct);
+        var latest = await ctx.PhaseSets.PublishAsync(draft.Id.ToString(), ctx.AsLeader, Ct);
+
+        var community = await ctx.PhaseSets.SearchCommunityAsync(null, null, null, null, Ct);
+
+        var only = Assert.Single(community.Sets);
+        Assert.Equal(latest.Id, only.Id);
+        Assert.Equal(PhaseSetSource.Community, only.Source);
+
+        var owned = await ctx.PhaseSets.ListOwnedAsync(ctx.AsLeader, Ct);
+        Assert.All(owned.Sets, s => Assert.Equal(PhaseSetSource.Owned, s.Source));
+    }
+
+    [Fact]
+    public async Task SearchCommunityAsync_filters_by_query_and_subject()
+    {
+        var ctx = new RoomTestContext();
+        var math = await ctx.PhaseSets.CreateAsync(
+            new SavePhaseSetRequest("Frações", [Quiz()], Subject: "Matemática"),
+            ctx.AsLeader,
+            Ct);
+        var history = await ctx.PhaseSets.CreateAsync(
+            new SavePhaseSetRequest("Brasil Colônia", [Quiz()], Subject: "História"),
+            ctx.AsLeader,
+            Ct);
+        await ctx.PhaseSets.PublishAsync(math.Id.ToString(), ctx.AsLeader, Ct);
+        await ctx.PhaseSets.PublishAsync(history.Id.ToString(), ctx.AsLeader, Ct);
+
+        var byQuery = await ctx.PhaseSets.SearchCommunityAsync("fraç", null, null, null, Ct);
+        var bySubject = await ctx.PhaseSets.SearchCommunityAsync(null, "História", null, null, Ct);
+
+        Assert.Equal("Frações", Assert.Single(byQuery.Sets).Title);
+        Assert.Equal("Brasil Colônia", Assert.Single(bySubject.Sets).Title);
+    }
+
+    [Theory]
+    [InlineData("video", null)]
+    [InlineData(null, "alpha")]
+    public async Task SearchCommunityAsync_rejects_invalid_kind_or_sort(string? kind, string? sort)
+    {
+        var ctx = new RoomTestContext();
+
+        var ex = await Assert.ThrowsAsync<ApiException>(
+            () => ctx.PhaseSets.SearchCommunityAsync(null, null, kind, sort, Ct));
+
+        Assert.Equal(StatusCodes.Status400BadRequest, ex.StatusCode);
+        Assert.Equal(ErrorCodes.ValidationError, ex.Code);
     }
 
     [Fact]
@@ -864,6 +935,71 @@ public class PhaseSetServiceTests
 
         var byQuery = await ctx.CommunityPhases.SearchAsync("equivalente", null, null, null, null, null, Ct);
         Assert.Equal([publishedQuiz.Id], byQuery.Items.Select(i => i.Id));
+    }
+
+    [Fact]
+    public async Task GetDetailAsync_returns_private_set_for_owner_and_hides_it_from_others()
+    {
+        var ctx = new RoomTestContext();
+        var created = await ctx.PhaseSets.CreateAsync(
+            new SavePhaseSetRequest(
+                "Privado do Líder",
+                [Quiz(id: "draft_1", name: "Quiz 1"), Fill(id: "draft_2", name: "Lacuna 2")],
+                Subject: "Matemática",
+                Folder: "Provas"),
+            ctx.AsLeader,
+            Ct);
+
+        var detail = await ctx.PhaseSets.GetDetailAsync(created.Id.ToString(), ctx.AsLeader, Ct);
+
+        Assert.Equal(created.Id, detail.Id);
+        Assert.Equal("Privado do Líder", detail.Title);
+        Assert.Equal(PhaseSetSource.Owned, detail.Source);
+        Assert.Equal("private", detail.Visibility);
+        Assert.True(detail.IsOwner);
+        Assert.Equal(ctx.Leader.Id, detail.AuthorId);
+        Assert.Equal(ctx.Leader.Name, detail.AuthorName);
+        Assert.Equal("Matemática", detail.Subject);
+        Assert.Equal("Provas", detail.Folder);
+        Assert.Equal(["Quiz 1", "Lacuna 2"], detail.Phases.Select(p => p.Name));
+
+        var other = ctx.AddUser("Prof. Marcos", "marcos@escola.br");
+        var otherEx = await Assert.ThrowsAsync<ApiException>(
+            () => ctx.PhaseSets.GetDetailAsync(created.Id.ToString(), RoomTestContext.AsUser(other.Id), Ct));
+        Assert.Equal(ErrorCodes.PhaseSetNotFound, otherEx.Code);
+
+        var anonEx = await Assert.ThrowsAsync<ApiException>(
+            () => ctx.PhaseSets.GetDetailAsync(created.Id.ToString(), ctx.Anonymous, Ct));
+        Assert.Equal(ErrorCodes.PhaseSetNotFound, anonEx.Code);
+    }
+
+    [Fact]
+    public async Task GetDetailAsync_returns_public_community_set_in_order_for_visitors_and_owner()
+    {
+        var ctx = new RoomTestContext();
+        var draft = await ctx.PhaseSets.CreateAsync(
+            new SavePhaseSetRequest(
+                "Comunidade Aberta",
+                [Quiz(id: "draft_1", name: "Fase 1"), Text(id: "draft_2")],
+                Subject: "Programação"),
+            ctx.AsLeader,
+            Ct);
+        var published = await ctx.PhaseSets.PublishAsync(draft.Id.ToString(), ctx.AsLeader, Ct);
+
+        var visitorDetail = await ctx.PhaseSets.GetDetailAsync(published.Id.ToString(), ctx.Anonymous, Ct);
+        Assert.Equal(published.Id, visitorDetail.Id);
+        Assert.Equal(PhaseSetSource.Community, visitorDetail.Source);
+        Assert.Equal("public", visitorDetail.Visibility);
+        Assert.False(visitorDetail.IsOwner);
+        Assert.Equal(ctx.Leader.Name, visitorDetail.AuthorName);
+        Assert.Null(visitorDetail.SourcePrivateSetId);
+        Assert.Equal(["Fase 1", "Explique com suas palavras"], visitorDetail.Phases.Select(p => p.Name));
+
+        var ownerDetail = await ctx.PhaseSets.GetDetailAsync(published.Id.ToString(), ctx.AsLeader, Ct);
+        Assert.True(ownerDetail.IsOwner);
+        Assert.Equal(draft.Id, ownerDetail.SourcePrivateSetId);
+        Assert.Equal(published.Id, ownerDetail.PublishedSetId);
+        Assert.Equal(1, ownerDetail.Version);
     }
 
     /* ---------------------------------------------------------------- */

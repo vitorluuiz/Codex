@@ -1,7 +1,7 @@
 ﻿import 'server-only';
 
 import { apiRequestOrNull } from './client';
-import type { PhaseLimits, PhaseSetDraft } from '@/lib/types';
+import type { PhaseLimits, PhaseSetDetail, PhaseSetDraft } from '@/lib/types';
 
 export const DEFAULT_PHASE_LIMITS: PhaseLimits = {
   maxQuestionLength: 4000,
@@ -10,6 +10,14 @@ export const DEFAULT_PHASE_LIMITS: PhaseLimits = {
   maxStarterCodeLength: 4096,
   maxTestCasesLength: 4096,
 };
+
+/**
+ * `GET /phase-sets/{setId}` — detalhe completo de um conjunto privado ou público
+ * da comunidade para a tela de visualização.
+ */
+export function getPhaseSetDetail(setId: string) {
+  return apiRequestOrNull<PhaseSetDetail>(`/phase-sets/${setId}`);
+}
 
 /**
  * `GET /phase-sets/{setId}/draft` — conjunto na forma que o editor manipula.

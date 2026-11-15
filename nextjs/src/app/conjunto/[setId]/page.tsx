@@ -1,50 +1,48 @@
 ﻿import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 
 import { StateMessage } from '@/components/feedback/StateMessage';
-import { SetEditor } from '@/components/set-editor/SetEditor';
-import { getAiUsage } from '@/lib/api/ai';
-import { getPhaseLimits, getPhaseSetDraft } from '@/lib/api/phaseSets';
+import { MOCK_USER, getMockPhaseSetDetail } from '@/components/set-library/mockLibrary';
+import { PhaseSetView } from '@/components/set-view/PhaseSetView';
+import { getPhaseSetDetail } from '@/lib/api/phaseSets';
 import { getSession } from '@/lib/api/session';
 
-export const metadata: Metadata = { title: 'Editor de conjunto' };
+export const metadata: Metadata = { title: 'Visualizar conjunto' };
 
-/** O rascunho é editável a qualquer momento — cachear devolveria texto velho. */
+/** Conjuntos podem ser editados, publicados ou copiados a qualquer momento. */
 export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{ setId: string }>;
 }
 
-export default async function EditPhaseSetPage({ params }: PageProps) {
+export default async function PhaseSetPage({ params }: PageProps) {
   const { setId } = await params;
-  const session = await getSession();
-  if (!session.user) redirect('/entrar');
-
-  const [draft, aiUsage, limits] = await Promise.all([
-    getPhaseSetDraft(setId),
-    getAiUsage(),
-    getPhaseLimits(),
+  const [session, apiDetail] = await Promise.all([
+    getSession(),
+    getPhaseSetDetail(setId).catch(() => null),
   ]);
 
-  if (!draft) {
+  const mockDetail = apiDetail === null ? getMockPhaseSetDetail(setId) : null;
+  const sampleData = apiDetail === null && mockDetail !== null;
+  const detail = apiDetail ?? mockDetail;
+
+  if (!detail) {
     return (
       <StateMessage
         variant="centered"
         title="Conjunto indisponível"
-        hint={`API_BASE_URL / GET /phase-sets/${setId}/draft`}
+        hint={`API_BASE_URL / GET /phase-sets/${setId}`}
       >
-        O editor está pronto, mas a API que guarda os conjuntos ainda não respondeu. Veja
-        `contracts/api/api-rest-contract.md` para o contrato esperado.
+        Este conjunto não foi encontrado, é privado de outro usuário ou a API ainda não respondeu.
       </StateMessage>
     );
   }
 
   return (
-    <SetEditor
-      initialDraft={draft}
-      initialAiUsage={aiUsage}
-      limits={draft.limits ?? limits}
+    <PhaseSetView
+      set={detail}
+      user={session.user ?? (sampleData ? MOCK_USER : null)}
+      sampleData={sampleData}
     />
   );
 }

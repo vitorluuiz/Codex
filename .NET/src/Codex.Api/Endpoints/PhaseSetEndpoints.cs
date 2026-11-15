@@ -23,11 +23,24 @@ public static class PhaseSetEndpoints
 
         group.MapGet("/limits", () => Results.Ok(new PhaseLimitsDto()));
 
-        group.MapGet("/library", async (ClaimsPrincipal principal, PhaseSetService sets, CancellationToken ct)
-            => Results.Ok(await sets.GetLibraryAsync(principal, ct)));
+        // Rotas literais têm precedência sobre /{setId} no roteamento do ASP.NET Core.
+        group.MapGet("/owned", async (ClaimsPrincipal principal, PhaseSetService sets, CancellationToken ct)
+            => Results.Ok(await sets.ListOwnedAsync(principal, ct)));
+
+        group.MapGet("/community", async (
+                string? q,
+                string? subject,
+                string? kind,
+                string? sort,
+                PhaseSetService sets,
+                CancellationToken ct)
+            => Results.Ok(await sets.SearchCommunityAsync(q, subject, kind, sort, ct)));
 
         group.MapGet("", async (string? scope, string? q, ClaimsPrincipal principal, PhaseSetService sets, CancellationToken ct)
             => Results.Ok(await sets.ListAsync(scope, q, principal, ct)));
+
+        group.MapGet("/{setId}", async (string setId, ClaimsPrincipal principal, PhaseSetService sets, CancellationToken ct)
+            => Results.Ok(await sets.GetDetailAsync(setId, principal, ct)));
 
         group.MapPost("", async (SavePhaseSetRequest request, ClaimsPrincipal principal, PhaseSetService sets, CancellationToken ct) =>
         {

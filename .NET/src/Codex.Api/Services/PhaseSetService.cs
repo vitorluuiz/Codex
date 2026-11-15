@@ -91,35 +91,24 @@ public class PhaseSetService(AppDbContext db, IPhaseSetDocumentStore store, Labe
     }
 
     /// <summary>
-    /// <c>GET /phase-sets/library</c> — biblioteca completa para <c>/conjuntos</c> em leitura exclusiva ao MongoDB.
+    /// <c>GET /phase-sets/owned</c> — conjuntos privados do usuário para a aba "Meus conjuntos" de
+    /// <c>/conjuntos</c>, junto com as disciplinas, pastas e capa do workspace. Leitura exclusiva ao MongoDB.
     /// </summary>
-    public async Task<PhaseSetLibraryResponse> GetLibraryAsync(ClaimsPrincipal principal, CancellationToken ct)
+    public async Task<OwnedPhaseSetListResponse> ListOwnedAsync(ClaimsPrincipal principal, CancellationToken ct)
     {
         var userId = principal.GetUserId() ?? throw AccountRequired();
         var workspace = await store.GetOrCreateWorkspaceAsync(userId, ct);
         var privateSets = await store.ListPrivateSetsByOwnerAsync(userId, null, MaxResults, ct);
-        var communitySets = await store.ListCommunitySetsAsync(
-            q: null,
-            subject: null,
-            kind: null,
-            sort: null,
-            excludeAuthorId: userId,
-            MaxResults,
-            ct);
-
-        var ownedEntries = privateSets.Select(ToLibraryEntry);
-        var communityEntries = communitySets.Select(ToLibraryEntry);
-        var entries = ownedEntries.Concat(communityEntries).ToList();
 
         var subjects = workspace.Subjects
             .Concat(privateSets.Select(s => s.Subject))
-            .Concat(communitySets.Select(s => s.Subject))
             .Where(s => !string.IsNullOrWhiteSpace(s))
             .Select(s => s.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(s => s, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        // Pastas vêm também do workspace: uma pasta recém-esvaziada continua clicável no filtro.
         var folders = workspace.Folders
             .Concat(privateSets.Where(s => !string.IsNullOrWhiteSpace(s.Folder)).Select(s => s.Folder!))
             .Select(f => f.Trim())
@@ -128,7 +117,156 @@ public class PhaseSetService(AppDbContext db, IPhaseSetDocumentStore store, Labe
             .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return new PhaseSetLibraryResponse(entries, subjects, folders, workspace.CoverUrl);
+        return new OwnedPhaseSetListResponse(
+            [.. privateSets.Select(ToLibraryEntry)],
+            subjects,
+            folders,
+            workspace.CoverUrl);
+    }
+
+    /// <summary>
+    /// <c>GET /phase-sets/community?q=&amp;subject=&amp;kind=&amp;sort=recent|popular</c> — busca conjuntos
+    /// publicados na comunidade para a aba "Comunidade" de <c>/conjuntos</c>. Leitura exclusiva ao MongoDB.
+    ///
+    /// Inclui o que o próprio usuário publicou: a aba mostra a comunidade como os outros a veem.
+    /// Cada publicação gera um documento novo (versão imutável), então só a versão mais recente de
+    /// cada conjunto de origem entra no resultado.
+    /// </summary>
+    public async Task<CommunityPhaseSetSearchResponse> SearchCommunityAsync(
+        string? q,
+        string? subject,
+        string? kind,
+        string? sort,
+        CancellationToken ct)
+    {
+        PhaseKind? parsedKind = null;
+        if (!string.IsNullOrWhiteSpace(kind))
+        {
+            if (!Enum.TryParse<PhaseKind>(kind.Trim(), ignoreCase: true, out var k) || !Enum.IsDefined(k))
+            {
+                throw Validation("kind deve ser quiz, fill, text ou code.");
+            }
+
+            parsedKind = k;
+        }
+
+        var sortMode = sort?.Trim().ToLowerInvariant() switch
+        {
+            null or "" or "recent" => "recent",
+            "popular" => "popular",
+            _ => throw Validation("sort deve ser recent ou popular."),
+        };
+
+        var found = await store.ListCommunitySetsAsync(
+            q,
+            subject,
+            parsedKind,
+            sortMode,
+            excludeAuthorId: null,
+            MaxResults,
+            ct);
+
+        // GroupBy preserva a ordem da primeira ocorrência, então a ordenação do banco se mantém.
+        var latest = found
+            .GroupBy(s => s.SourcePrivateSetId ?? s.Id)
+            .Select(g => g.MaxBy(s => s.Version)!)
+            .Select(ToLibraryEntry)
+            .ToList();
+
+        return new CommunityPhaseSetSearchResponse(latest);
+    }
+
+    /// <summary>GET /phase-sets/{setId} — detalhe completo para visualização de conjunto privado ou público.</summary>
+    public async Task<PhaseSetDetailResponse> GetDetailAsync(string setId, ClaimsPrincipal principal, CancellationToken ct)
+    {
+        if (!Guid.TryParse(setId, out var id))
+        {
+            throw NotFound();
+        }
+
+        var viewerId = principal.GetUserId();
+        var privateDoc = await store.GetPrivateSetAsync(id, ct);
+        if (privateDoc is not null)
+        {
+            if (viewerId is not { } ownerId || privateDoc.OwnerId != ownerId)
+            {
+                throw NotFound();
+            }
+
+            var owner = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == privateDoc.OwnerId, ct);
+            var privatePhases = privateDoc.Phases
+                .OrderBy(p => p.OrderIndex)
+                .Select(ToDraftPhase)
+                .ToList();
+
+            return new PhaseSetDetailResponse(
+                privateDoc.Id,
+                privateDoc.Title,
+                privateDoc.Summary.PhaseCount,
+                PhaseSetSource.Owned,
+                "private",
+                true,
+                privateDoc.OwnerId,
+                labels.EditedLabel(ToUtcOffset(privateDoc.UpdatedAt)),
+                owner?.Name,
+                privateDoc.Summary.PhaseKindCounts,
+                privateDoc.Summary.AccuracyRate,
+                LabelFormatter.DurationLabel(TimeSpan.FromSeconds(privateDoc.Summary.TotalTimeSeconds)),
+                privateDoc.Subject,
+                privateDoc.Folder,
+                privateDoc.Summary.UseCount,
+                privateDoc.CoverUrl,
+                privatePhases,
+                PublishedSetId: privateDoc.PublishedSetId,
+                SourcePrivateSetId: privateDoc.Id,
+                Version: privateDoc.PublishedVersion);
+        }
+
+        var communityDoc = await store.GetCommunitySetAsync(id, ct);
+        if (communityDoc is { Status: CommunityResourceStatus.Published })
+        {
+            var phaseMap = communityDoc.PhaseIds.Count > 0
+                ? await db.CommunityPhases
+                    .AsNoTracking()
+                    .Where(p => communityDoc.PhaseIds.Contains(p.Id))
+                    .ToDictionaryAsync(p => p.Id, ct)
+                : new Dictionary<Guid, CommunityPhase>();
+
+            var communityPhases = new List<DraftPhaseDto>(communityDoc.PhaseIds.Count);
+            foreach (var phaseId in communityDoc.PhaseIds)
+            {
+                if (phaseMap.TryGetValue(phaseId, out var cp))
+                {
+                    communityPhases.Add(ToDraftPhase(cp));
+                }
+            }
+
+            var isOwner = viewerId.HasValue && communityDoc.AuthorId == viewerId.Value;
+
+            return new PhaseSetDetailResponse(
+                communityDoc.Id,
+                communityDoc.Title,
+                communityDoc.Summary.PhaseCount,
+                PhaseSetSource.Community,
+                "public",
+                isOwner,
+                communityDoc.AuthorId,
+                labels.EditedLabel(ToUtcOffset(communityDoc.PublishedAt)),
+                communityDoc.AuthorName,
+                communityDoc.Summary.PhaseKindCounts,
+                communityDoc.Summary.AccuracyRate,
+                LabelFormatter.DurationLabel(TimeSpan.FromSeconds(communityDoc.Summary.TotalTimeSeconds)),
+                communityDoc.Subject,
+                null,
+                communityDoc.Summary.UseCount,
+                communityDoc.CoverUrl,
+                communityPhases,
+                PublishedSetId: communityDoc.Id,
+                SourcePrivateSetId: isOwner ? communityDoc.SourcePrivateSetId : null,
+                Version: communityDoc.Version);
+        }
+
+        throw NotFound();
     }
 
     /// <summary>GET /phase-sets/{setId}/draft — conjunto privado na íntegra.</summary>
@@ -665,25 +803,52 @@ public class PhaseSetService(AppDbContext db, IPhaseSetDocumentStore store, Labe
         doc.CoverUrl);
 
     private static DraftPhaseDto ToDraftPhase(PrivatePhaseItemDocument phase)
-    {
-        var content = PhaseContentHasher.ToContent(phase.Content);
-
-        return new DraftPhaseDto(
+        => BuildDraftPhaseDto(
             phase.Id.ToString(),
             phase.Kind,
             phase.Name,
             phase.BasePoints,
             phase.PointsMultiplier,
             phase.TimeSeconds,
+            PhaseContentHasher.ToContent(phase.Content),
+            phase.OriginCommunityPhaseId);
+
+    private static DraftPhaseDto ToDraftPhase(CommunityPhase phase)
+        => BuildDraftPhaseDto(
+            phase.Id.ToString(),
+            phase.Kind,
+            phase.Name,
+            phase.BasePoints,
+            phase.PointsMultiplier,
+            phase.TimeSeconds,
+            PhaseContent.Parse(phase.ContentJson),
+            phase.Id);
+
+    private static DraftPhaseDto BuildDraftPhaseDto(
+        string id,
+        PhaseKind kind,
+        string name,
+        int basePoints,
+        decimal pointsMultiplier,
+        int timeSeconds,
+        PhaseContent content,
+        Guid? originCommunityPhaseId)
+        => new(
+            id,
+            kind,
+            name,
+            basePoints,
+            pointsMultiplier,
+            timeSeconds,
             content.FromAI,
             content.Question ?? string.Empty,
-            Options: phase.Kind is PhaseKind.Quiz ? content.Options ?? [] : null,
-            CorrectIndexes: phase.Kind is PhaseKind.Quiz ? content.CorrectIndexes ?? [] : null,
-            Words: phase.Kind is PhaseKind.Fill ? content.Words ?? [] : null,
-            Blanks: phase.Kind is PhaseKind.Fill ? content.Blanks ?? [] : null,
-            StarterCode: phase.Kind is PhaseKind.Code ? content.StarterCode ?? string.Empty : null,
-            TestCases: phase.Kind is PhaseKind.Code ? content.TestCases ?? string.Empty : null,
-            ExpectedAnswer: phase.Kind is PhaseKind.Text ? content.ExpectedAnswer ?? string.Empty : null,
+            Options: kind is PhaseKind.Quiz ? content.Options ?? [] : null,
+            CorrectIndexes: kind is PhaseKind.Quiz ? content.CorrectIndexes ?? [] : null,
+            Words: kind is PhaseKind.Fill ? content.Words ?? [] : null,
+            Blanks: kind is PhaseKind.Fill ? content.Blanks ?? [] : null,
+            StarterCode: kind is PhaseKind.Code ? content.StarterCode ?? string.Empty : null,
+            TestCases: kind is PhaseKind.Code ? content.TestCases ?? string.Empty : null,
+            ExpectedAnswer: kind is PhaseKind.Text ? content.ExpectedAnswer ?? string.Empty : null,
             Theme: content.Theme,
             ShowFeedbackAnimation: content.ShowFeedbackAnimation,
             IntroSeconds: content.IntroSeconds,
@@ -691,8 +856,7 @@ public class PhaseSetService(AppDbContext db, IPhaseSetDocumentStore store, Labe
             IntroSound: content.IntroSound,
             IntroShapes: content.IntroShapes,
             VariationSettings: content.VariationSettings,
-            OriginCommunityPhaseId: phase.OriginCommunityPhaseId);
-    }
+            OriginCommunityPhaseId: originCommunityPhaseId);
 
     private PhaseSetLibraryEntryDto ToLibraryEntry(PrivatePhaseSetDocument doc) => new(
         doc.Id,

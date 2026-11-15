@@ -114,6 +114,15 @@
   text-overflow: ellipsis;
 }
 
+.cardLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.cardLink:hover {
+  text-decoration: underline;
+}
+
 .cardMeta {
   font-size: var(--text-caption);
   color: var(--text-secondary);
