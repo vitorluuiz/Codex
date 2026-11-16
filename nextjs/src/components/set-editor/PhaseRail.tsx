@@ -18,6 +18,7 @@ interface PhaseRailProps {
   onDuplicate: (id: string) => void;
   onRemove: (id: string) => void;
   onAdd: () => void;
+  onBrowseCommunity: () => void;
 }
 
 export function PhaseRail({
@@ -28,6 +29,7 @@ export function PhaseRail({
   onDuplicate,
   onRemove,
   onAdd,
+  onBrowseCommunity,
 }: PhaseRailProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -141,7 +143,7 @@ export function PhaseRail({
           Adicionar fase
         </button>
 
-        <button type="button" className={styles.browseTile} disabled title="Em breve">
+        <button type="button" className={styles.browseTile} onClick={onBrowseCommunity}>
           <Icon.Globe size={22} />
           Procurar fases
         </button>

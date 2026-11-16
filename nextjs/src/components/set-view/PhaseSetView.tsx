@@ -401,30 +401,29 @@ export function PhaseSetView({ set, user, sampleData = false }: PhaseSetViewProp
                 <div className={styles.secondaryActions}>
                   {effectiveIsOwner ? (
                     <>
-                      <Button
+                      {effectiveVisibility === "private" ? <><Button
                         variant="secondary"
                         icon={<Icon.Pencil size={16} />}
                         onClick={handleEdit}
                         disabled={isPending}
                       >
                         Editar conjunto
-                      </Button>
-                      <Button
+                      </Button><Button
                         variant="secondary"
                         icon={<Icon.Globe size={16} />}
                         onClick={() => setShareOpen(true)}
                         disabled={isPending}
                       >
-                        Compartilhar
-                      </Button>
-                      <Button
-                        variant="danger"
-                        icon={<Icon.Close size={16} />}
-                        onClick={() => setDeleteOpen(true)}
-                        disabled={isPending}
-                      >
-                        Excluir
-                      </Button>
+                          Compartilhar
+                        </Button> <Button
+                          variant="danger"
+                          icon={<Icon.Close size={16} />}
+                          onClick={() => setDeleteOpen(true)}
+                          disabled={isPending}
+                        >
+                          Excluir
+                        </Button></> : <Button variant='secondary' onClick={() => router.replace(`/conjunto/${set.sourcePrivateSetId}`)}>Ir para o conjunto original</Button>
+                      }
                     </>
                   ) : (
                     <>

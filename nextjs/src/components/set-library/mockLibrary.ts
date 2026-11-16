@@ -1,4 +1,7 @@
 import type {
+  CommunityPhaseCatalog,
+  CommunityPhaseSearchParams,
+  CommunityPhaseSummary,
   DraftPhase,
   PhaseKind,
   PhaseSetDetail,
@@ -348,4 +351,98 @@ export function getMockPhaseSetDraft(setId: string): PhaseSetDraft | null {
     coverUrl: entry.coverUrl,
     phases: buildMockPhasesForEntry(entry),
   };
+}
+
+interface MockCommunityPhaseRecord {
+  summary: CommunityPhaseSummary;
+  draft: DraftPhase;
+}
+
+function buildMockCommunityPhases(): MockCommunityPhaseRecord[] {
+  const records: MockCommunityPhaseRecord[] = [];
+  const communityEntries = MOCK_LIBRARY.sets.filter((item) => item.source === 'community');
+
+  communityEntries.forEach((entry, entryIndex) => {
+    const phases = buildMockPhasesForEntry(entry);
+    phases.slice(0, 4).forEach((phase, phaseIndex) => {
+      const id = `cp_${entry.id}_${phaseIndex + 1}`;
+      const draft: DraftPhase = {
+        ...phase,
+        id,
+        originCommunityPhaseId: id,
+      };
+      records.push({
+        summary: {
+          id,
+          name: `${phase.name} (${entry.title})`,
+          questionPreview: phase.question,
+          kind: phase.kind,
+          subject: entry.subject,
+          difficulty: phaseIndex % 3 === 0 ? 'easy' : phaseIndex % 3 === 1 ? 'medium' : 'hard',
+          authorId: `author_${entry.id}`,
+          authorName: entry.authorName ?? 'Comunidade Codex',
+          basePoints: phase.basePoints,
+          pointsMultiplier: phase.pointsMultiplier,
+          timeSeconds: phase.timeSeconds,
+          useCount: Math.max(12, Math.round(entry.useCount / (phaseIndex + 2))),
+          accuracyRate: entry.accuracyRate,
+          publishedAt: new Date(Date.now() - (entryIndex * 4 + phaseIndex + 1) * 86_400_000).toISOString(),
+        },
+        draft,
+      });
+    });
+  });
+
+  return records;
+}
+
+export function searchMockCommunityPhases(
+  params: CommunityPhaseSearchParams = {},
+): CommunityPhaseCatalog {
+  const all = buildMockCommunityPhases();
+  const subjects = Array.from(new Set([...MOCK_LIBRARY.subjects, ...all.map((r) => r.summary.subject)])).sort(
+    (a, b) => a.localeCompare(b, 'pt-BR'),
+  );
+
+  const q = params.q?.trim().toLowerCase() ?? '';
+  const subject = params.subject?.trim() ?? '';
+  const kind = params.kind;
+  const sort = params.sort ?? 'recent';
+  const limit = params.limit ?? 30;
+  const offset = params.cursor ?? 0;
+
+  let filtered = all.map((r) => r.summary).filter((item) => {
+    if (subject && item.subject !== subject) return false;
+    if (kind && item.kind !== kind) return false;
+    if (
+      q &&
+      !item.name.toLowerCase().includes(q) &&
+      !item.questionPreview.toLowerCase().includes(q) &&
+      !item.subject.toLowerCase().includes(q) &&
+      !item.authorName.toLowerCase().includes(q)
+    ) {
+      return false;
+    }
+    return true;
+  });
+
+  if (sort === 'popular') {
+    filtered = [...filtered].sort((a, b) => b.useCount - a.useCount);
+  } else {
+    filtered = [...filtered].sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+  }
+
+  const page = filtered.slice(offset, offset + limit);
+  const nextOffset = offset + limit < filtered.length ? offset + limit : null;
+
+  return {
+    items: page,
+    nextOffset,
+    subjects,
+  };
+}
+
+export function getMockCommunityPhaseDraft(phaseId: string): DraftPhase | null {
+  const record = buildMockCommunityPhases().find((item) => item.summary.id === phaseId);
+  return record?.draft ?? null;
 }

@@ -159,6 +159,18 @@
   font-weight: var(--fw-bold);
 }
 
+.communityChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+}
+
 .settingsToggle {
   align-self: center;
   flex-shrink: 0;
@@ -221,6 +233,14 @@
   font-size: var(--text-body);
   max-width: 420px;
   margin: 0;
+}
+
+.emptyActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 /* --- Diálogo de exclusão -------------------------------------------------- */
