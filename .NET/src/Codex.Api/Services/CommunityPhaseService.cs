@@ -86,9 +86,12 @@ public class CommunityPhaseService(AppDbContext db)
 
             if (isNpgsql)
             {
+                var pattern = $"%{search}%";
                 query = query.Where(p =>
                     EF.Functions.ToTsVector("portuguese", p.Name + " " + p.QuestionPreview)
-                        .Matches(EF.Functions.WebSearchToTsQuery("portuguese", search)));
+                        .Matches(EF.Functions.WebSearchToTsQuery("portuguese", search))
+                    || EF.Functions.ILike(p.Name, pattern)
+                    || EF.Functions.ILike(p.QuestionPreview, pattern));
             }
             else
             {
@@ -113,7 +116,15 @@ public class CommunityPhaseService(AppDbContext db)
             rows.RemoveAt(rows.Count - 1);
         }
 
-        return new CommunityPhaseCatalogResponse([.. rows.Select(ToSummary)], nextOffset);
+        var subjects = await db.CommunityPhases
+            .AsNoTracking()
+            .Where(p => p.Status == CommunityResourceStatus.Published && p.Subject != "")
+            .Select(p => p.Subject)
+            .Distinct()
+            .OrderBy(s => s)
+            .ToListAsync(ct);
+
+        return new CommunityPhaseCatalogResponse([.. rows.Select(ToSummary)], nextOffset, subjects);
     }
 
     public async Task<DraftPhaseDto> GetAsDraftPhaseAsync(string phaseId, CancellationToken ct)

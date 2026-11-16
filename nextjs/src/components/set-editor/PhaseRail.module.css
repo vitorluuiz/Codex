@@ -291,7 +291,8 @@
   transition: all var(--dur-fast) var(--ease-out);
 }
 
-.addTile:hover {
+.addTile:hover,
+.browseTile:hover {
   border-color: var(--accent-primary);
   color: var(--accent-primary);
   background: var(--blue-50);
@@ -299,8 +300,6 @@
 
 .browseTile {
   border-color: var(--border-subtle);
-  cursor: not-allowed;
-  opacity: 0.5;
 }
 
 @media (max-width: 1000px) {

@@ -218,6 +218,41 @@ export interface CommunityPhaseSetSearchParams {
   sort?: 'recent' | 'popular';
 }
 
+/** Resumo de um desafio avulso no catálogo `GET /community/phases`. */
+export interface CommunityPhaseSummary {
+  id: string;
+  name: string;
+  questionPreview: string;
+  kind: PhaseKind;
+  subject: string;
+  difficulty: AiDifficulty | null;
+  authorId: string;
+  authorName: string;
+  basePoints: number;
+  pointsMultiplier: number;
+  timeSeconds: number;
+  useCount: number;
+  accuracyRate: number | null;
+  publishedAt: string;
+}
+
+/** Resposta paginada de `GET /community/phases`. */
+export interface CommunityPhaseCatalog {
+  items: CommunityPhaseSummary[];
+  nextOffset: number | null;
+  subjects?: string[];
+}
+
+/** Query string de `GET /community/phases`. */
+export interface CommunityPhaseSearchParams {
+  q?: string;
+  subject?: string;
+  kind?: PhaseKind;
+  sort?: 'recent' | 'popular';
+  limit?: number;
+  cursor?: number;
+}
+
 export type PhaseTheme = 'default' | 'cyberpunk' | 'emerald' | 'sunset' | 'crimson';
 
 interface PhaseBase {

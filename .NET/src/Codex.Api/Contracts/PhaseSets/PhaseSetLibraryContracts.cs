@@ -93,7 +93,9 @@ public record CommunityPhaseSummaryDto(
 /// </summary>
 public record CommunityPhaseCatalogResponse(
     IReadOnlyList<CommunityPhaseSummaryDto> Items,
-    int? NextOffset);
+    int? NextOffset,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<string>? Subjects = null);
 
 /// <summary>
 /// Corpo de <c>POST /community/phases</c> para publicar um desafio avulso na comunidade.

@@ -21,6 +21,7 @@ import type {
   PhaseSetDraft,
 } from '@/lib/types';
 import { AddPhaseModal } from './AddPhaseModal';
+import { BrowseCommunityPhasesModal } from './BrowseCommunityPhasesModal';
 import { VariationsReviewModal } from './ai/VariationsReviewModal';
 import { KIND_META, draftPhaseId, type ChallengeDefaults } from './phaseKinds';
 import { PhaseForm } from './PhaseForm';
@@ -83,6 +84,7 @@ export function SetEditor({
   const [isStorageHydrated, setIsStorageHydrated] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const [browseOpen, setBrowseOpen] = useState(false);
   const addOpenRef = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -236,6 +238,16 @@ export function SetEditor({
     setPhases((list) => (list.some((item) => item.id === phase.id) ? list : [...list, phase]));
     setActiveId(phase.id);
     setAddOpen(false);
+  }
+
+  function addCommunityPhases(newPhases: DraftPhase[]) {
+    if (newPhases.length === 0) return;
+    setPhases((list) => {
+      const existing = new Set(list.map((item) => item.id));
+      const unique = newPhases.filter((item) => !existing.has(item.id));
+      return unique.length > 0 ? [...list, ...unique] : list;
+    });
+    setActiveId(newPhases[newPhases.length - 1].id);
   }
 
   async function handleGeneratePhase(request: AiPhaseRequest) {
@@ -450,6 +462,7 @@ export function SetEditor({
         onDuplicate={duplicatePhase}
         onRemove={removePhase}
         onAdd={() => setAddOpen(true)}
+        onBrowseCommunity={() => setBrowseOpen(true)}
       />
 
       <div className={styles.main}>
@@ -533,6 +546,12 @@ export function SetEditor({
                     Gerada com IA
                   </span>
                 )}
+                {active.originCommunityPhaseId && (
+                  <span className={styles.communityChip}>
+                    <Icon.Globe size={13} />
+                    Comunidade
+                  </span>
+                )}
               </div>
 
               <PhaseForm
@@ -580,11 +599,22 @@ export function SetEditor({
             </span>
             <h2 className={styles.emptyTitle}>Comece adicionando a primeira fase</h2>
             <p className={styles.emptyText}>
-              Escolha o tipo de desafio e crie manualmente ou com aceleração de IA.
+              Escolha o tipo de desafio e crie manualmente, com aceleração de IA ou importe da
+              comunidade.
             </p>
-            <Button size="lg" onClick={() => setAddOpen(true)}>
-              Adicionar fase
-            </Button>
+            <div className={styles.emptyActions}>
+              <Button size="lg" onClick={() => setAddOpen(true)}>
+                Adicionar fase
+              </Button>
+              <Button
+                size="lg"
+                variant="secondary"
+                icon={<Icon.Globe size={18} />}
+                onClick={() => setBrowseOpen(true)}
+              >
+                Procurar fases
+              </Button>
+            </div>
           </div>
         )}
       </div>
@@ -600,6 +630,20 @@ export function SetEditor({
           onUsageChange={setAiUsage}
           initialPendingGeneration={pendingPhaseGen}
           onPendingGenerationChange={setPendingPhaseGen}
+        />
+      )}
+
+      {browseOpen && (
+        <BrowseCommunityPhasesModal
+          existingOriginIds={
+            new Set(
+              phases
+                .map((phase) => phase.originCommunityPhaseId)
+                .filter((id): id is string => Boolean(id)),
+            )
+          }
+          onAddPhases={addCommunityPhases}
+          onClose={() => setBrowseOpen(false)}
         />
       )}
 

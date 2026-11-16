@@ -2,8 +2,19 @@
 
 import { revalidateTag } from 'next/cache';
 
-import { apiRequest } from '@/lib/api/client';
-import type { PhaseSetDraft, PhaseSetLibraryEntry, PhaseSetSummary } from '@/lib/types';
+import {
+  getMockCommunityPhaseDraft,
+  searchMockCommunityPhases,
+} from '@/components/set-library/mockLibrary';
+import { ApiNotConfiguredError, apiRequest } from '@/lib/api/client';
+import type {
+  CommunityPhaseCatalog,
+  CommunityPhaseSearchParams,
+  DraftPhase,
+  PhaseSetDraft,
+  PhaseSetLibraryEntry,
+  PhaseSetSummary,
+} from '@/lib/types';
 
 /* -------------------------------------------------------------------------- */
 /* CRUD de conjuntos                                                           */
@@ -75,4 +86,56 @@ export async function copyPhaseSetAction(setId: string): Promise<PhaseSetDraft> 
   });
   revalidateTag('phase-sets:owned');
   return copy;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Catálogo de fases avulsas da comunidade                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * `GET /community/phases?q=&subject=&kind=&sort=&limit=&cursor=`
+ * Busca paginada de desafios avulsos publicados na comunidade para o modal do editor.
+ */
+export async function searchCommunityPhasesAction(
+  params: CommunityPhaseSearchParams = {},
+): Promise<CommunityPhaseCatalog> {
+  const query = new URLSearchParams();
+  if (params.q?.trim()) query.set('q', params.q.trim());
+  if (params.subject?.trim()) query.set('subject', params.subject.trim());
+  if (params.kind) query.set('kind', params.kind);
+  if (params.sort) query.set('sort', params.sort);
+  if (params.limit !== undefined) query.set('limit', String(params.limit));
+  if (params.cursor !== undefined) query.set('cursor', String(params.cursor));
+
+  const qs = query.toString();
+  try {
+    return await apiRequest<CommunityPhaseCatalog>(`/community/phases${qs ? `?${qs}` : ''}`);
+  } catch (error) {
+    if (error instanceof ApiNotConfiguredError) {
+      return searchMockCommunityPhases(params);
+    }
+    throw error;
+  }
+}
+
+/**
+ * `GET /community/phases/{phaseId}`
+ * Retorna o detalhe completo de um desafio da comunidade no formato `DraftPhase`
+ * (com `originCommunityPhaseId = phaseId`) para importação isolada no editor.
+ */
+export async function getCommunityPhaseDraftAction(phaseId: string): Promise<DraftPhase> {
+  if (phaseId.startsWith('cp_')) {
+    const mock = getMockCommunityPhaseDraft(phaseId);
+    if (mock) return mock;
+  }
+
+  try {
+    return await apiRequest<DraftPhase>(`/community/phases/${phaseId}`);
+  } catch (error) {
+    if (error instanceof ApiNotConfiguredError) {
+      const mock = getMockCommunityPhaseDraft(phaseId);
+      if (mock) return mock;
+    }
+    throw error;
+  }
 }
