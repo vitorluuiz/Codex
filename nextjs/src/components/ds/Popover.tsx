@@ -125,7 +125,6 @@ export function Popover({
           '--popover-arrow-left': `${arrowLeft}px`,
         })}
       >
-        <span className={cx(styles.arrow, flipped ? styles.arrowBottom : styles.arrowTop)} />
         {children}
       </div>
     </>,

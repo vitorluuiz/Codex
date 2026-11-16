@@ -106,6 +106,7 @@
 }
 
 .title {
+  color: var(--text-inverse);
   margin: 0;
   font-family: var(--font-display);
   font-weight: var(--fw-semibold);
