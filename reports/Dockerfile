@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS base
+FROM node:20-bookworm-slim AS base
+# Para AMD64 use => FROM node:20-alpine AS base
 WORKDIR /app
 
 FROM base AS deps
