@@ -280,548 +280,543 @@ export function MatchReportView({
       <main className={styles.content}>
         <div className={styles.container}>
           <div className={styles.topBar}>
-            <Link href={backHref} className={styles.backLink}>
-              <Icon.ArrowLeft size={16} />
-              {backLabel}
-            </Link>
-
-          <div className={styles.exportActions}>
-            {process.env.NODE_ENV !== 'production' && (
-              <Link
-                href={`/relatorios/preview?token=${encodeURIComponent(report.shareToken)}`}
-                className={styles.devPreviewLink}
-                title="Abrir visualizador com Hot-Reload para editar o layout da folha A4"
+            <div className={styles.exportActions}>
+              {process.env.NODE_ENV !== 'production' && (
+                <Link
+                  href={`/relatorios/preview?token=${encodeURIComponent(report.shareToken)}`}
+                  className={styles.devPreviewLink}
+                  title="Abrir visualizador com Hot-Reload para editar o layout da folha A4"
+                >
+                  Prévia A4 (Dev)
+                </Link>
+              )}
+              <Button variant="secondary" size="sm" onClick={() => void copyShareLink()}>
+                <Icon.Copy size={15} />
+                Copiar link seguro
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={isExportingPdf}
+                onClick={openPdfModal}
               >
-                Prévia A4 (Dev)
-              </Link>
-            )}
-            <Button variant="secondary" size="sm" onClick={() => void copyShareLink()}>
-              <Icon.Copy size={15} />
-              Copiar link seguro
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={isExportingPdf}
-              onClick={openPdfModal}
-            >
-              <Icon.Download size={15} />
-              {isExportingPdf ? 'Gerando PDF...' : 'Exportar PDF'}
-            </Button>
-            <Button size="sm" onClick={downloadExcel}>
-              <Icon.Download size={15} />
-              Exportar Excel (.xlsx)
-            </Button>
-          </div>
-        </div>
-
-        <header className={styles.hero}>
-          <div className={styles.heroInfo}>
-            <div className={styles.badges}>
-              <span className={styles.badgePrimary}>Relatório Consolidado da Turma</span>
-              <span className={styles.badgeNeutral}>Sala {effectiveReport.roomCode}</span>
-              <span className={styles.badgeNeutral}>{MODE_LABEL[effectiveReport.mode]}</span>
+                <Icon.Download size={15} />
+                {isExportingPdf ? 'Gerando PDF...' : 'Exportar PDF'}
+              </Button>
+              <Button size="sm" onClick={downloadExcel}>
+                <Icon.Download size={15} />
+                Exportar Excel (.xlsx)
+              </Button>
             </div>
-            <h1 className={styles.title}>{effectiveReport.title}</h1>
-            <p className={styles.subtitle}>
-              Concluída em {formatDateBr(effectiveReport.finishedAt)} · Duração de{' '}
-              {formatDuration(effectiveReport.durationSeconds)} ·{' '}
-              {effectiveReport.overview.phaseCount} fases
-            </p>
-          </div>
-        </header>
-
-        <section
-          ref={kpiGridRef}
-          className={styles.kpiGrid}
-          aria-label="Indicadores gerais da partida"
-        >
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Participantes</span>
-            <span className={styles.kpiValue}>{effectiveReport.overview.participantCount}</span>
-            <span className={styles.kpiSub}>
-              {effectiveReport.overview.totalSubmissions} respostas enviadas
-            </span>
           </div>
 
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Pontuação Média</span>
-            <span className={cx(styles.kpiValue, styles.kpiScore)}>
-              {effectiveReport.overview.avgScore}
-              <span className={styles.kpiUnit}>
-                {' '}
-                / {effectiveReport.overview.maxPossibleScore} pts
-              </span>
-            </span>
-            <span className={styles.kpiSub}>
-              Maior: {effectiveReport.overview.maxAchievedScore} pts · Mediana:{' '}
-              {effectiveReport.overview.medianScore} pts
-            </span>
-          </div>
-
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Taxa de Acerto Global</span>
-            <span
-              className={styles.kpiValue}
-              style={{ color: accuracyColor(effectiveReport.overview.accuracyRate) }}
-            >
-              {effectiveReport.overview.accuracyRate}%
-            </span>
-            <span className={styles.kpiSub}>
-              {effectiveReport.overview.totalCorrect} acertos em{' '}
-              {effectiveReport.overview.totalGraded} corrigidas
-            </span>
-          </div>
-
-          <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Tempo Médio / Fase</span>
-            <span className={styles.kpiValue}>
-              {effectiveReport.overview.avgResponseSeconds}s
-            </span>
-            <span className={styles.kpiSub}>
-              Duração total: {formatDuration(effectiveReport.durationSeconds)}
-            </span>
-          </div>
-        </section>
-
-        <div
-          ref={tabsRef}
-          className={styles.tabs}
-          role="tablist"
-          aria-label="Seções do relatório"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'phases'}
-            className={cx(styles.tabButton, activeTab === 'phases' && styles.tabButtonActive)}
-            onClick={() => handleTabClick('phases')}
-          >
-            Análise por Fase ({effectiveReport.phases.length})
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'quality'}
-            className={cx(styles.tabButton, activeTab === 'quality' && styles.tabButtonActive)}
-            onClick={() => handleTabClick('quality')}
-          >
-            Diagnóstico das Questões
-            <span
-              className={cx(
-                styles.tabBadge,
-                qualityAlertCount > 0 && styles.tabBadgeWarn,
-              )}
-            >
-              {qualityAlertCount > 0 ? `${qualityAlertCount} alerta(s)` : 'OK'}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'ranking'}
-            className={cx(styles.tabButton, activeTab === 'ranking' && styles.tabButtonActive)}
-            onClick={() => handleTabClick('ranking')}
-          >
-            Classificação & Links Individuais ({effectiveReport.participants.length})
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'matrix'}
-            className={cx(styles.tabButton, activeTab === 'matrix' && styles.tabButtonActive)}
-            onClick={() => handleTabClick('matrix')}
-          >
-            Matriz Aluno × Fase
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'integrity'}
-            className={cx(styles.tabButton, activeTab === 'integrity' && styles.tabButtonActive)}
-            onClick={() => handleTabClick('integrity')}
-          >
-            Integridade
-            <span
-              className={cx(
-                styles.tabBadge,
-                integrityAlertCount > 0 && styles.tabBadgeWarn,
-              )}
-            >
-              {integrityAlertCount}
-            </span>
-          </button>
-        </div>
-
-        {activeTab === 'phases' && (
-          <section className={styles.tabContent}>
-            <div className={styles.phaseChartCard}>
-              <h2 className={styles.sectionTitle}>Curva de Acerto por Fase</h2>
-              <div className={styles.phaseBars}>
-                {effectiveReport.phases.map((ph) => (
-                  <div key={ph.phaseId} className={styles.phaseBarCol}>
-                    <span className={styles.phaseBarPct}>{ph.accuracyRate}%</span>
-                    <div className={styles.phaseBarTrack}>
-                      <div
-                        className={styles.phaseBarFill}
-                        style={{
-                          height: `${Math.max(6, ph.accuracyRate)}%`,
-                          background: accuracyColor(ph.accuracyRate),
-                        }}
-                      />
-                    </div>
-                    <span className={styles.phaseBarLabel} title={ph.name}>
-                      F{ph.phaseNumber}
-                    </span>
-                  </div>
-                ))}
+          <header className={styles.hero}>
+            <div className={styles.heroInfo}>
+              <div className={styles.badges}>
+                <span className={styles.badgePrimary}>Relatório Consolidado da Turma</span>
+                <span className={styles.badgeNeutral}>Sala {effectiveReport.roomCode}</span>
+                <span className={styles.badgeNeutral}>{MODE_LABEL[effectiveReport.mode]}</span>
               </div>
+              <h1 className={styles.title}>{effectiveReport.title}</h1>
+              <p className={styles.subtitle}>
+                Concluída em {formatDateBr(effectiveReport.finishedAt)} · Duração de{' '}
+                {formatDuration(effectiveReport.durationSeconds)} ·{' '}
+                {effectiveReport.overview.phaseCount} fases
+              </p>
+            </div>
+          </header>
+
+          <section
+            ref={kpiGridRef}
+            className={styles.kpiGrid}
+            aria-label="Indicadores gerais da partida"
+          >
+            <div className={styles.kpiCard}>
+              <span className={styles.kpiLabel}>Participantes</span>
+              <span className={styles.kpiValue}>{effectiveReport.overview.participantCount}</span>
+              <span className={styles.kpiSub}>
+                {effectiveReport.overview.totalSubmissions} respostas enviadas
+              </span>
             </div>
 
-            <div className={styles.phaseList}>
-              {effectiveReport.phases.map((ph) => {
-                const meta = KIND_META[ph.kind];
-                const qInsight = questionInsightByPhaseId.get(ph.phaseId);
-                const aiPhase = aiByPhaseId.get(ph.phaseId);
+            <div className={styles.kpiCard}>
+              <span className={styles.kpiLabel}>Pontuação Média</span>
+              <span className={cx(styles.kpiValue, styles.kpiScore)}>
+                {effectiveReport.overview.avgScore}
+                <span className={styles.kpiUnit}>
+                  {' '}
+                  / {effectiveReport.overview.maxPossibleScore} pts
+                </span>
+              </span>
+              <span className={styles.kpiSub}>
+                Maior: {effectiveReport.overview.maxAchievedScore} pts · Mediana:{' '}
+                {effectiveReport.overview.medianScore} pts
+              </span>
+            </div>
 
-                return (
-                  <article key={ph.phaseId} className={styles.phaseCard}>
-                    <div className={styles.phaseHead}>
-                      <div className={styles.phaseTitleGroup}>
-                        <span className={styles.phaseNumBadge}>Fase {ph.phaseNumber}</span>
-                        <span className={styles.phaseKindChip} style={{ color: meta.color }}>
-                          {meta.icon}
-                          {meta.label}
-                        </span>
-                        <h3 className={styles.phaseName}>{ph.name}</h3>
-                      </div>
+            <div className={styles.kpiCard}>
+              <span className={styles.kpiLabel}>Taxa de Acerto Global</span>
+              <span
+                className={styles.kpiValue}
+                style={{ color: accuracyColor(effectiveReport.overview.accuracyRate) }}
+              >
+                {effectiveReport.overview.accuracyRate}%
+              </span>
+              <span className={styles.kpiSub}>
+                {effectiveReport.overview.totalCorrect} acertos em{' '}
+                {effectiveReport.overview.totalGraded} corrigidas
+              </span>
+            </div>
 
-                      <div className={styles.phaseQuickStats}>
-                        <span
-                          className={styles.phaseAccuracyPill}
-                          style={{ color: accuracyColor(ph.accuracyRate) }}
-                        >
-                          {ph.accuracyRate}% de acerto
-                        </span>
-                        <span className={styles.phaseStatText}>
-                          Média: <strong>{ph.avgScore}</strong> / {ph.maxScore} pts
-                        </span>
-                        <span className={styles.phaseStatText}>
-                          Tempo médio: <strong>{ph.avgElapsedSeconds}s</strong>
-                        </span>
-                      </div>
-                    </div>
+            <div className={styles.kpiCard}>
+              <span className={styles.kpiLabel}>Tempo Médio / Fase</span>
+              <span className={styles.kpiValue}>
+                {effectiveReport.overview.avgResponseSeconds}s
+              </span>
+              <span className={styles.kpiSub}>
+                Duração total: {formatDuration(effectiveReport.durationSeconds)}
+              </span>
+            </div>
+          </section>
 
-                    {qInsight && (
-                      <div className={styles.phaseDiagnosticStrip}>
-                        <span
-                          className={styles.diagnosticChip}
+          <div
+            ref={tabsRef}
+            className={styles.tabs}
+            role="tablist"
+            aria-label="Seções do relatório"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'phases'}
+              className={cx(styles.tabButton, activeTab === 'phases' && styles.tabButtonActive)}
+              onClick={() => handleTabClick('phases')}
+            >
+              Análise por Fase ({effectiveReport.phases.length})
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'quality'}
+              className={cx(styles.tabButton, activeTab === 'quality' && styles.tabButtonActive)}
+              onClick={() => handleTabClick('quality')}
+            >
+              Diagnóstico das Questões
+              <span
+                className={cx(
+                  styles.tabBadge,
+                  qualityAlertCount > 0 && styles.tabBadgeWarn,
+                )}
+              >
+                {qualityAlertCount > 0 ? `${qualityAlertCount} alerta(s)` : 'OK'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'ranking'}
+              className={cx(styles.tabButton, activeTab === 'ranking' && styles.tabButtonActive)}
+              onClick={() => handleTabClick('ranking')}
+            >
+              Classificação & Links Individuais ({effectiveReport.participants.length})
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'matrix'}
+              className={cx(styles.tabButton, activeTab === 'matrix' && styles.tabButtonActive)}
+              onClick={() => handleTabClick('matrix')}
+            >
+              Matriz Aluno × Fase
+            </button>
+
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'integrity'}
+              className={cx(styles.tabButton, activeTab === 'integrity' && styles.tabButtonActive)}
+              onClick={() => handleTabClick('integrity')}
+            >
+              Integridade
+              <span
+                className={cx(
+                  styles.tabBadge,
+                  integrityAlertCount > 0 && styles.tabBadgeWarn,
+                )}
+              >
+                {integrityAlertCount}
+              </span>
+            </button>
+          </div>
+
+          {activeTab === 'phases' && (
+            <section className={styles.tabContent}>
+              <div className={styles.phaseChartCard}>
+                <h2 className={styles.sectionTitle}>Curva de Acerto por Fase</h2>
+                <div className={styles.phaseBars}>
+                  {effectiveReport.phases.map((ph) => (
+                    <div key={ph.phaseId} className={styles.phaseBarCol}>
+                      <span className={styles.phaseBarPct}>{ph.accuracyRate}%</span>
+                      <div className={styles.phaseBarTrack}>
+                        <div
+                          className={styles.phaseBarFill}
                           style={{
-                            color: DIFFICULTY_META[qInsight.difficulty].colorHex,
-                            background: DIFFICULTY_META[qInsight.difficulty].bgHex,
+                            height: `${Math.max(6, ph.accuracyRate)}%`,
+                            background: accuracyColor(ph.accuracyRate),
                           }}
-                        >
-                          {DIFFICULTY_META[qInsight.difficulty].label}
-                        </span>
+                        />
+                      </div>
+                      <span className={styles.phaseBarLabel} title={ph.name}>
+                        F{ph.phaseNumber}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-                        {qInsight.flags.map((flag) => {
-                          const flagMeta = QUESTION_FLAG_META[flag];
-                          if (!flagMeta) return null;
-                          return (
-                            <span
-                              key={flag}
-                              className={styles.diagnosticChip}
-                              style={{
-                                color: flagMeta.colorHex,
-                                background: flagMeta.bgHex,
-                              }}
-                              title={flagMeta.description}
-                            >
-                              {flagMeta.shortLabel}
-                            </span>
-                          );
-                        })}
+              <div className={styles.phaseList}>
+                {effectiveReport.phases.map((ph) => {
+                  const meta = KIND_META[ph.kind];
+                  const qInsight = questionInsightByPhaseId.get(ph.phaseId);
+                  const aiPhase = aiByPhaseId.get(ph.phaseId);
 
-                        {aiPhase && (
+                  return (
+                    <article key={ph.phaseId} className={styles.phaseCard}>
+                      <div className={styles.phaseHead}>
+                        <div className={styles.phaseTitleGroup}>
+                          <span className={styles.phaseNumBadge}>Fase {ph.phaseNumber}</span>
+                          <span className={styles.phaseKindChip} style={{ color: meta.color }}>
+                            {meta.icon}
+                            {meta.label}
+                          </span>
+                          <h3 className={styles.phaseName}>{ph.name}</h3>
+                        </div>
+
+                        <div className={styles.phaseQuickStats}>
+                          <span
+                            className={styles.phaseAccuracyPill}
+                            style={{ color: accuracyColor(ph.accuracyRate) }}
+                          >
+                            {ph.accuracyRate}% de acerto
+                          </span>
+                          <span className={styles.phaseStatText}>
+                            Média: <strong>{ph.avgScore}</strong> / {ph.maxScore} pts
+                          </span>
+                          <span className={styles.phaseStatText}>
+                            Tempo médio: <strong>{ph.avgElapsedSeconds}s</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      {qInsight && (
+                        <div className={styles.phaseDiagnosticStrip}>
                           <span
                             className={styles.diagnosticChip}
                             style={{
-                              color: AI_VERDICT_META[aiPhase.verdict].colorHex,
-                              background: AI_VERDICT_META[aiPhase.verdict].bgHex,
+                              color: DIFFICULTY_META[qInsight.difficulty].colorHex,
+                              background: DIFFICULTY_META[qInsight.difficulty].bgHex,
                             }}
                           >
-                            {AI_VERDICT_META[aiPhase.verdict].shortLabel}
+                            {DIFFICULTY_META[qInsight.difficulty].label}
                           </span>
-                        )}
-                      </div>
-                    )}
 
-                    <p className={styles.phaseQuestion}>{ph.question}</p>
-
-                    <div className={styles.phaseDetailsRow}>
-                      <div className={styles.phaseAnswerBox}>
-                        <span className={styles.detailLabel}>Gabarito esperado</span>
-                        <span className={styles.detailValue}>{ph.correctAnswerText}</span>
-                      </div>
-                      <div className={styles.phaseAnswerBox}>
-                        <span className={styles.detailLabel}>Distribuição de entregas</span>
-                        <span className={styles.detailValue}>
-                          {ph.correctCount} acertos · {ph.incorrectCount} erros ·{' '}
-                          {ph.unansweredCount} em branco
-                          {ph.pendingCount > 0 ? ` · ${ph.pendingCount} pendentes` : ''}
-                        </span>
-                      </div>
-                    </div>
-
-                    {ph.optionDistribution.length > 0 && (
-                      <div className={styles.optionDistList}>
-                        {ph.optionDistribution.map((opt) => (
-                          <div
-                            key={opt.optionId}
-                            className={cx(
-                              styles.optionDistRow,
-                              opt.isCorrect && styles.optionDistCorrect,
-                            )}
-                          >
-                            <div className={styles.optionDistHeader}>
-                              <span className={styles.optionDistLabel}>
-                                {opt.isCorrect ? '✓ ' : ''}
-                                {opt.label}
-                              </span>
-                              <span className={styles.optionDistCount}>
-                                {opt.count} ({opt.percentage}%)
-                              </span>
-                            </div>
-                            <div className={styles.optionDistTrack}>
-                              <div
-                                className={styles.optionDistFill}
-                                style={{
-                                  width: `${opt.percentage}%`,
-                                  background: opt.isCorrect
-                                    ? 'var(--accent-success)'
-                                    : 'var(--blue-400)',
-                                }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'quality' && (
-          <section className={styles.tabContent}>
-            <QuestionQualitySection
-              report={effectiveReport}
-              variant="web"
-              mode="full"
-              showAiReview
-              isLeader={isLeader}
-              onAiReviewUpdated={(review) => {
-                setAiReviewOverride(review);
-                setToast('Revisão pedagógica por IA concluída e salva no relatório!');
-              }}
-            />
-          </section>
-        )}
-
-        {activeTab === 'ranking' && (
-          <section className={styles.tabContent}>
-            <div className={styles.tableCard}>
-              <div className={styles.tableHeaderDesc}>
-                <h2 className={styles.sectionTitle}>Classificação Geral dos Participantes</h2>
-                <p className={styles.sectionHint}>
-                  Cada participante possui um link exclusivo protegido contra força bruta para
-                  consultar seu relatório individual compacto.
-                </p>
-              </div>
-
-              <div className={styles.tableWrapper}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th>Posição</th>
-                      <th>Participante</th>
-                      <th>Pontuação</th>
-                      <th>Taxa de Acerto</th>
-                      <th>Acertos / Fases</th>
-                      <th>Tempo Total</th>
-                      <th>Relatório Individual</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {effectiveReport.participants.map((p) => (
-                      <tr key={p.participantId}>
-                        <td className={styles.rankCell}>
-                          <span
-                            className={cx(
-                              styles.rankBadge,
-                              p.rank === 1 && styles.rankFirst,
-                              p.rank === 2 && styles.rankSecond,
-                              p.rank === 3 && styles.rankThird,
-                            )}
-                          >
-                            #{p.rank}
-                          </span>
-                        </td>
-                        <td>
-                          <div className={styles.playerCell}>
-                            <Avatar index={p.avatarIndex} size="sm" name={p.displayName} />
-                            <div>
-                              <div className={styles.playerName}>{p.displayName}</div>
-                              <div className={styles.playerMeta}>
-                                {p.userId ? 'Conta cadastrada' : 'Convidado'}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span className={styles.scoreStrong}>{p.totalScore}</span>
-                          <span className={styles.scoreMuted}> / {p.maxPossibleScore} pts</span>
-                        </td>
-                        <td>
-                          <span
-                            className={styles.accuracyStrong}
-                            style={{ color: accuracyColor(p.accuracyRate) }}
-                          >
-                            {p.accuracyRate}%
-                          </span>
-                        </td>
-                        <td>
-                          {p.correctCount} acertos · {p.incorrectCount} erros
-                          {p.unansweredCount > 0 ? ` · ${p.unansweredCount} em branco` : ''}
-                        </td>
-                        <td>
-                          {p.totalElapsedSeconds}s (méd. {p.avgElapsedSeconds}s)
-                        </td>
-                        <td>
-                          <div className={styles.rowActions}>
-                            <Link
-                              href={`/relatorios/individual/${p.accessToken}`}
-                              className={styles.actionLinkBtn}
-                            >
-                              <Icon.Eye size={14} />
-                              Abrir
-                            </Link>
-                            <button
-                              type="button"
-                              className={styles.copyIconBtn}
-                              onClick={() => void copyIndividualLink(p.accessToken, p.displayName)}
-                              title={`Copiar link individual de ${p.displayName}`}
-                            >
-                              <Icon.Copy size={14} />
-                              Copiar link
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'matrix' && (
-          <section className={styles.tabContent}>
-            <div className={styles.tableCard}>
-              <div className={styles.tableHeaderDesc}>
-                <h2 className={styles.sectionTitle}>Matriz Cruzada: Aluno × Fase</h2>
-                <p className={styles.sectionHint}>
-                  Visão consolidada de todas as submissões da turma em cada fase da partida.
-                </p>
-              </div>
-
-              <div className={styles.matrixScrollWrapper}>
-                <table className={styles.matrixTable}>
-                  <thead>
-                    <tr>
-                      <th className={styles.stickyColRank}>#</th>
-                      <th className={styles.stickyColPlayer}>Participante</th>
-                      <th className={styles.stickyColTotal}>Total</th>
-                      {effectiveReport.phases.map((ph) => (
-                        <th key={ph.phaseId} title={ph.name}>
-                          F{ph.phaseNumber}: {ph.name}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {effectiveReport.participants.map((p) => {
-                      const ansByPhase = new Map(p.answers.map((a) => [a.phaseId, a]));
-                      return (
-                        <tr key={p.participantId}>
-                          <td className={cx(styles.rankCell, styles.stickyColRank)}>#{p.rank}</td>
-                          <td
-                            className={cx(styles.matrixPlayerName, styles.stickyColPlayer)}
-                            title={p.displayName}
-                          >
-                            {p.displayName}
-                          </td>
-                          <td className={cx(styles.scoreStrong, styles.stickyColTotal)}>
-                            {p.totalScore} pts
-                          </td>
-                          {effectiveReport.phases.map((ph) => {
-                            const ans = ansByPhase.get(ph.phaseId);
-                            if (!ans || !ans.submitted) {
-                              return (
-                                <td key={ph.phaseId} className={styles.cellUnanswered}>
-                                  <span className={styles.cellMain}>—</span>
-                                  <span className={styles.cellSub}>Em branco</span>
-                                </td>
-                              );
-                            }
-                            if (ans.grading === 'pending') {
-                              return (
-                                <td key={ph.phaseId} className={styles.cellPending}>
-                                  <span className={styles.cellMain}>⏳ Pendente</span>
-                                  <span className={styles.cellSub}>{ans.givenAnswerText}</span>
-                                </td>
-                              );
-                            }
+                          {qInsight.flags.map((flag) => {
+                            const flagMeta = QUESTION_FLAG_META[flag];
+                            if (!flagMeta) return null;
                             return (
-                              <td
-                                key={ph.phaseId}
-                                className={ans.correct ? styles.cellCorrect : styles.cellWrong}
+                              <span
+                                key={flag}
+                                className={styles.diagnosticChip}
+                                style={{
+                                  color: flagMeta.colorHex,
+                                  background: flagMeta.bgHex,
+                                }}
+                                title={flagMeta.description}
                               >
-                                <span className={styles.cellMain}>
-                                  {ans.correct ? '✓' : '✗'} {ans.score} pts ({ans.elapsedSeconds}s)
-                                </span>
-                                <span className={styles.cellSub} title={ans.givenAnswerText}>
-                                  {ans.givenAnswerText}
-                                </span>
-                              </td>
+                                {flagMeta.shortLabel}
+                              </span>
                             );
                           })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+
+                          {aiPhase && (
+                            <span
+                              className={styles.diagnosticChip}
+                              style={{
+                                color: AI_VERDICT_META[aiPhase.verdict].colorHex,
+                                background: AI_VERDICT_META[aiPhase.verdict].bgHex,
+                              }}
+                            >
+                              {AI_VERDICT_META[aiPhase.verdict].shortLabel}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <p className={styles.phaseQuestion}>{ph.question}</p>
+
+                      <div className={styles.phaseDetailsRow}>
+                        <div className={styles.phaseAnswerBox}>
+                          <span className={styles.detailLabel}>Gabarito esperado</span>
+                          <span className={styles.detailValue}>{ph.correctAnswerText}</span>
+                        </div>
+                        <div className={styles.phaseAnswerBox}>
+                          <span className={styles.detailLabel}>Distribuição de entregas</span>
+                          <span className={styles.detailValue}>
+                            {ph.correctCount} acertos · {ph.incorrectCount} erros ·{' '}
+                            {ph.unansweredCount} em branco
+                            {ph.pendingCount > 0 ? ` · ${ph.pendingCount} pendentes` : ''}
+                          </span>
+                        </div>
+                      </div>
+
+                      {ph.optionDistribution.length > 0 && (
+                        <div className={styles.optionDistList}>
+                          {ph.optionDistribution.map((opt) => (
+                            <div
+                              key={opt.optionId}
+                              className={cx(
+                                styles.optionDistRow,
+                                opt.isCorrect && styles.optionDistCorrect,
+                              )}
+                            >
+                              <div className={styles.optionDistHeader}>
+                                <span className={styles.optionDistLabel}>
+                                  {opt.isCorrect ? '✓ ' : ''}
+                                  {opt.label}
+                                </span>
+                                <span className={styles.optionDistCount}>
+                                  {opt.count} ({opt.percentage}%)
+                                </span>
+                              </div>
+                              <div className={styles.optionDistTrack}>
+                                <div
+                                  className={styles.optionDistFill}
+                                  style={{
+                                    width: `${opt.percentage}%`,
+                                    background: opt.isCorrect
+                                      ? 'var(--accent-success)'
+                                      : 'var(--blue-400)',
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
               </div>
-            </div>
-          </section>
-        )}
+            </section>
+          )}
 
-        {activeTab === 'integrity' && (
-          <section className={styles.tabContent}>
-            <IntegritySection report={effectiveReport} variant="web" />
-          </section>
-        )}
-      </div>
-    </main>
+          {activeTab === 'quality' && (
+            <section className={styles.tabContent}>
+              <QuestionQualitySection
+                report={effectiveReport}
+                variant="web"
+                mode="full"
+                showAiReview
+                isLeader={isLeader}
+                onAiReviewUpdated={(review) => {
+                  setAiReviewOverride(review);
+                  setToast('Revisão pedagógica por IA concluída e salva no relatório!');
+                }}
+              />
+            </section>
+          )}
 
-    {/* Modal pré-exportação de PDF com templates, switches e preview animado */}
+          {activeTab === 'ranking' && (
+            <section className={styles.tabContent}>
+              <div className={styles.tableCard}>
+                <div className={styles.tableHeaderDesc}>
+                  <h2 className={styles.sectionTitle}>Classificação Geral dos Participantes</h2>
+                  <p className={styles.sectionHint}>
+                    Cada participante possui um link exclusivo protegido contra força bruta para
+                    consultar seu relatório individual compacto.
+                  </p>
+                </div>
+
+                <div className={styles.tableWrapper}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Posição</th>
+                        <th>Participante</th>
+                        <th>Pontuação</th>
+                        <th>Taxa de Acerto</th>
+                        <th>Acertos / Fases</th>
+                        <th>Tempo Total</th>
+                        <th>Relatório Individual</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {effectiveReport.participants.map((p) => (
+                        <tr key={p.participantId}>
+                          <td className={styles.rankCell}>
+                            <span
+                              className={cx(
+                                styles.rankBadge,
+                                p.rank === 1 && styles.rankFirst,
+                                p.rank === 2 && styles.rankSecond,
+                                p.rank === 3 && styles.rankThird,
+                              )}
+                            >
+                              #{p.rank}
+                            </span>
+                          </td>
+                          <td>
+                            <div className={styles.playerCell}>
+                              <Avatar index={p.avatarIndex} size="sm" name={p.displayName} />
+                              <div>
+                                <div className={styles.playerName}>{p.displayName}</div>
+                                <div className={styles.playerMeta}>
+                                  {p.userId ? 'Conta cadastrada' : 'Convidado'}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={styles.scoreStrong}>{p.totalScore}</span>
+                            <span className={styles.scoreMuted}> / {p.maxPossibleScore} pts</span>
+                          </td>
+                          <td>
+                            <span
+                              className={styles.accuracyStrong}
+                              style={{ color: accuracyColor(p.accuracyRate) }}
+                            >
+                              {p.accuracyRate}%
+                            </span>
+                          </td>
+                          <td>
+                            {p.correctCount} acertos · {p.incorrectCount} erros
+                            {p.unansweredCount > 0 ? ` · ${p.unansweredCount} em branco` : ''}
+                          </td>
+                          <td>
+                            {p.totalElapsedSeconds}s (méd. {p.avgElapsedSeconds}s)
+                          </td>
+                          <td>
+                            <div className={styles.rowActions}>
+                              <Link
+                                href={`/relatorios/individual/${p.accessToken}`}
+                                className={styles.actionLinkBtn}
+                              >
+                                <Icon.Eye size={14} />
+                                Abrir
+                              </Link>
+                              <button
+                                type="button"
+                                className={styles.copyIconBtn}
+                                onClick={() => void copyIndividualLink(p.accessToken, p.displayName)}
+                                title={`Copiar link individual de ${p.displayName}`}
+                              >
+                                <Icon.Copy size={14} />
+                                Copiar link
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'matrix' && (
+            <section className={styles.tabContent}>
+              <div className={styles.tableCard}>
+                <div className={styles.tableHeaderDesc}>
+                  <h2 className={styles.sectionTitle}>Matriz Cruzada: Aluno × Fase</h2>
+                  <p className={styles.sectionHint}>
+                    Visão consolidada de todas as submissões da turma em cada fase da partida.
+                  </p>
+                </div>
+
+                <div className={styles.matrixScrollWrapper}>
+                  <table className={styles.matrixTable}>
+                    <thead>
+                      <tr>
+                        <th className={styles.stickyColRank}>#</th>
+                        <th className={styles.stickyColPlayer}>Participante</th>
+                        <th className={styles.stickyColTotal}>Total</th>
+                        {effectiveReport.phases.map((ph) => (
+                          <th key={ph.phaseId} title={ph.name}>
+                            F{ph.phaseNumber}: {ph.name}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {effectiveReport.participants.map((p) => {
+                        const ansByPhase = new Map(p.answers.map((a) => [a.phaseId, a]));
+                        return (
+                          <tr key={p.participantId}>
+                            <td className={cx(styles.rankCell, styles.stickyColRank)}>#{p.rank}</td>
+                            <td
+                              className={cx(styles.matrixPlayerName, styles.stickyColPlayer)}
+                              title={p.displayName}
+                            >
+                              {p.displayName}
+                            </td>
+                            <td className={cx(styles.scoreStrong, styles.stickyColTotal)}>
+                              {p.totalScore} pts
+                            </td>
+                            {effectiveReport.phases.map((ph) => {
+                              const ans = ansByPhase.get(ph.phaseId);
+                              if (!ans || !ans.submitted) {
+                                return (
+                                  <td key={ph.phaseId} className={styles.cellUnanswered}>
+                                    <span className={styles.cellMain}>—</span>
+                                    <span className={styles.cellSub}>Em branco</span>
+                                  </td>
+                                );
+                              }
+                              if (ans.grading === 'pending') {
+                                return (
+                                  <td key={ph.phaseId} className={styles.cellPending}>
+                                    <span className={styles.cellMain}>⏳ Pendente</span>
+                                    <span className={styles.cellSub}>{ans.givenAnswerText}</span>
+                                  </td>
+                                );
+                              }
+                              return (
+                                <td
+                                  key={ph.phaseId}
+                                  className={ans.correct ? styles.cellCorrect : styles.cellWrong}
+                                >
+                                  <span className={styles.cellMain}>
+                                    {ans.correct ? '✓' : '✗'} {ans.score} pts ({ans.elapsedSeconds}s)
+                                  </span>
+                                  <span className={styles.cellSub} title={ans.givenAnswerText}>
+                                    {ans.givenAnswerText}
+                                  </span>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'integrity' && (
+            <section className={styles.tabContent}>
+              <IntegritySection report={effectiveReport} variant="web" />
+            </section>
+          )}
+        </div>
+      </main>
+
+      {/* Modal pré-exportação de PDF com templates, switches e preview animado */}
       <PdfExportModal
         open={isPdfModalOpen}
         report={effectiveReport}

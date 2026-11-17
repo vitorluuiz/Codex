@@ -4,7 +4,7 @@
   flex-direction: column;
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   box-shadow: var(--shadow-s);
   overflow: hidden;
   transition: box-shadow var(--dur-fast) var(--ease-out),
@@ -14,10 +14,6 @@
 .card:hover,
 .cardRaised {
   box-shadow: var(--shadow-m);
-}
-
-.cardSelected {
-  border-color: var(--accent-primary);
 }
 
 /* --- Capa ----------------------------------------------------------------- */
@@ -118,6 +114,7 @@
 .title a,
 .title a:hover {
   color: var(--ink-0);
+  text-decoration: none;
 }
 
 /* Estende o link do título por todo o card: o alvo fica do tamanho do cartão
@@ -172,7 +169,6 @@
   gap: var(--space-3);
   flex-wrap: wrap;
   margin: 0;
-  text-align: unset !important;
 }
 
 .stat {
@@ -214,7 +210,7 @@
   padding: 6px;
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-l);
+  border-radius: var(--radius-s);
   box-shadow: var(--shadow-l);
 }
 
@@ -224,7 +220,7 @@
   gap: 10px;
   padding: 9px var(--space-3);
   border: none;
-  border-radius: var(--radius-m);
+  border-radius: var(--radius-s);
   background: none;
   cursor: pointer;
   text-align: left;

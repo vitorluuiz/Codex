@@ -27,13 +27,17 @@
   padding: 0;
 }
 
+a.matchNav{
+  text-decoration: none;
+}
+
 .row {
   display: flex;
   align-items: center;
   gap: var(--space-5);
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   box-shadow: var(--shadow-s);
   padding: 18px var(--space-5);
   transition: box-shadow var(--dur-fast) var(--ease-out);

@@ -13,7 +13,7 @@
   min-width: 220px;
   max-width: 320px;
   padding: 10px 14px;
-  border-radius: var(--radius-m);
+  border-radius: var(--radius-s);
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
   color: var(--text-secondary);

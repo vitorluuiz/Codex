@@ -78,7 +78,7 @@
 .hero {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   padding: var(--space-6);
   box-shadow: var(--shadow-s);
 }
@@ -141,7 +141,7 @@
 .kpiCard {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   padding: var(--space-5);
   display: flex;
   flex-direction: column;
@@ -189,7 +189,6 @@
   gap: var(--space-2);
   border-bottom: 1px solid var(--border-subtle);
   padding: var(--space-3) var(--space-1);
-  box-shadow: 0 4px 8px -4px rgba(15, 23, 42, 0.12);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -197,7 +196,7 @@
 .tabButton {
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius-l);
+  border-radius: var(--radius-m);
   padding: 10px 16px;
   font-size: var(--text-body-s);
   font-weight: var(--fw-medium);
@@ -229,7 +228,7 @@
 .phaseChartCard {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   padding: var(--space-5);
   display: flex;
   flex-direction: column;
@@ -279,7 +278,7 @@
   max-width: 42px;
   height: 100px;
   background: var(--surface-sunken);
-  border-radius: var(--radius-m);
+  border-radius: var(--radius-s);
   display: flex;
   align-items: flex-end;
   overflow: hidden;
@@ -287,7 +286,6 @@
 
 .phaseBarFill {
   width: 100%;
-  border-radius: var(--radius-m);
   transition: height var(--dur-normal) var(--ease-out);
 }
 
@@ -306,7 +304,7 @@
 .phaseCard {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   padding: var(--space-5);
   display: flex;
   flex-direction: column;
@@ -375,7 +373,7 @@
   color: var(--text-primary);
   background: var(--surface-sunken);
   padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-l);
+  border-radius: var(--radius-m);
 }
 
 .phaseDetailsRow {
@@ -391,7 +389,7 @@
   gap: 4px;
   padding: var(--space-3);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-l);
+  border-radius: var(--radius-m);
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
@@ -429,7 +427,7 @@
 
 .optionDistRow {
   padding: var(--space-3);
-  border-radius: var(--radius-l);
+  border-radius: var(--radius-m);
   border: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
@@ -490,7 +488,7 @@
 .tableCard {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   padding: var(--space-5);
   display: flex;
   flex-direction: column;
@@ -505,13 +503,14 @@
 
 .tableWrapper {
   overflow-x: auto;
+  border-radius: var(--radius-m);
 }
 
 .matrixScrollWrapper {
   overflow: auto;
   max-height: min(72vh, 680px);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-l);
+  border-radius: var(--radius-m);
   position: relative;
 }
 

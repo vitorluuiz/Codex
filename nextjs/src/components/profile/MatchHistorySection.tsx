@@ -56,7 +56,6 @@ interface MatchHistorySectionProps {
   activeRooms: ActiveRoom[];
   /** "Participantes" ou "Candidatos", conforme o público da conta. */
   participantsLabel: string;
-  onDownload: (match: LeaderMatchSummary) => void;
   onCloseRoom: (room: ActiveRoom) => void;
 }
 
@@ -64,7 +63,6 @@ export function MatchHistorySection({
   matches,
   activeRooms,
   participantsLabel,
-  onDownload,
   onCloseRoom,
 }: MatchHistorySectionProps) {
   const [report, setReport] = useState<LeaderMatchSummary | null>(null);
@@ -137,98 +135,32 @@ export function MatchHistorySection({
           ))}
 
           {matches.map((match) => (
-            <li key={match.id} className={styles.row}>
-              <div className={styles.identity}>
-                <span className={styles.setTitle}>{match.setTitle}</span>
-                <div className={styles.subline}>
-                  <span className={styles.modeChip}>{MODE_LABEL[match.mode]}</span>
-                  <span className={styles.date}>{match.playedAtLabel}</span>
+            <Link key={match.id} href={`/relatorios/${match.id}`} className={styles.matchNav}>
+              <li className={styles.row}>
+                <div className={styles.identity}>
+                  <span className={styles.setTitle}>{match.setTitle}</span>
+                  <div className={styles.subline}>
+                    <span className={styles.modeChip}>{MODE_LABEL[match.mode]}</span>
+                    <span className={styles.date}>{match.playedAtLabel}</span>
+                  </div>
                 </div>
-              </div>
 
-              <PhaseSparkline values={match.phaseAvgScore} remainingValuesCount={null} />
+                <PhaseSparkline values={match.phaseAvgScore} remainingValuesCount={null} />
 
-              <div className={styles.stat}>
-                <span className={`${styles.statValue} ${styles.statScore}`}>
-                  {match.avgScore}
-                  <span className={styles.statMax}> / {match.maxAvgScore ? match.maxAvgScore : 100}</span>
-                </span>
-                <span className={styles.statLabel}>
-                  {match.participantCount} {participantsLabel}
-                </span>
-              </div>
-
-              <div className={styles.rowActions}>
-                <button
-                  type="button"
-                  className={styles.iconButton}
-                  onClick={() => setReport(match)}
-                  title="Ver relatório"
-                  aria-label={`Ver relatório de ${match.setTitle}`}
-                >
-                  <Icon.Eye size={16} />
-                </button>
-                <button
-                  type="button"
-                  className={styles.iconButton}
-                  onClick={() => onDownload(match)}
-                  title="Baixar relatório"
-                  aria-label={`Baixar relatório de ${match.setTitle}`}
-                >
-                  <Icon.Download size={16} />
-                </button>
-              </div>
-            </li>
+                <div className={styles.stat}>
+                  <span className={`${styles.statValue} ${styles.statScore}`}>
+                    {match.avgScore}
+                    <span className={styles.statMax}> / {match.maxAvgScore ? match.maxAvgScore : 100}</span>
+                  </span>
+                  <span className={styles.statLabel}>
+                    {match.participantCount} {participantsLabel}
+                  </span>
+                </div>
+              </li>
+            </Link>
           ))}
         </ul>
       )}
-
-      <Dialog open={report !== null} title="Relatório da partida" onClose={() => setReport(null)}>
-        {report && (
-          <div className={styles.report}>
-            <div>
-              <div className={styles.reportTitle}>{report.setTitle}</div>
-              <div className={styles.reportMeta}>
-                {report.playedAtLabel} · {MODE_LABEL[report.mode]}
-              </div>
-            </div>
-
-            <div className={styles.reportGrid}>
-              <ReportTile label={participantsLabel} value={String(report.participantCount)} />
-              <ReportTile
-                label="Pontuação média"
-                value={`${report.avgScore} / ${report.maxAvgScore}`}
-                tone="score"
-              />
-              <ReportTile label="Taxa de acerto" value={`${report.accuracyRate}%`} tone="success" />
-              <ReportTile label="Duração" value={report.durationLabel} />
-            </div>
-
-            <div className={styles.reportActions}>
-              <Button variant="secondary" onClick={() => setReport(null)}>
-                Fechar
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  window.open(
-                    `/api/reports/matches/${encodeURIComponent(report.id)}/export?format=xlsx`,
-                    '_blank',
-                  )
-                }
-              >
-                Excel (.xlsx)
-              </Button>
-              <Button variant="secondary" onClick={() => onDownload(report)}>
-                PDF
-              </Button>
-              <Link href={`/relatorios/${report.id}`} className={styles.resumeLink}>
-                Abrir página web
-              </Link>
-            </div>
-          </div>
-        )}
-      </Dialog>
     </section>
   );
 }

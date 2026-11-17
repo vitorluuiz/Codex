@@ -19,19 +19,12 @@ interface LibraryFiltersProps {
   filters: LibraryFilterState;
   onChange: (patch: Partial<LibraryFilterState>) => void;
   subjects: string[];
-  /** A seleção em massa só existe na aba dos conjuntos próprios. */
-  showSelect: boolean;
-  selectMode: boolean;
-  onToggleSelectMode: () => void;
 }
 
 export function LibraryFilters({
   filters,
   onChange,
   subjects,
-  showSelect,
-  selectMode,
-  onToggleSelectMode,
 }: LibraryFiltersProps) {
   const allKinds = filters.kinds.length === KIND_ORDER.length;
 
@@ -126,18 +119,6 @@ export function LibraryFilters({
           ))
         }
       </FilterMenu>
-
-      {showSelect && (
-        <button
-          type="button"
-          className={cx(styles.chip, styles.selectChip, selectMode && styles.chipDirty)}
-          aria-pressed={selectMode}
-          onClick={onToggleSelectMode}
-        >
-          <Icon.Check size={15} />
-          {selectMode ? 'Cancelar seleção' : 'Selecionar'}
-        </button>
-      )}
     </div>
   );
 }

@@ -300,39 +300,6 @@ export function PhaseSetView({ set, user, sampleData = false }: PhaseSetViewProp
 
       <main className={styles.main}>
         <div className={styles.container}>
-          {/* Bloco 1: Navegação e seletor de estado do protótipo */}
-          <div className={styles.topBar}>
-            <div className={styles.topRow}>
-              <Link href="/conjuntos" className={styles.backLink}>
-                <Icon.ArrowLeft size={16} />
-                Voltar para conjuntos
-              </Link>
-            </div>
-
-            <div
-              className={styles.protoBar}
-              role="group"
-              aria-label="Modo de visualização do protótipo"
-            >
-              <span className={styles.protoLabel}>Simular visão</span>
-              <div className={styles.protoModes}>
-                {PROTOTYPE_MODES.map((mode) => (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    className={cx(
-                      styles.protoButton,
-                      viewMode === mode.id && styles.protoButtonActive,
-                    )}
-                    aria-pressed={viewMode === mode.id}
-                    onClick={() => selectPrototypeMode(mode.id)}
-                  >
-                    {mode.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
 
           {/* Bloco 2: Cabeçalho vertical e barra de ações */}
           <section className={styles.heroCard} aria-labelledby="set-view-title">
