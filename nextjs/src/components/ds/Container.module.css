@@ -1,0 +1,30 @@
+.container {
+  width: 100%;
+  margin-inline: auto;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.padded {
+  padding-inline: var(--gutter-page);
+}
+
+.paddedWide {
+  padding-inline: var(--gutter-page-wide);
+}
+
+.wide {
+  max-width: var(--container-wide);
+}
+
+.narrow {
+  max-width: var(--container-narrow);
+}
+
+.compact {
+  max-width: var(--container-compact);
+}
+
+.full {
+  max-width: 100%;
+}

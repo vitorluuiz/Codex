@@ -70,6 +70,42 @@ svg {
   border: 0;
 }
 
+/* --- Utilitários de contêineres e margens padronizadas --- */
+.containerWide {
+  width: 100%;
+  max-width: var(--container-wide);
+  margin-inline: auto;
+  padding-inline: var(--gutter-page);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.containerNarrow {
+  width: 100%;
+  max-width: var(--container-narrow);
+  margin-inline: auto;
+  padding-inline: var(--gutter-page);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.containerCompact {
+  width: 100%;
+  max-width: var(--container-compact);
+  margin-inline: auto;
+  padding-inline: var(--gutter-page);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.containerFluid {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: var(--gutter-page);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

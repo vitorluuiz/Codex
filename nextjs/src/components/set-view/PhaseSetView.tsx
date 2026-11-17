@@ -311,8 +311,8 @@ export function PhaseSetView({ set, user, sampleData = false }: PhaseSetViewProp
                   src={set.coverUrl}
                   shape="rect"
                   onDark
-                  width={800}
-                  height={150}
+                  width={1320}
+                  height={220}
                 />
               ) : (
                 <div

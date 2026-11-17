@@ -2,12 +2,12 @@
   min-height: 100vh;
   background: var(--surface-page);
   font-family: var(--font-body);
-  padding: clamp(16px, 4vw, 40px);
+  padding: var(--space-6) var(--gutter-page);
   position: relative;
 }
 
 .shell {
-  max-width: 1100px;
+  max-width: var(--container-wide);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
