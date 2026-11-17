@@ -82,12 +82,6 @@ export function ReportsHistoryView({ user, serverHistory }: ReportsHistoryViewPr
 
       <main className={styles.content}>
         <div className={styles.container}>
-          <div className={styles.topNav}>
-            <Link href={user ? `/perfil/${user.id}` : '/'} className={styles.backLink}>
-              <Icon.ArrowLeft size={16} />
-              {user ? 'Voltar ao perfil' : 'Início'}
-            </Link>
-          </div>
 
           <header className={styles.header}>
             <h1 className={styles.title}>Central de Relatórios</h1>
@@ -259,73 +253,6 @@ export function ReportsHistoryView({ user, serverHistory }: ReportsHistoryViewPr
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-          </section>
-        )}
-
-        {(guestSavedReports.length > 0 || !user) && (
-          <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>
-              Relatórios Acessados neste Navegador ({guestSavedReports.length})
-            </h2>
-
-            {guestSavedReports.length === 0 ? (
-              <p className={styles.empty}>
-                Os links de relatórios que você abrir aparecerão salvos aqui para consulta futura.
-              </p>
-            ) : (
-              <div className={styles.list}>
-                {guestSavedReports.map((v) => {
-                  const href =
-                    v.kind === 'leader'
-                      ? `/relatorios/${v.token}`
-                      : `/relatorios/individual/${v.token}`;
-                  return (
-                    <div key={`${v.kind}-${v.token}`} className={styles.card}>
-                      <div className={styles.cardMain}>
-                        <span className={styles.cardTitle}>
-                          {v.title}{' '}
-                          {v.kind === 'individual' && v.displayName ? `— ${v.displayName}` : ''}
-                        </span>
-                        <span className={styles.cardMeta}>
-                          {v.kind === 'leader' ? 'Relatório da Turma' : 'Relatório Individual'} ·
-                          Sala {v.roomCode} · {formatDateBr(v.finishedAt)}
-                        </span>
-                      </div>
-
-                      <div className={styles.cardStats}>
-                        <div className={styles.statCol}>
-                          <span className={styles.statValue}>
-                            {v.kind === 'leader' ? v.avgScore : v.totalScore} /{' '}
-                            {v.maxPossibleScore} pts
-                          </span>
-                          <span className={styles.statLabel}>
-                            {v.kind === 'leader' ? 'Média da turma' : `Posição #${v.rank ?? 1}`}
-                          </span>
-                        </div>
-                        <div className={styles.statCol}>
-                          <span className={styles.statValue}>{v.accuracyRate}%</span>
-                          <span className={styles.statLabel}>Acerto</span>
-                        </div>
-                      </div>
-
-                      <div className={styles.cardActions}>
-                        <Link href={href} className={styles.primaryAction}>
-                          <Icon.Eye size={15} />
-                          Abrir
-                        </Link>
-                        <Link
-                          href={`${href}?export=pdf`}
-                          className={styles.secondaryAction}
-                          title="Exportar relatório como PDF"
-                        >
-                          PDF
-                        </Link>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             )}
           </section>

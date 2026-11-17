@@ -145,16 +145,16 @@ export function SetLibraryView({ user, library }: SetLibraryViewProps) {
             </>
           )}
 
-          <header className={styles.header}>
+          {/* <header className={styles.header}>
             <div>
               <h1 className={styles.title}>Conjuntos de desafios</h1>
             </div>
             <Button onClick={() => router.push('/conjunto/novo')}>Criar conjunto</Button>
-          </header>
+          </header> */}
 
-          {featured && (
+          {/* {featured && (
             <FeaturedSetBanner set={featured} onStartRoom={() => startRoom(featured.id)} />
-          )}
+          )} */}
 
           <div className={styles.tabs}>
             <Tabs
@@ -170,12 +170,6 @@ export function SetLibraryView({ user, library }: SetLibraryViewProps) {
           filters={filters}
           onChange={patchFilters}
           subjects={library.subjects}
-          showSelect={owned}
-          selectMode={selectMode}
-          onToggleSelectMode={() => {
-            setSelectMode((current) => !current);
-            setSelected([]);
-          }}
         />
 
         {owned && library.folders.length > 0 && (
@@ -200,15 +194,6 @@ export function SetLibraryView({ user, library }: SetLibraryViewProps) {
             <SetCard
               key={set.id}
               set={set}
-              selectMode={selectMode}
-              selected={selected.includes(set.id)}
-              onToggleSelect={() =>
-                setSelected((current) =>
-                  current.includes(set.id)
-                    ? current.filter((id) => id !== set.id)
-                    : [...current, set.id],
-                )
-              }
               onStartRoom={() => startRoom(set.id)}
               onPublish={set.source === 'owned' ? () => publishSet(set.id) : undefined}
               onCopy={set.source === 'community' ? () => copySet(set.id) : undefined}
@@ -233,25 +218,7 @@ export function SetLibraryView({ user, library }: SetLibraryViewProps) {
         )}
       </main>
 
-      {selectMode && selected.length > 0 && (
-        <div className={styles.bulkBar} role="status">
-          <span className={styles.bulkCount}>
-            {selected.length} {selected.length === 1 ? 'selecionado' : 'selecionados'}
-          </span>
-          <div className={styles.bulkActions}>
-            <Button size="sm" variant="secondary" disabled title="Em breve">
-              Compartilhar
-            </Button>
-            <Button size="sm" variant="secondary" disabled title="Em breve">
-              Exportar
-            </Button>
-            <Button size="sm" variant="danger" onClick={() => setPendingDelete(selected)}>
-              Excluir
-            </Button>
-          </div>
-        </div>
-      )}
-
+      
       {pendingDelete && (
         <Dialog
           open

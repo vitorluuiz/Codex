@@ -60,14 +60,6 @@ export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: Profile
     });
   }
 
-  function downloadReport(match: LeaderMatchSummary) {
-    router.push(`/relatorios/${encodeURIComponent(match.id)}?export=pdf`);
-    startTransition(async () => {
-      await exportMatchReportAction(match.id);
-      setToast(`Exportando relatório de ${match.setTitle} · ${match.playedAtLabel}`);
-    });
-  }
-
   function closeRoom(room: ActiveRoom) {
     startTransition(async () => {
       await closeRoomAction(room.code);
@@ -134,7 +126,6 @@ export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: Profile
                   matches={profile.matches}
                   activeRooms={ledRooms}
                   participantsLabel={participantsLabel}
-                  onDownload={downloadReport}
                   onCloseRoom={closeRoom}
                 />
               </>

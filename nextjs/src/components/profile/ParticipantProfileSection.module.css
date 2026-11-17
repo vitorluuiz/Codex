@@ -36,7 +36,7 @@
 
 .streakCard {
   background: var(--ink-950);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   padding: 26px 28px;
   display: flex;
   flex-direction: column;
@@ -115,7 +115,7 @@
 .statTile {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-l);
+  border-radius: var(--radius-m);
   box-shadow: var(--shadow-s);
   padding: 18px 20px;
   display: flex;
@@ -149,7 +149,7 @@
 .typeCard {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   box-shadow: var(--shadow-s);
   padding: var(--space-5);
   display: flex;
@@ -166,7 +166,7 @@
 .typeIcon {
   width: 38px;
   height: 38px;
-  border-radius: var(--radius-m);
+  border-radius: var(--radius-xl);
   background: color-mix(in srgb, currentColor 12%, transparent);
   display: flex;
   align-items: center;
@@ -219,7 +219,7 @@
   gap: var(--space-5);
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   box-shadow: var(--shadow-s);
   padding: var(--space-4) var(--space-5);
 }
@@ -335,7 +335,7 @@
 .roomRow {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   box-shadow: var(--shadow-s);
   padding: var(--space-5) 24px;
   display: flex;

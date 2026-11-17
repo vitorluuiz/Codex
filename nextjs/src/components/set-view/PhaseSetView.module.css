@@ -121,7 +121,7 @@
 .heroCard {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   overflow: hidden;
   box-shadow: var(--shadow-s);
   display: flex;
@@ -208,7 +208,7 @@
 .summaryCard {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   padding: var(--space-5) var(--space-6);
   display: flex;
   flex-direction: column;
@@ -307,7 +307,7 @@
 .emptyCard {
   background: var(--surface-card);
   border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   padding: var(--space-8);
   display: flex;
   flex-direction: column;
@@ -334,7 +334,7 @@
 .phaseCard {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-m);
   padding: var(--space-5) var(--space-6);
   display: flex;
   flex-direction: column;
