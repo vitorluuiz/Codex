@@ -7,12 +7,12 @@
 }
 
 .content {
-  padding: clamp(24px, 3.5vw, 44px);
+  padding: var(--space-6) var(--gutter-page);
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
   width: 100%;
-  max-width: 1240px;
+  /* max-width: var(--container-wide); */
   margin: 0 auto;
   min-width: 0;
 }
@@ -23,7 +23,7 @@
 .sampleNotice {
   grid-column: 1 / -1;
   margin: 0;
-  padding: 10px clamp(24px, 3.5vw, 44px);
+  padding: 10px var(--gutter-page);
   background: var(--tone-amber-surface);
   color: var(--amber-600);
   border-bottom: 1px solid var(--border-subtle);
@@ -46,8 +46,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-  padding: clamp(24px, 3.5vw, 44px) clamp(24px, 3.5vw, 44px) 0;
-  margin: calc(-1 * clamp(24px, 3.5vw, 44px)) calc(-1 * clamp(24px, 3.5vw, 44px)) 0;
+  padding: var(--space-6) var(--gutter-page) 0;
+  margin: calc(-1 * var(--space-6)) calc(-1 * var(--gutter-page)) 0;
 }
 
 .heroCover {

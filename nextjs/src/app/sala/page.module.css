@@ -6,12 +6,12 @@
   /* Fundo quente exclusivo desta tela, definido no design. */
   background: #f0eee9;
   font-family: var(--font-body);
-  padding: 24px;
+  padding: var(--space-6) var(--gutter-page);
 }
 
 .container {
   width: 100%;
-  max-width: 380px;
+  max-width: var(--container-compact);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -19,11 +19,10 @@
 
 .card {
   width: 100%;
-  max-width: 380px;
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
-  padding: 36px;
+  padding: clamp(24px, 5vw, 36px);
   box-shadow: var(--shadow-m);
 }
 

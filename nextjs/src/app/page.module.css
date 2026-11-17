@@ -4,9 +4,9 @@
 }
 
 .shell {
-  max-width: 1320px;
+  max-width: var(--container-wide);
   margin: 0 auto;
-  padding-inline: clamp(20px, 5vw, 64px);
+  padding-inline: var(--gutter-page-wide);
 }
 
 /* --- Barra de navegação --------------------------------------------------- */
@@ -355,9 +355,9 @@
 /* --- CTA final e rodapé --------------------------------------------------- */
 
 .cta {
-  max-width: 1320px;
+  max-width: var(--container-wide);
   margin: 0 auto 96px;
-  padding: 56px;
+  padding: 56px var(--gutter-page-wide);
   text-align: center;
 }
 
@@ -375,7 +375,7 @@
 
 .footer {
   border-top: 1px solid var(--border-subtle);
-  padding: 28px clamp(20px, 5vw, 64px);
+  padding: 28px var(--gutter-page-wide);
   text-align: center;
   color: var(--text-secondary);
   font-size: var(--text-caption);

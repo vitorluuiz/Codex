@@ -12,6 +12,17 @@
   --space-20: 80px;
   --space-24: 96px;
 
+  /* --- Larguras de contêineres e margens de layout --- */
+  --container-wide: 1320px;
+  --container-narrow: 800px;
+  --container-compact: 520px;
+
+  /* Calha / margem lateral responsiva (mobile -> tablet -> desktop) */
+  --gutter-mobile: 16px;
+  --gutter-desktop: 48px;
+  --gutter-page: clamp(var(--gutter-mobile), 4vw, var(--gutter-desktop));
+  --gutter-page-wide: clamp(20px, 5vw, 64px);
+
   --radius-s: 8px;
   --radius-m: 14px;
   --radius-l: 20px;

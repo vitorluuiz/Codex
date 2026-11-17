@@ -8,6 +8,8 @@ export type {
 export { Button } from './Button';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './Button';
 export { Card } from './Card';
+export { Container } from './Container';
+export type { ContainerProps, ContainerSize } from './Container';
 export { Dialog } from './Dialog';
 export { Input, TextArea } from './Input';
 export { Meter } from './Meter';

@@ -12,12 +12,12 @@
 }
 
 .content {
-  padding: clamp(24px, 4vw, 48px);
+  padding: var(--space-6) var(--gutter-page);
   display: flex;
   flex-direction: column;
   gap: 36px;
   width: 100%;
-  max-width: 1120px;
+  /* max-width: var(--container-wide);' */
   margin: 0 auto;
   min-width: 0;
 }

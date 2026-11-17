@@ -58,13 +58,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px;
+  padding: var(--space-8) var(--gutter-page);
   background: var(--surface-page);
 }
 
 .formShell {
   width: 100%;
-  max-width: 400px;
+  max-width: var(--container-compact);
 }
 
 @media (max-width: 900px) {

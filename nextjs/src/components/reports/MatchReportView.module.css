@@ -7,17 +7,18 @@
 }
 
 .content {
-  padding: var(--space-6) var(--space-5);
+  padding: var(--space-6) var(--gutter-page);
   display: flex;
   flex-direction: column;
   width: 100%;
+  max-width: var(--container-wide);
   min-width: 0;
   color: var(--text-primary);
 }
 
 .container {
-  max-width: 1180px;
   width: 100%;
+  max-width: var(--container-wide);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
