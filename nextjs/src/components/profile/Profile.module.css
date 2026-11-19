@@ -17,7 +17,7 @@
   flex-direction: column;
   gap: 36px;
   width: 100%;
-  /* max-width: var(--container-wide);' */
+  max-width: var(--container-wide);
   margin: 0 auto;
   min-width: 0;
 }

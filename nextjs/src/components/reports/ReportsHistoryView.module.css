@@ -11,6 +11,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  max-width: var(--container-wide);
   min-width: 0;
   color: var(--text-primary);
 }
@@ -23,25 +24,6 @@
   flex-direction: column;
   gap: var(--space-5);
   min-width: 0;
-}
-
-.topNav {
-  display: flex;
-  align-items: center;
-}
-
-.backLink {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-size: var(--text-body-s);
-  font-weight: var(--fw-medium);
-}
-
-.backLink:hover {
-  color: var(--text-primary);
 }
 
 .header {
@@ -83,10 +65,9 @@
   outline: none;
 }
 
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+.tabs {
+  position: relative;
+  padding-bottom: var(--space-1);
 }
 
 .sectionTitle {

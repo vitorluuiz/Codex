@@ -1,15 +1,23 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
-import { Button, Toast, ToastViewport } from '@/components/ds';
-import { Icon } from '@/components/icons/Icons';
+import { Button, Tabs, type TabItem } from '@/components/ds';
+import {
+  MatchHistoryList,
+  type MatchHistoryRowItem,
+} from '@/components/match-history/MatchHistoryList';
 import { AppSidebar } from '@/components/nav/AppSidebar';
-import type { User, UserReportsHistory } from '@/lib/types';
-import { loadVisitedReports, type VisitedReportEntry } from './visitedReportsStorage';
+import type { Audience, User, UserReportsHistory } from '@/lib/types';
 import styles from './ReportsHistoryView.module.css';
+
+type ReportsTab = 'leader' | 'participant';
+
+const PARTICIPANTS_LABEL: Record<Audience, string> = {
+  teacher: 'Participantes',
+  recruiter: 'Candidatos',
+};
 
 function formatDateBr(iso: string): string {
   const date = new Date(iso);
@@ -27,24 +35,41 @@ interface ReportsHistoryViewProps {
 
 export function ReportsHistoryView({ user, serverHistory }: ReportsHistoryViewProps) {
   const router = useRouter();
-  const [visited, setVisited] = useState<VisitedReportEntry[]>([]);
   const [linkInput, setLinkInput] = useState('');
-  const [toast, setToast] = useState<string | null>(null);
-
-  useEffect(() => {
-    setVisited(loadVisitedReports());
-  }, []);
+  const [activeTab, setActiveTab] = useState<ReportsTab>('leader');
 
   const leaderReports = serverHistory?.leaderReports ?? [];
   const participantReports = serverHistory?.participantReports ?? [];
+  const participantsLabel = user ? PARTICIPANTS_LABEL[user.audience] : 'Participantes';
 
-  // Filtra os relatórios salvos localmente que já não estejam nas listas do servidor
-  const serverShareTokens = new Set(leaderReports.map((r) => r.shareToken));
-  const serverAccessTokens = new Set(participantReports.map((r) => r.accessToken));
+  const tabs: TabItem<ReportsTab>[] = [
+    { id: 'leader', label: `Relatórios como Líder (${leaderReports.length})` },
+    { id: 'participant', label: `Relatórios como Participante (${participantReports.length})` },
+  ];
 
-  const guestSavedReports = visited.filter((v) =>
-    v.kind === 'leader' ? !serverShareTokens.has(v.token) : !serverAccessTokens.has(v.token),
-  );
+  const leaderItems: MatchHistoryRowItem[] = leaderReports.map((item) => ({
+    id: item.matchId,
+    href: `/relatorios/${item.shareToken}`,
+    title: item.title,
+    mode: item.mode,
+    dateLabel: formatDateBr(item.finishedAt),
+    phaseValues: item.phaseScores ?? [],
+    score: item.avgScore,
+    maxScore: item.maxPossibleScore,
+    statLabel: `${item.participantCount} ${participantsLabel}`,
+  }));
+
+  const participantItems: MatchHistoryRowItem[] = participantReports.map((item) => ({
+    id: `${item.matchId}-${item.accessToken}`,
+    href: `/relatorios/individual/${item.accessToken}`,
+    title: item.title,
+    mode: item.mode,
+    dateLabel: formatDateBr(item.finishedAt),
+    phaseValues: item.phaseScores ?? [],
+    score: item.totalScore,
+    maxScore: item.maxPossibleScore,
+    statLabel: `#${item.rank} de ${item.participantCount} · ${item.correctCount}/${item.phaseCount} acertos`,
+  }));
 
   function openByInput(e: React.FormEvent) {
     e.preventDefault();
@@ -66,16 +91,6 @@ export function ReportsHistoryView({ user, serverHistory }: ReportsHistoryViewPr
     router.push(`/relatorios/individual/${encodeURIComponent(raw)}`);
   }
 
-  async function copyUrl(path: string, label: string) {
-    const url = `${window.location.origin}${path}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setToast(`${label} copiado para a área de transferência!`);
-    } catch {
-      setToast(url);
-    }
-  }
-
   return (
     <div className={styles.layout}>
       <AppSidebar user={user} active="relatorios" />
@@ -91,6 +106,29 @@ export function ReportsHistoryView({ user, serverHistory }: ReportsHistoryViewPr
             </p>
           </header>
 
+          <form className={styles.lookupBar} onSubmit={openByInput}>
+            <input
+              type="text"
+              value={linkInput}
+              onChange={(e) => setLinkInput(e.target.value)}
+              placeholder="Cole um link ou token de relatório recebido..."
+              className={styles.lookupInput}
+            />
+            <Button type="submit" size="sm">
+              Abrir relatório
+            </Button>
+          </form>
+
+          {user && (
+            <>
+              <div className={styles.tabs}>
+                <Tabs
+                  label="Categoria de relatórios"
+                  tabs={tabs}
+                  active={activeTab}
+                  onChange={setActiveTab}
+                />
+              </div>
         <form className={styles.lookupBar} onSubmit={openByInput}>
           <input
             type="text"
@@ -260,16 +298,23 @@ export function ReportsHistoryView({ user, serverHistory }: ReportsHistoryViewPr
       </div>
     </main>
 
-    {toast && (
-        <ToastViewport>
-          <Toast
-            tone="success"
-            title="Relatórios"
-            message={toast}
-            onClose={() => setToast(null)}
-          />
-        </ToastViewport>
-      )}
+              <section className={styles.section} role="tabpanel">
+                {activeTab === 'leader' ? (
+                  <MatchHistoryList
+                    items={leaderItems}
+                    emptyMessage="Você ainda não possui partidas finalizadas como líder."
+                  />
+                ) : (
+                  <MatchHistoryList
+                    items={participantItems}
+                    emptyMessage="Nenhuma partida encontrada no seu histórico de participante."
+                  />
+                )}
+              </section>
+            </>
+          )}
+        </div>
+      </main>
     </div>
   );
 }

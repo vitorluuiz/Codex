@@ -58,7 +58,7 @@ public class ParticipantService(
             request.AvatarIndex,
             userId is not null,
             userId,
-            existing?.Status ?? "pending",
+            "approved",
             existing?.JoinedAtMs ?? RoomRedisData.ToMs(DateTimeOffset.UtcNow),
             existing?.InResultsSinceMs
         );
@@ -110,48 +110,6 @@ public class ParticipantService(
             .OrderBy(p => p.JoinedAtMs)
             .Select(p => ToDto(room.Id, p))
             .ToList();
-    }
-
-    public async Task ApproveAsync(string code, Guid participantId, ClaimsPrincipal principal, CancellationToken ct)
-    {
-        var room = await roomAccess.GetRoomAsLeaderAsync(code, principal, ct);
-        var participant = await repo.GetParticipantAsync(room.Id, participantId.ToString(), ct)
-                          ?? throw new ApiException(StatusCodes.Status404NotFound, ErrorCodes.ParticipantNotFound, "Participante nao encontrado nesta sala.");
-
-        if (room.RequireAccount && !participant.LoggedIn)
-        {
-            throw new ApiException(StatusCodes.Status403Forbidden, ErrorCodes.AccountRequired, "Esta sala exige uma conta; este participante entrou sem conta.");
-        }
-
-        if (participant.Status == "rejected"
-            && await roomService.CountOccupancyAsync(room.Id, ct) >= room.Capacity)
-        {
-            throw new ApiException(StatusCodes.Status409Conflict, ErrorCodes.RoomFull, "A sala atingiu a capacidade maxima.");
-        }
-
-        participant = participant with { Status = "approved" };
-        await repo.UpdateParticipantAsync(room.Id, participant, ct);
-
-        await PublishDecisionAsync(room.Code, room.Id, participant, ct);
-    }
-
-    public async Task RejectAsync(string code, Guid participantId, ClaimsPrincipal principal, CancellationToken ct)
-    {
-        var room = await roomAccess.GetRoomAsLeaderAsync(code, principal, ct);
-        var participant = await repo.GetParticipantAsync(room.Id, participantId.ToString(), ct)
-                          ?? throw new ApiException(StatusCodes.Status404NotFound, ErrorCodes.ParticipantNotFound, "Participante nao encontrado nesta sala.");
-
-        participant = participant with { Status = "rejected" };
-        await repo.RejectParticipantAsync(room.Id, participantId.ToString(), participant.DisplayName.ToLowerInvariant(), participant, ct);
-
-        await PublishDecisionAsync(room.Code, room.Id, participant, ct);
-    }
-
-    private async Task PublishDecisionAsync(string roomCode, string roomId, RoomRedisData.ParticipantData participant, CancellationToken ct)
-    {
-        var dto = ToDto(roomId, participant);
-        await realtime.PublishAsync(roomCode, RealtimeChannels.Room(roomCode), new ParticipantUpdatedEvent(dto), ct);
-        await realtime.PublishAsync(roomCode, RealtimeChannels.Participant(Guid.Parse(participant.Id)), new ParticipantUpdatedEvent(dto), ct);
     }
 
     public async Task RemoveAsync(string code, Guid participantId, ClaimsPrincipal principal, CancellationToken ct)

@@ -83,7 +83,7 @@ public class MatchService(
 
         if (await stats.CountPlayersAsync(roomId, ct) is 0)
         {
-            throw new ApiException(StatusCodes.Status409Conflict, ErrorCodes.NoPlayers, "Aprove ao menos um participante antes de comecar.");
+            throw new ApiException(StatusCodes.Status409Conflict, ErrorCodes.NoPlayers, "Adicione ao menos um participante a sala antes de comecar.");
         }
 
         // O portao que a secao 5 deixou marcado: "rascunho incompleto salva; quem deveria cobrar

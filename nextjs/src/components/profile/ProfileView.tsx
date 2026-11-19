@@ -1,12 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 import { Avatar } from '@/components/avatar/Avatar';
 import { Button, Dialog, Input, Tag, Toast, ToastViewport } from '@/components/ds';
 import { AppSidebar, type ProfileMode } from '@/components/nav/AppSidebar';
 import { AUDIENCE_LABEL } from '@/components/nav/audienceLabels';
+import { readStoredProfileMode, writeStoredProfileMode } from '@/components/nav/profileMode';
 import { logoutAction } from '@/lib/actions/auth';
 import { createRoomAction, exportMatchReportAction, updateProfileAction } from '@/lib/actions/profile';
 import { closeRoomAction } from '@/lib/actions/room';
@@ -36,16 +37,54 @@ interface ProfileViewProps {
    * mostrar as do dono entregaria o código de sala dele a qualquer visitante.
    */
   activeRooms?: ActiveRoom[];
+  /** Modo inicial resolvido no servidor a partir da URL ou do cookie. */
+  initialProfileMode?: ProfileMode;
+  /** Preenchido quando a URL especificou `?modo=lider` ou `?modo=participante`. */
+  explicitProfileMode?: ProfileMode;
 }
 
-export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: ProfileViewProps) {
+export function ProfileView({
+  profile,
+  isOwnProfile,
+  activeRooms = [],
+  initialProfileMode = 'leader',
+  explicitProfileMode,
+}: ProfileViewProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
   const [user, setUser] = useState(profile.user);
-  const [profileMode, setProfileMode] = useState<ProfileMode>('leader');
+  const [profileMode, setProfileMode] = useState<ProfileMode>(
+    isOwnProfile ? initialProfileMode : 'leader',
+  );
   const [editOpen, setEditOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOwnProfile) return;
+    if (explicitProfileMode) {
+      setProfileMode(explicitProfileMode);
+      writeStoredProfileMode(explicitProfileMode);
+    } else {
+      setProfileMode(readStoredProfileMode());
+    }
+  }, [isOwnProfile, explicitProfileMode]);
+
+  function handleProfileModeChange(nextMode: ProfileMode) {
+    setProfileMode(nextMode);
+    writeStoredProfileMode(nextMode);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('modo', nextMode === 'participant' ? 'participante' : 'lider');
+      window.history.replaceState(
+        window.history.state,
+        '',
+        `${url.pathname}${url.search}${url.hash}`,
+      );
+    } catch {
+      // Ignora erro caso history.replaceState não esteja disponível
+    }
+  }
 
   const audienceLabel = AUDIENCE_LABEL[user.audience];
   const participantsLabel = PARTICIPANTS_LABEL[user.audience];
@@ -76,7 +115,7 @@ export function ProfileView({ profile, isOwnProfile, activeRooms = [] }: Profile
               active="perfil"
               onSignOut={() => startTransition(() => void logoutAction())}
               profileMode={profileMode}
-              onProfileModeChange={setProfileMode}
+              onProfileModeChange={handleProfileModeChange}
             />
           )}
 

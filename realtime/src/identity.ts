@@ -103,14 +103,9 @@ export class IdentityResolver {
     const result = await this.call(credential, roomCode);
 
     // Falha de infraestrutura nao entra no cache.
-    // Participante com status 'pending' não deve ser cacheado, pois pode ser aprovado a qualquer segundo
-    // e o cache impediria a assinatura imediata de canais da sala.
-    const isPending = result.ok && result.identity.participantStatus === 'pending';
-    if (key !== null && !isPending && (result.ok || result.reason !== 'unavailable')) {
+    if (key !== null && (result.ok || result.reason !== 'unavailable')) {
       this.cache.set(key, { expiresAt: Date.now() + this.config.roleCacheTtlMs, result });
       this.sweep();
-    } else if (key !== null && isPending) {
-      this.cache.delete(key);
     }
 
     return result;
@@ -186,7 +181,7 @@ function toIdentity(body: ResolveResponseBody): Identity {
     roomCode: body.roomCode ?? null,
     isLeader: body.isLeader === true,
     participantStatus: status,
-    isApprovedParticipant: status === 'approved',
+    isApprovedParticipant: status === 'approved' || status === 'pending',
     displayName: body.displayName ?? null,
     avatarIndex: typeof body.avatarIndex === 'number' ? body.avatarIndex : null,
     sessionToken: body.sessionToken ?? null,
