@@ -65,7 +65,7 @@ export function parseChannel(raw: unknown): ParsedChannel | null {
  */
 export function canSubscribe(channel: ParsedChannel, identity: Identity): boolean {
   switch (channel.kind) {
-    // Lobby e partida: qualquer participante da sala, mais o lider.
+    // Lobby e partida: qualquer participante aprovado da sala, mais o lider.
     case 'room':
     case 'match':
       return channel.roomCode === identity.roomCode && (identity.isLeader || identity.isApprovedParticipant);

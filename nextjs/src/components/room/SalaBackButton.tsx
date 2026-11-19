@@ -13,7 +13,7 @@ interface SalaBackButtonProps {
 }
 
 function getReturnLabel(path: string): string {
-  if (path === '/perfil' || path.startsWith('/perfil/') || path.startsWith('/perfil?')) {
+  if (path === '/perfil' || path.startsWith('/perfil/')) {
     return 'Retornar para o perfil';
   }
   if (path === '/' || path.startsWith('/?')) {

@@ -16,10 +16,6 @@
   box-shadow: var(--shadow-m);
 }
 
-.card > a {
-  text-decoration: unset;
-}
-
 /* --- Capa ----------------------------------------------------------------- */
 
 .cover {
@@ -190,7 +186,7 @@
 .stat dd {
   margin: 0;
   font-family: var(--font-display);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-bold);
   font-size: var(--text-body-s);
   color: var(--stat-color, var(--text-primary));
 }

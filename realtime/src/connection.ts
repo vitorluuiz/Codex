@@ -340,7 +340,8 @@ export class Connection implements Subscriber {
       }
 
       if (!canSubscribe(channel, identity)) {
-        // Se a permissão falhou, busca uma identidade fresca da API antes de recusar a assinatura.
+        // Se a permissão falhou (ex.: aluno recém-aprovado cujo papel em cache ainda era pendente),
+        // busca uma identidade fresca da API antes de recusar a assinatura.
         const fresh = await this.currentIdentity(true);
         if (fresh !== null && canSubscribe(channel, fresh)) {
           identity = fresh;

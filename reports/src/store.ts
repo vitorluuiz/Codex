@@ -109,13 +109,7 @@ export interface ReportStore {
   close(): Promise<void>;
 }
 
-function toPhasePercent(score: number, maxScore: number, fallback: number): number {
-  const raw = maxScore > 0 ? Math.round((score / maxScore) * 100) : Math.round(fallback);
-  return Math.max(0, Math.min(100, raw));
-}
-
 function toLeaderHistoryItem(r: MatchReportDocument): LeaderReportHistoryItem {
-  const orderedPhases = [...(r.phases ?? [])].sort((a, b) => a.orderIndex - b.orderIndex);
   return {
     matchId: r.matchId,
     shareToken: r.shareToken,
@@ -130,9 +124,6 @@ function toLeaderHistoryItem(r: MatchReportDocument): LeaderReportHistoryItem {
     avgScore: r.overview.avgScore,
     maxPossibleScore: r.overview.maxPossibleScore,
     accuracyRate: r.overview.accuracyRate,
-    phaseScores: orderedPhases.map((phase) =>
-      toPhasePercent(phase.avgScore, phase.maxScore, phase.accuracyRate),
-    ),
   };
 }
 
@@ -144,7 +135,6 @@ function toParticipantHistoryItem(
     (part) => part.userId && part.userId.toLowerCase() === userId.toLowerCase(),
   );
   if (!p) return null;
-  const orderedAnswers = [...(p.answers ?? [])].sort((a, b) => a.phaseNumber - b.phaseNumber);
   return {
     matchId: r.matchId,
     accessToken: p.accessToken,
@@ -161,9 +151,6 @@ function toParticipantHistoryItem(
     accuracyRate: p.accuracyRate,
     correctCount: p.correctCount,
     phaseCount: r.overview.phaseCount,
-    phaseScores: orderedAnswers.map((ans) =>
-      toPhasePercent(ans.score, ans.maxScore, ans.correct ? 100 : 0),
-    ),
   };
 }
 

@@ -400,7 +400,6 @@ export interface LeaderReportHistoryItem {
   avgScore: number;
   maxPossibleScore: number;
   accuracyRate: number;
-  phaseScores: number[];
 }
 
 export interface ParticipantReportHistoryItem {
@@ -419,7 +418,6 @@ export interface ParticipantReportHistoryItem {
   accuracyRate: number;
   correctCount: number;
   phaseCount: number;
-  phaseScores: number[];
 }
 
 export interface UserReportsHistoryDto {

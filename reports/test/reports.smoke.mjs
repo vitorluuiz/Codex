@@ -236,26 +236,6 @@ assert.ok(Array.isArray(history.leaderReports), 'leaderReports deve ser um array
 assert.ok(history.leaderReports.length >= 1, 'Deve conter ao menos 1 relatorio como lider');
 assert.equal(history.leaderReports[0].matchId, sampleMatch.id);
 assert.equal(history.leaderReports[0].shareToken, report.shareToken);
-assert.deepEqual(
-  history.leaderReports[0].phaseScores,
-  [90, 50],
-  'leaderReports deve expor phaseScores normalizados (0..100) por fase',
-);
-
-const participantHistoryRes = await fetch(
-  `${baseUrl}/reports/users/${sampleMatch.participants[0].userId}/history`,
-  { headers },
-);
-assert.equal(participantHistoryRes.status, 200);
-const participantHistory = await participantHistoryRes.json();
-assert.ok(Array.isArray(participantHistory.participantReports), 'participantReports deve ser um array');
-assert.ok(participantHistory.participantReports.length >= 1, 'Deve conter ao menos 1 relatorio individual');
-assert.equal(participantHistory.participantReports[0].matchId, sampleMatch.id);
-assert.deepEqual(
-  participantHistory.participantReports[0].phaseScores,
-  [90, 100],
-  'participantReports deve expor phaseScores normalizados (0..100) por fase',
-);
 
 // 6. Partida sintetica completa para validar heuristicas psicometricas, chute, cola e IA
 const longQuestionText = Array.from(

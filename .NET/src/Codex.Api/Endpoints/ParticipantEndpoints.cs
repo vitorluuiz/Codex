@@ -30,6 +30,18 @@ public static class ParticipantEndpoints
             return Results.NoContent();
         });
 
+        group.MapPost("/{id:guid}/approve", async (string code, Guid id, ClaimsPrincipal principal, ParticipantService participants, CancellationToken ct) =>
+        {
+            await participants.ApproveAsync(code, id, principal, ct);
+            return Results.NoContent();
+        });
+
+        group.MapPost("/{id:guid}/reject", async (string code, Guid id, ClaimsPrincipal principal, ParticipantService participants, CancellationToken ct) =>
+        {
+            await participants.RejectAsync(code, id, principal, ct);
+            return Results.NoContent();
+        });
+
         group.MapDelete("/{id:guid}", async (string code, Guid id, ClaimsPrincipal principal, ParticipantService participants, CancellationToken ct) =>
         {
             await participants.RemoveAsync(code, id, principal, ct);

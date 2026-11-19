@@ -34,10 +34,12 @@ export default async function JoinRoomPage({ searchParams }: PageProps) {
   const [{ codigo, saida }, session] = await Promise.all([searchParams, getSession()]);
   const initialCode = codigo?.replace(/\D/g, '').slice(0, 6) ?? '';
   const activeRooms = initialCode ? [] : await getActiveRooms();
+  const fallbackUrl = session.user ? '/perfil' : '/';
 
   return (
     <main className={styles.page}>
       <div className={styles.container}>
+        <SalaBackButton fallbackUrl={fallbackUrl} />
         <div className={styles.card}>
           <Link href="/" className={styles.brand}>
             Codex

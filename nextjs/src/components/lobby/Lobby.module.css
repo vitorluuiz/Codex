@@ -19,7 +19,7 @@
 .header {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-m);
+  border-radius: var(--radius-xl);
   padding: 20px 28px;
   box-shadow: var(--shadow-s);
   display: flex;
@@ -140,7 +140,7 @@
 .waitingCard {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-m);
+  border-radius: var(--radius-xl);
   padding: clamp(24px, 4vw, 40px);
   box-shadow: var(--shadow-s);
   text-align: center;
@@ -286,7 +286,7 @@
 .panel {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-m);
+  border-radius: var(--radius-xl);
   padding: 24px;
   box-shadow: var(--shadow-s);
   display: flex;
@@ -329,7 +329,8 @@
   gap: 8px;
   padding: 10px 6px;
   border: none;
-  background-color: unset;
+  border-radius: var(--radius-l);
+  background: var(--surface-sunken);
 }
 
 .compactName {
@@ -363,7 +364,7 @@
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  border-radius: var(--radius-m);
+  border-radius: var(--radius-l);
   background: var(--surface-sunken);
 }
 
@@ -396,7 +397,7 @@
 .decisionButton {
   width: 34px;
   height: 34px;
-  border-radius: var(--radius-s);
+  border-radius: 50%;
   border: none;
   color: #fff;
   cursor: pointer;
@@ -422,13 +423,7 @@
 }
 
 .rejectButton {
-  color: var(--accent-danger);
-  border: 2px solid var(--accent-danger);
-}
-
-.rejectButton:hover{
   background: var(--accent-danger);
-  color: var(--surface-card);
 }
 
 /* --- Popover do jogador --------------------------------------------------- */
@@ -442,7 +437,7 @@
 .popoverCard {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-m);
+  border-radius: var(--radius-l);
   padding: 18px;
   box-shadow: var(--shadow-l);
   display: flex;

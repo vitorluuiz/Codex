@@ -190,7 +190,7 @@ try {
     check('room:*:leader e canal privado alheio => FORBIDDEN_CHANNEL', errors.length === 2, `${errors.length} erro(s)`);
   }
 
-  /* 5. participante entra direto no canal da sala sem confirmação ---------- */
+  /* 5. pendente não entra no canal da sala ---------------------------------- */
   {
     const ws = open({ cookie: PENDING_TOKEN });
     await new Promise((r) => ws.on('open', r));
@@ -198,7 +198,25 @@ try {
     ws.send(JSON.stringify({ type: 'hello', v: 1, token: '', roomCode: ROOM }));
     ws.send(JSON.stringify({ type: 'subscribe', channels: [`room:${ROOM}`] }));
     const got = await messages;
-    check('Participante assina room:{code} diretamente sem confirmação', !got.some((m) => m.type === 'error' && m.code === 'FORBIDDEN_CHANNEL'));
+    check('Participante pending não assina room:{code} (§3)', got.some((m) => m.type === 'error' && m.code === 'FORBIDDEN_CHANNEL'));
+
+    // Justamente por não estar no canal da sala, o pendente só descobre que foi
+    // aceito pelo canal privado — é o que tira a tela "esperando o líder aceitar
+    // sua solicitação para entrar" do ar sem recarregar a página na mão.
+    {
+      const decision = collect(ws, 900);
+      ws.send(JSON.stringify({ type: 'subscribe', channels: [`participant:${PARTICIPANT_PENDING}`] }));
+      // O `subscribe` relê o papel na API antes de registrar o canal (§10);
+      // publicar no mesmo tick chegaria antes de existir assinante.
+      await new Promise((r) => setTimeout(r, 300));
+      await publish(`participant:${PARTICIPANT_PENDING}`, {
+        type: 'participant.updated',
+        participant: { id: PARTICIPANT_PENDING, displayName: 'Ana', status: 'approved' },
+      });
+      const decided = await decision;
+      const event = decided.find((m) => m.type === 'participant.updated');
+      check('Pendente recebe a própria aprovação no canal privado', event?.participant?.status === 'approved', JSON.stringify(event));
+    }
 
     ws.close();
   }
