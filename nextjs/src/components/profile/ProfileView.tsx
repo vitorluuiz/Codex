@@ -8,6 +8,7 @@ import { Button, Dialog, Input, Tag, Toast, ToastViewport } from '@/components/d
 import { AppSidebar, type ProfileMode } from '@/components/nav/AppSidebar';
 import { AUDIENCE_LABEL } from '@/components/nav/audienceLabels';
 import { readStoredProfileMode, writeStoredProfileMode } from '@/components/nav/profileMode';
+import { clearLastActiveRoomIfMatches } from '@/components/nav/sidebarSubmenus';
 import { logoutAction } from '@/lib/actions/auth';
 import { createRoomAction, exportMatchReportAction, updateProfileAction } from '@/lib/actions/profile';
 import { closeRoomAction } from '@/lib/actions/room';
@@ -102,6 +103,7 @@ export function ProfileView({
   function closeRoom(room: ActiveRoom) {
     startTransition(async () => {
       await closeRoomAction(room.code);
+      clearLastActiveRoomIfMatches(room.code);
       router.refresh();
     });
   }
@@ -113,6 +115,7 @@ export function ProfileView({
               user={user}
               audienceLabel={audienceLabel}
               active="perfil"
+              activeRooms={activeRooms}
               onSignOut={() => startTransition(() => void logoutAction())}
               profileMode={profileMode}
               onProfileModeChange={handleProfileModeChange}

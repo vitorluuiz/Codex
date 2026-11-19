@@ -99,10 +99,11 @@ public class RoomService(
             foreach (var r in await repo.GetLedRoomIdsAsync(userId, ct)) roomIds.Add(r);
             foreach (var r in await repo.GetJoinedRoomIdsAsync(userId, ct)) roomIds.Add(r);
         }
-        else if (principal.GetRoomCode() is { } code)
+
+        if (principal.GetRoomCode() is { } code && participantId is not null)
         {
             var rId = await repo.GetRoomIdByCodeAsync(code, ct);
-            if (rId is not null && participantId is not null)
+            if (rId is not null)
             {
                 var p = await repo.GetParticipantAsync(rId, participantId, ct);
                 if (p is not null && p.Status != "rejected") roomIds.Add(rId);
@@ -122,12 +123,24 @@ public class RoomService(
         }
 
         var results = new List<ActiveRoomDto>();
-        foreach (var r in loadedRooms.OrderByDescending(r => r.CreatedAtMs).Take(MaxActiveRooms))
+        foreach (var r in loadedRooms.OrderByDescending(r => r.CreatedAtMs))
         {
+            if (results.Count >= MaxActiveRooms) break;
+
             var isLeader = userId is not null && r.LeaderUserId == userId;
-            var sets = await repo.GetQueueSetsAsync(r.Id, ct);
-            var phases = await repo.GetQueuePhasesAsync(r.Id, ct);
             var parts = await repo.GetParticipantsAsync(r.Id, ct);
+
+            if (!isLeader)
+            {
+                var isMember = parts.Any(p =>
+                    p.Status != "rejected" &&
+                    ((userId is not null && p.UserId == userId) ||
+                     (participantId is not null && p.Id == participantId)));
+                if (!isMember) continue;
+            }
+
+            var sets = isLeader ? await repo.GetQueueSetsAsync(r.Id, ct) : [];
+            var phases = isLeader ? await repo.GetQueuePhasesAsync(r.Id, ct) : [];
 
             results.Add(new ActiveRoomDto(
                 r.Code,
@@ -201,6 +214,11 @@ public class RoomService(
                     RealtimeChannels.Participant(pId),
                     new RoomClosedEvent(),
                     ct);
+            }
+
+            if (p.UserId is not null)
+            {
+                await repo.RemoveFromJoinedAsync(p.UserId, room.Id, ct);
             }
         }
 

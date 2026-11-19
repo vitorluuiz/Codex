@@ -7,6 +7,10 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { Avatar } from '@/components/avatar/Avatar';
 import { Button, Popover, Switch, Tooltip, anchorFrom, type AnchorRect } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
+import {
+  clearLastActiveRoomIfMatches,
+  recordLastActiveRoom,
+} from '@/components/nav/sidebarSubmenus';
 import { RealtimeProvider, useRealtimeEvent } from '@/realtime/RealtimeProvider';
 import { channels } from '@/realtime/protocol';
 import {
@@ -156,6 +160,20 @@ function LobbyContent({
   });
 
   useEffect(() => {
+    if (rejected) {
+      clearLastActiveRoomIfMatches(room.code);
+      return;
+    }
+    recordLastActiveRoom({
+      code: room.code,
+      status: room.status,
+      role: isLeader ? 'leader' : 'participant',
+      leaderName: room.leader.name,
+      setTitle: queue.sets[0]?.title ?? null,
+    });
+  }, [room.code, room.status, room.leader.name, isLeader, queue.sets, rejected]);
+
+  useEffect(() => {
     if (room.status === 'running' && !awaitingApproval && !isLeader) {
       router.push(`/sala/${room.code}/partida`);
     }
@@ -173,10 +191,12 @@ function LobbyContent({
   // `replace`, não `push`: o lobby de onde a pessoa acabou de sair responde 404
   // para ela agora, então voltar por ele não é um caminho que exista mais.
   useRealtimeEvent('participant.removed', () => {
+    clearLastActiveRoomIfMatches(room.code);
     router.replace('/sala?saida=removido');
   });
 
   useRealtimeEvent('room.closed', () => {
+    clearLastActiveRoomIfMatches(room.code);
     if (!isLeader) {
       router.replace('/sala?saida=encerrada');
     }
@@ -217,6 +237,7 @@ function LobbyContent({
   function closeRoom(room: Room) {
     startTransition(async () => {
       await closeRoomAction(room.code);
+      clearLastActiveRoomIfMatches(room.code);
       router.replace('/perfil');
     });
   }

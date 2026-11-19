@@ -129,6 +129,15 @@ public class RoomTestContext
             [new Claim(CodexClaimTypes.ParticipantId, participantId.ToString()), new Claim(CodexClaimTypes.RoomCode, Room.Code)],
             "test"));
 
+    public ClaimsPrincipal AsParticipant(Guid participantId, Guid userId)
+        => new(new ClaimsIdentity(
+            [
+                new Claim(CodexClaimTypes.UserId, userId.ToString()),
+                new Claim(CodexClaimTypes.ParticipantId, participantId.ToString()),
+                new Claim(CodexClaimTypes.RoomCode, Room.Code),
+            ],
+            "test"));
+
     /// <summary>Usuario qualquer que existe mas nao e o lider desta sala.</summary>
     public User AddUser(string name, string email)
     {
@@ -387,6 +396,10 @@ public class RoomTestContext
                 participant.DisplayName.ToLowerInvariant(),
                 data,
                 CancellationToken.None).GetAwaiter().GetResult();
+        }
+        else if (userId is not null)
+        {
+            RoomRepo.AddToJoinedAsync(userId.Value.ToString(), Room.Id.ToString(), CancellationToken.None).GetAwaiter().GetResult();
         }
 
         return participant;

@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react';
 import { Avatar } from '@/components/avatar/Avatar';
 import { AVATAR_COUNT, toAvatarIndex } from '@/components/avatar/avatars';
 import { Button, Dialog, Input } from '@/components/ds';
+import { recordLastActiveRoom } from '@/components/nav/sidebarSubmenus';
 import { checkRoomCodeAction, joinRoomAction } from '@/lib/actions/room';
 import { cx } from '@/lib/cx';
 import type { AvatarIndex, JoinRejectionReason } from '@/lib/types';
@@ -44,6 +45,11 @@ export function JoinRoomFlow({ initialCode, suggestedName, isAuthenticated }: Jo
     startTransition(async () => {
       const result = await joinRoomAction(code, name.trim(), avatarIndex);
       if (result.ok) {
+        recordLastActiveRoom({
+          code,
+          status: 'lobby',
+          role: 'participant',
+        });
         router.push(`/sala/${code}/lobby`);
       } else {
         setErrorReason(result.reason);

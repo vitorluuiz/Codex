@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useState, useSyncExternalStore, useTransition, type ReactNode } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect, useState, useSyncExternalStore, useTransition, type ReactNode } from 'react';
 
 import { Avatar } from '@/components/avatar/Avatar';
 import { Icon } from '@/components/icons/Icons';
@@ -15,15 +15,49 @@ import {
   writeStoredProfileMode,
   type ProfileMode,
 } from '@/components/nav/profileMode';
+import {
+  EMPTY_SIDEBAR_SUBMENU_STATE,
+  clearSidebarSubmenus,
+  readSidebarSubmenuState,
+  reconcileActiveRooms,
+  recordLastSettingsSection,
+  subscribeSidebarSubmenus,
+  syncSidebarOwner,
+  type SidebarSubmenuState,
+} from '@/components/nav/sidebarSubmenus';
+import {
+  clearVisitedReports,
+  readLatestVisitedReport,
+  subscribeVisitedReports,
+  type VisitedReportEntry,
+} from '@/components/reports/visitedReportsStorage';
+import { ROOM_STATUS_LABEL } from '@/components/room/activeRoomLabels';
 import { logoutAction } from '@/lib/actions/auth';
 import { cx } from '@/lib/cx';
-import type { User } from '@/lib/types';
+import { roomPath } from '@/lib/roomPath';
+import type { ActiveRoom, User } from '@/lib/types';
 import styles from './AppSidebar.module.css';
 
 /** Chaves das telas que a barra conhece. */
-export type AppSection = 'perfil' | 'conjuntos' | 'relatorios' | 'entrar-sala';
+export type AppSection = 'perfil' | 'conjuntos' | 'relatorios' | 'entrar-sala' | 'configuracoes';
 
 export type { ProfileMode };
+
+export interface SidebarSubmenuItem {
+  key: string;
+  label: string;
+  /** Texto auxiliar curto abaixo do rótulo (ex.: "No lobby", "Sala 123456"). */
+  meta?: string;
+  /** Sem destino o subitem aparece como "Em breve". */
+  href?: string;
+  /** Indicador visual de item ao vivo (usado para sala ativa). */
+  live?: boolean;
+}
+
+export interface ActiveSubmenuContext {
+  section: AppSection;
+  item: SidebarSubmenuItem;
+}
 
 /** Corta o nome completo para mostrar apenas as duas primeiras palavras. */
 function formatShortUserName(fullName: string): string {
@@ -34,7 +68,7 @@ interface NavEntry {
   key: string;
   label: string;
   icon: ReactNode;
-  /** Sem destino a entrada aparece desabilitada — a tela ainda não existe. */
+  /** Sem destino (e sem subseções expansíveis) a entrada aparece desabilitada. */
   href?: string;
   /**
    * Se o destino exige usuário logado. Padrão: true.
@@ -42,7 +76,18 @@ interface NavEntry {
    * `requiresAuth` não aparecem na barra.
    */
   requiresAuth?: boolean;
+  /**
+   * Subseções fixas exibidas quando o usuário expande o item pai (ex.: Configurações).
+   * Quando recolhido, a barra exibe apenas a última subseção acessada, se houver.
+   */
+  staticSubItems?: SidebarSubmenuItem[];
 }
+
+const SETTINGS_SUBITEMS: SidebarSubmenuItem[] = [
+  { key: 'configuracoes-perfil', label: 'Perfil da conta' },
+  { key: 'configuracoes-pagamentos', label: 'Pagamentos e plano' },
+  { key: 'configuracoes-ia', label: 'Uso de cotas de IA' },
+];
 
 /**
  * Itens ainda não construídos aparecem desabilitados em vez de sumirem: o menu
@@ -52,13 +97,19 @@ interface NavEntry {
  */
 const LEADER_ENTRIES: NavEntry[] = [
   { key: 'perfil', label: 'Perfil', icon: <Icon.Person size={18} />, href: getProfileHref('leader'), requiresAuth: true },
-  { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} />, href: '/conjuntos', requiresAuth: true },
   { key: 'entrar-sala', label: 'Entrar em uma sala', icon: <Icon.SignIn size={18} />, href: '/sala', requiresAuth: false },
+  { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} />, href: '/conjuntos', requiresAuth: true },
   { key: 'salas', label: 'Minhas salas', icon: <Icon.Templates size={18} />, requiresAuth: true },
   { key: 'turmas', label: 'Minhas turmas', icon: <Icon.Users size={18} />, requiresAuth: true },
   { key: 'relatorios', label: 'Relatórios', icon: <Icon.Reports size={18} />, href: '/relatorios', requiresAuth: false },
   { key: 'notificacoes', label: 'Notificações', icon: <Icon.Bell size={18} />, requiresAuth: true },
-  { key: 'configuracoes', label: 'Configurações', icon: <Icon.Settings size={18} />, requiresAuth: true },
+  {
+    key: 'configuracoes',
+    label: 'Configurações',
+    icon: <Icon.Settings size={18} />,
+    requiresAuth: true,
+    staticSubItems: SETTINGS_SUBITEMS,
+  },
 ];
 
 const PARTICIPANT_ENTRIES: NavEntry[] = [
@@ -69,7 +120,13 @@ const PARTICIPANT_ENTRIES: NavEntry[] = [
   { key: 'ranking', label: 'Ranking', icon: <Icon.Trophy size={18} />, requiresAuth: true },
   { key: 'turmas-participo', label: 'Turmas em que participo', icon: <Icon.Users size={18} />, requiresAuth: true },
   { key: 'notificacoes', label: 'Notificações', icon: <Icon.Bell size={18} />, requiresAuth: true },
-  { key: 'configuracoes', label: 'Configurações', icon: <Icon.Settings size={18} />, requiresAuth: true },
+  {
+    key: 'configuracoes',
+    label: 'Configurações',
+    icon: <Icon.Settings size={18} />,
+    requiresAuth: true,
+    staticSubItems: SETTINGS_SUBITEMS,
+  },
 ];
 
 const PROFILE_OPTIONS: { mode: ProfileMode; label: string; hint: string; icon: ReactNode }[] = [
@@ -82,11 +139,45 @@ const PROFILE_OPTIONS: { mode: ProfileMode; label: string; hint: string; icon: R
   },
 ];
 
+function getServerLatestReport(): VisitedReportEntry | null {
+  return null;
+}
+
+function getServerSidebarSubmenus(): SidebarSubmenuState {
+  return EMPTY_SIDEBAR_SUBMENU_STATE;
+}
+
+function toReportSubmenuItem(report: VisitedReportEntry): SidebarSubmenuItem {
+  return {
+    key: `report:${report.kind}:${report.token}`,
+    label: report.title,
+    meta:
+      report.kind === 'individual'
+        ? `Individual · Sala ${report.roomCode}`
+        : `Sala ${report.roomCode}`,
+    href:
+      report.kind === 'individual'
+        ? `/relatorios/individual/${report.token}`
+        : `/relatorios/${report.token}`,
+  };
+}
+
 interface AppSidebarProps {
   user?: User | null;
   audienceLabel?: string;
   /** Qual entrada está aberta. As demais viram link ou item "em breve". */
   active: AppSection;
+  /**
+   * Submenu atualmente aberto na tela (ex.: conjunto em `/conjunto/[setId]` ou
+   * relatório em `/relatorios/[token]`). Passado pelo componente da tela para
+   * garantir SSR sem flash e tornar o item pai clicável para retorno à listagem.
+   */
+  currentSubmenu?: ActiveSubmenuContext;
+  /**
+   * Salas ativas já carregadas pelo Server Component (ex.: `/perfil`), evitando
+   * uma chamada extra a `/api/rooms/active` nessa rota.
+   */
+  activeRooms?: ActiveRoom[];
   onSignOut?: () => void;
   /**
    * Modo de perfil controlado (ex.: na tela `/perfil`). Quando omitido, a barra
@@ -101,24 +192,143 @@ export function AppSidebar({
   user,
   audienceLabel,
   active,
+  currentSubmenu,
+  activeRooms,
   onSignOut,
   profileMode,
   onProfileModeChange,
 }: AppSidebarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [, startTransition] = useTransition();
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [settingsExpanded, setSettingsExpanded] = useState(active === 'configuracoes');
+
   const storedProfileMode = useSyncExternalStore(
     subscribeProfileMode,
     readStoredProfileMode,
     () => 'leader' as ProfileMode,
   );
+  const storedSubmenus = useSyncExternalStore(
+    subscribeSidebarSubmenus,
+    readSidebarSubmenuState,
+    getServerSidebarSubmenus,
+  );
+  const latestVisitedReport = useSyncExternalStore(
+    subscribeVisitedReports,
+    readLatestVisitedReport,
+    getServerLatestReport,
+  );
+
+  const userId = user?.id ?? null;
+
+  useEffect(() => {
+    syncSidebarOwner(userId);
+  }, [userId]);
+
+  useEffect(() => {
+    if (activeRooms && activeRooms.length > 0) {
+      reconcileActiveRooms(activeRooms, userId);
+    }
+  }, [activeRooms, userId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/rooms/active', { cache: 'no-store', signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((payload: { rooms?: ActiveRoom[]; apiConfigured?: boolean } | null) => {
+        if (!payload || !payload.apiConfigured || !Array.isArray(payload.rooms)) return;
+        reconcileActiveRooms(payload.rooms, userId);
+      })
+      .catch(() => {
+        // Falha de rede ou aborto na navegação: mantém estado atual sem quebrar a barra.
+      });
+
+    return () => controller.abort();
+  }, [pathname, userId]);
+
   const currentProfileMode: ProfileMode = profileMode ?? storedProfileMode;
 
   const allEntries = currentProfileMode === 'participant' ? PARTICIPANT_ENTRIES : LEADER_ENTRIES;
   const entries = user ? allEntries : allEntries.filter((entry) => entry.requiresAuth === false);
   const roleLabel = audienceLabel ?? (user ? AUDIENCE_LABEL[user.audience] : '');
   const displayName = user ? formatShortUserName(user.name) : '';
+
+  function resolveSubItems(entry: NavEntry): SidebarSubmenuItem[] {
+    if (entry.key === 'conjuntos') {
+      if (currentSubmenu?.section === 'conjuntos') {
+        return [currentSubmenu.item];
+      }
+      if (storedSubmenus.lastSet) {
+        return [
+          {
+            key: `set:${storedSubmenus.lastSet.id}`,
+            label: storedSubmenus.lastSet.title,
+            meta: storedSubmenus.lastSet.subject,
+            href: storedSubmenus.lastSet.href,
+          },
+        ];
+      }
+      return [];
+    }
+
+    if (entry.key === 'entrar-sala') {
+      if (currentSubmenu?.section === 'entrar-sala') {
+        return [currentSubmenu.item];
+      }
+      const room = storedSubmenus.lastRoom;
+      if (room && (room.status === 'lobby' || room.status === 'running')) {
+        return [
+          {
+            key: `room:${room.code}`,
+            label: `Sala ${room.code}`,
+            meta: ROOM_STATUS_LABEL[room.status],
+            href: roomPath(room),
+            live: true,
+          },
+        ];
+      }
+      return [];
+    }
+
+    if (entry.key === 'relatorios') {
+      if (currentSubmenu?.section === 'relatorios') {
+        return [currentSubmenu.item];
+      }
+      if (latestVisitedReport) {
+        return [toReportSubmenuItem(latestVisitedReport)];
+      }
+      return [];
+    }
+
+    if (entry.key === 'configuracoes') {
+      if (settingsExpanded) {
+        return entry.staticSubItems ?? [];
+      }
+      if (currentSubmenu?.section === 'configuracoes') {
+        return [currentSubmenu.item];
+      }
+      if (storedSubmenus.lastSettings) {
+        return [
+          {
+            key: storedSubmenus.lastSettings.key,
+            label: storedSubmenus.lastSettings.label,
+            href: storedSubmenus.lastSettings.href,
+          },
+        ];
+      }
+      return [];
+    }
+
+    return [];
+  }
+
+  function isSubItemActive(entryKey: string, item: SidebarSubmenuItem): boolean {
+    if (currentSubmenu?.section === entryKey && currentSubmenu.item.key === item.key) {
+      return true;
+    }
+    return Boolean(item.href && pathname === item.href);
+  }
 
   function handleProfileModeSelect(nextMode: ProfileMode) {
     setSwitcherOpen(false);
@@ -137,6 +347,8 @@ export function AppSidebar({
 
   function handleSignOut() {
     clearStoredProfileMode();
+    clearSidebarSubmenus();
+    clearVisitedReports();
     if (onSignOut) {
       onSignOut();
     } else {
@@ -151,26 +363,131 @@ export function AppSidebar({
       </Link>
 
       <ul className={styles.nav}>
-        {entries.map((entry) => (
-          <li key={entry.key}>
-            {entry.key === active ? (
-              <span className={cx(styles.navItem, styles.navItemActive)} aria-current="page">
-                {entry.icon}
-                {entry.label}
-              </span>
-            ) : entry.href ? (
-              <Link href={entry.href} className={cx(styles.navItem, styles.navItemLink)}>
-                {entry.icon}
-                {entry.label}
-              </Link>
-            ) : (
-              <span className={cx(styles.navItem, styles.navItemSoon)} title="Em breve">
-                {entry.icon}
-                {entry.label}
-              </span>
-            )}
-          </li>
-        ))}
+        {entries.map((entry) => {
+          const subItems = resolveSubItems(entry);
+          const hasActiveSubItem = subItems.some((item) => isSubItemActive(entry.key, item));
+          const isExpandable = Boolean(entry.staticSubItems?.length);
+          const isExpanded = entry.key === 'configuracoes' && settingsExpanded;
+
+          return (
+            <li key={entry.key} className={styles.navItemGroup}>
+              {isExpandable ? (
+                <button
+                  type="button"
+                  className={cx(
+                    styles.navItem,
+                    styles.navItemButton,
+                    entry.key === active && !hasActiveSubItem
+                      ? styles.navItemActive
+                      : hasActiveSubItem
+                        ? styles.navItemParentActive
+                        : styles.navItemLink,
+                  )}
+                  aria-expanded={isExpanded}
+                  onClick={() => {
+                    if (entry.key === 'configuracoes') {
+                      setSettingsExpanded((open) => !open);
+                    }
+                  }}
+                >
+                  <span className={styles.navItemMain}>
+                    {entry.icon}
+                    {entry.label}
+                  </span>
+                  <Icon.ChevronDown
+                    size={15}
+                    className={cx(
+                      styles.navItemChevron,
+                      isExpanded && styles.navItemChevronOpen,
+                    )}
+                  />
+                </button>
+              ) : entry.key === active && !hasActiveSubItem ? (
+                <span className={cx(styles.navItem, styles.navItemActive)} aria-current="page">
+                  {entry.icon}
+                  {entry.label}
+                </span>
+              ) : entry.href ? (
+                <Link
+                  href={entry.href}
+                  className={cx(
+                    styles.navItem,
+                    styles.navItemLink,
+                    entry.key === active && hasActiveSubItem && styles.navItemParentActive,
+                  )}
+                >
+                  {entry.icon}
+                  {entry.label}
+                </Link>
+              ) : (
+                <span className={cx(styles.navItem, styles.navItemSoon)} title="Em breve">
+                  {entry.icon}
+                  {entry.label}
+                </span>
+              )}
+
+              {subItems.length > 0 && (
+                <ul className={styles.subNav} aria-label={`Submenu de ${entry.label}`}>
+                  {subItems.map((subItem) => {
+                    const subActive = isSubItemActive(entry.key, subItem);
+                    const content = (
+                      <>
+                        {subItem.live && <span className={styles.liveDot} aria-hidden="true" />}
+                        <span className={styles.subNavText}>
+                          <span className={styles.subNavLabel}>{subItem.label}</span>
+                          {subItem.meta && (
+                            <span className={styles.subNavMeta}>{subItem.meta}</span>
+                          )}
+                        </span>
+                      </>
+                    );
+
+                    return (
+                      <li key={subItem.key}>
+                        {subActive ? (
+                          <span
+                            className={cx(styles.subNavItem, styles.subNavItemActive)}
+                            aria-current="page"
+                            title={subItem.label}
+                          >
+                            {content}
+                          </span>
+                        ) : subItem.href ? (
+                          <Link
+                            href={subItem.href}
+                            className={cx(styles.subNavItem, styles.subNavItemLink)}
+                            title={subItem.label}
+                            onClick={() => {
+                              if (entry.key === 'configuracoes' && subItem.href) {
+                                recordLastSettingsSection(
+                                  {
+                                    key: subItem.key,
+                                    label: subItem.label,
+                                    href: subItem.href,
+                                  },
+                                  userId,
+                                );
+                              }
+                            }}
+                          >
+                            {content}
+                          </Link>
+                        ) : (
+                          <span
+                            className={cx(styles.subNavItem, styles.subNavItemSoon)}
+                            title="Em breve"
+                          >
+                            {content}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
       <div className={styles.footer}>

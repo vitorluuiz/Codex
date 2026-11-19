@@ -10,6 +10,10 @@ import { ImageSlot } from '@/components/media/ImageSlot';
 import { AppSidebar } from '@/components/nav/AppSidebar';
 import { AUDIENCE_LABEL } from '@/components/nav/audienceLabels';
 import {
+  clearLastVisitedSetIfMatches,
+  recordLastVisitedSet,
+} from '@/components/nav/sidebarSubmenus';
+import {
   KIND_META,
   KIND_ORDER,
   KIND_SHORT_LABEL,
@@ -84,6 +88,18 @@ export function PhaseSetView({ set, user, sampleData = false }: PhaseSetViewProp
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
+
+  useEffect(() => {
+    recordLastVisitedSet(
+      {
+        id: set.id,
+        title: set.title,
+        subject: set.subject,
+        href: `/conjunto/${set.id}`,
+      },
+      user?.id ?? null,
+    );
+  }, [set.id, set.title, set.subject, user?.id]);
 
   const effectiveIsOwner = viewMode !== 'visitor-public';
   const effectiveVisibility = viewMode === 'owner-private' ? 'private' : 'public';
@@ -268,6 +284,7 @@ export function PhaseSetView({ set, user, sampleData = false }: PhaseSetViewProp
     startTransition(async () => {
       try {
         await deletePhaseSetAction(editableSetId);
+        clearLastVisitedSetIfMatches([set.id, editableSetId]);
         setDeleteOpen(false);
         router.push('/conjuntos');
       } catch (err) {
@@ -295,6 +312,15 @@ export function PhaseSetView({ set, user, sampleData = false }: PhaseSetViewProp
         user={user}
         audienceLabel={user ? AUDIENCE_LABEL[user.audience] : undefined}
         active="conjuntos"
+        currentSubmenu={{
+          section: 'conjuntos',
+          item: {
+            key: `set:${set.id}`,
+            label: set.title,
+            meta: set.subject,
+            href: `/conjunto/${set.id}`,
+          },
+        }}
         onSignOut={() => startTransition(() => void logoutAction())}
       />
 
