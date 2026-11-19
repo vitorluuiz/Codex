@@ -18,17 +18,10 @@ export interface StoredRoomSubmenu {
   setTitle?: string | null;
 }
 
-export interface StoredSettingsSubmenu {
-  key: string;
-  label: string;
-  href: string;
-}
-
 export interface SidebarSubmenuState {
   ownerUserId: string | null;
   lastSet: StoredSetSubmenu | null;
   lastRoom: StoredRoomSubmenu | null;
-  lastSettings: StoredSettingsSubmenu | null;
 }
 
 const STORAGE_KEY = 'codex:sidebar-submenus:v1';
@@ -38,7 +31,6 @@ export const EMPTY_SIDEBAR_SUBMENU_STATE: SidebarSubmenuState = {
   ownerUserId: null,
   lastSet: null,
   lastRoom: null,
-  lastSettings: null,
 };
 
 let cachedRaw: string | null | undefined = undefined;
@@ -76,18 +68,6 @@ function parseRoom(value: unknown): StoredRoomSubmenu | null {
   };
 }
 
-function parseSettings(value: unknown): StoredSettingsSubmenu | null {
-  if (!isRecord(value)) return null;
-  if (typeof value.key !== 'string' || typeof value.label !== 'string' || typeof value.href !== 'string') {
-    return null;
-  }
-  return {
-    key: value.key,
-    label: value.label,
-    href: value.href,
-  };
-}
-
 function parseState(raw: string | null): SidebarSubmenuState {
   if (!raw) return EMPTY_SIDEBAR_SUBMENU_STATE;
   try {
@@ -97,7 +77,6 @@ function parseState(raw: string | null): SidebarSubmenuState {
       ownerUserId: typeof parsed.ownerUserId === 'string' ? parsed.ownerUserId : null,
       lastSet: parseSet(parsed.lastSet),
       lastRoom: parseRoom(parsed.lastRoom),
-      lastSettings: parseSettings(parsed.lastSettings),
     };
   } catch {
     return EMPTY_SIDEBAR_SUBMENU_STATE;
@@ -170,12 +149,6 @@ function sameSet(a: StoredSetSubmenu | null, b: StoredSetSubmenu | null): boolea
   );
 }
 
-function sameSettings(a: StoredSettingsSubmenu | null, b: StoredSettingsSubmenu | null): boolean {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  return a.key === b.key && a.label === b.label && a.href === b.href;
-}
-
 /**
  * Garante isolamento entre contas no mesmo navegador: se outro usuário fez
  * login sem passar pelo botão de sair, limpa os submenus privados da conta
@@ -190,7 +163,6 @@ export function syncSidebarOwner(currentUserId: string | null): void {
       ownerUserId: currentUserId,
       lastSet: null,
       lastRoom: null,
-      lastSettings: null,
     });
   }
 }
@@ -291,20 +263,6 @@ export function reconcileActiveRooms(
     ...current,
     ownerUserId: nextOwner,
     lastRoom: nextRoom,
-  });
-}
-
-export function recordLastSettingsSection(
-  section: StoredSettingsSubmenu,
-  ownerUserId?: string | null,
-): void {
-  const current = readSidebarSubmenuState();
-  const nextOwner = ownerUserId ?? current.ownerUserId;
-  if (sameSettings(current.lastSettings, section) && current.ownerUserId === nextOwner) return;
-  writeState({
-    ...current,
-    ownerUserId: nextOwner,
-    lastSettings: section,
   });
 }
 

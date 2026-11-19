@@ -49,33 +49,6 @@
   font-weight: var(--fw-semibold);
 }
 
-.navItemButton {
-  width: 100%;
-  border: none;
-  background: none;
-  font-family: inherit;
-  text-align: left;
-  justify-content: space-between;
-  cursor: pointer;
-}
-
-.navItemMain {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-width: 0;
-}
-
-.navItemChevron {
-  color: var(--ink-400);
-  flex-shrink: 0;
-  transition: transform var(--dur-fast) var(--ease-out);
-}
-
-.navItemChevronOpen {
-  transform: rotate(180deg);
-}
-
 .navItemActive {
   background: var(--blue-100);
   color: var(--blue-700);

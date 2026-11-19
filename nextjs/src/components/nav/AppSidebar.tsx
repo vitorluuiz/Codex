@@ -20,7 +20,6 @@ import {
   clearSidebarSubmenus,
   readSidebarSubmenuState,
   reconcileActiveRooms,
-  recordLastSettingsSection,
   subscribeSidebarSubmenus,
   syncSidebarOwner,
   type SidebarSubmenuState,
@@ -68,7 +67,7 @@ interface NavEntry {
   key: string;
   label: string;
   icon: ReactNode;
-  /** Sem destino (e sem subseções expansíveis) a entrada aparece desabilitada. */
+  /** Sem destino a entrada aparece desabilitada. */
   href?: string;
   /**
    * Se o destino exige usuário logado. Padrão: true.
@@ -76,18 +75,7 @@ interface NavEntry {
    * `requiresAuth` não aparecem na barra.
    */
   requiresAuth?: boolean;
-  /**
-   * Subseções fixas exibidas quando o usuário expande o item pai (ex.: Configurações).
-   * Quando recolhido, a barra exibe apenas a última subseção acessada, se houver.
-   */
-  staticSubItems?: SidebarSubmenuItem[];
 }
-
-const SETTINGS_SUBITEMS: SidebarSubmenuItem[] = [
-  { key: 'configuracoes-perfil', label: 'Perfil da conta' },
-  { key: 'configuracoes-pagamentos', label: 'Pagamentos e plano' },
-  { key: 'configuracoes-ia', label: 'Uso de cotas de IA' },
-];
 
 /**
  * Itens ainda não construídos aparecem desabilitados em vez de sumirem: o menu
@@ -107,8 +95,8 @@ const LEADER_ENTRIES: NavEntry[] = [
     key: 'configuracoes',
     label: 'Configurações',
     icon: <Icon.Settings size={18} />,
+    href: '/configuracoes',
     requiresAuth: true,
-    staticSubItems: SETTINGS_SUBITEMS,
   },
 ];
 
@@ -124,8 +112,8 @@ const PARTICIPANT_ENTRIES: NavEntry[] = [
     key: 'configuracoes',
     label: 'Configurações',
     icon: <Icon.Settings size={18} />,
+    href: '/configuracoes',
     requiresAuth: true,
-    staticSubItems: SETTINGS_SUBITEMS,
   },
 ];
 
@@ -202,7 +190,6 @@ export function AppSidebar({
   const pathname = usePathname();
   const [, startTransition] = useTransition();
   const [switcherOpen, setSwitcherOpen] = useState(false);
-  const [settingsExpanded, setSettingsExpanded] = useState(active === 'configuracoes');
 
   const storedProfileMode = useSyncExternalStore(
     subscribeProfileMode,
@@ -301,25 +288,6 @@ export function AppSidebar({
       return [];
     }
 
-    if (entry.key === 'configuracoes') {
-      if (settingsExpanded) {
-        return entry.staticSubItems ?? [];
-      }
-      if (currentSubmenu?.section === 'configuracoes') {
-        return [currentSubmenu.item];
-      }
-      if (storedSubmenus.lastSettings) {
-        return [
-          {
-            key: storedSubmenus.lastSettings.key,
-            label: storedSubmenus.lastSettings.label,
-            href: storedSubmenus.lastSettings.href,
-          },
-        ];
-      }
-      return [];
-    }
-
     return [];
   }
 
@@ -366,43 +334,10 @@ export function AppSidebar({
         {entries.map((entry) => {
           const subItems = resolveSubItems(entry);
           const hasActiveSubItem = subItems.some((item) => isSubItemActive(entry.key, item));
-          const isExpandable = Boolean(entry.staticSubItems?.length);
-          const isExpanded = entry.key === 'configuracoes' && settingsExpanded;
 
           return (
             <li key={entry.key} className={styles.navItemGroup}>
-              {isExpandable ? (
-                <button
-                  type="button"
-                  className={cx(
-                    styles.navItem,
-                    styles.navItemButton,
-                    entry.key === active && !hasActiveSubItem
-                      ? styles.navItemActive
-                      : hasActiveSubItem
-                        ? styles.navItemParentActive
-                        : styles.navItemLink,
-                  )}
-                  aria-expanded={isExpanded}
-                  onClick={() => {
-                    if (entry.key === 'configuracoes') {
-                      setSettingsExpanded((open) => !open);
-                    }
-                  }}
-                >
-                  <span className={styles.navItemMain}>
-                    {entry.icon}
-                    {entry.label}
-                  </span>
-                  <Icon.ChevronDown
-                    size={15}
-                    className={cx(
-                      styles.navItemChevron,
-                      isExpanded && styles.navItemChevronOpen,
-                    )}
-                  />
-                </button>
-              ) : entry.key === active && !hasActiveSubItem ? (
+              {entry.key === active && !hasActiveSubItem ? (
                 <span className={cx(styles.navItem, styles.navItemActive)} aria-current="page">
                   {entry.icon}
                   {entry.label}
@@ -457,18 +392,6 @@ export function AppSidebar({
                             href={subItem.href}
                             className={cx(styles.subNavItem, styles.subNavItemLink)}
                             title={subItem.label}
-                            onClick={() => {
-                              if (entry.key === 'configuracoes' && subItem.href) {
-                                recordLastSettingsSection(
-                                  {
-                                    key: subItem.key,
-                                    label: subItem.label,
-                                    href: subItem.href,
-                                  },
-                                  userId,
-                                );
-                              }
-                            }}
                           >
                             {content}
                           </Link>

@@ -1,0 +1,44 @@
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+  background: var(--surface-page);
+  font-family: var(--font-body);
+}
+
+.main {
+  padding: var(--space-8) var(--gutter-page);
+  min-width: 0;
+  color: var(--text-primary);
+}
+
+/* Container principal de configurações (--container-narrow = 800px):
+   mantém a SettingsSidebar (~220px) e o conteúdo (~556px) unidos e centralizados. */
+.container {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-6);
+}
+
+.content {
+  min-width: 0;
+  width: 100%;
+}
+
+@media (max-width: 1080px) {
+  .container {
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
+  }
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .main {
+    padding: var(--space-6) var(--gutter-page);
+  }
+}

@@ -23,6 +23,12 @@
   --gutter-page: clamp(var(--gutter-mobile), 4vw, var(--gutter-desktop));
   --gutter-page-wide: clamp(20px, 5vw, 64px);
 
+  /* --- Raios de borda -----------------------------------------------------
+     - `--radius-m`: padrão para cartões, diálogos e superfícies principais.
+     - `--radius-s`: padrão para elementos internos (linhas, avisos, inputs, badges).
+     - `--radius-l` / `--radius-xl`: uso esporádico em destaques, botões e
+       interfaces únicas.
+     - `--radius-pill`: botões pílula, tags, switches e medidores. */
   --radius-s: 8px;
   --radius-m: 14px;
   --radius-l: 20px;
