@@ -152,9 +152,9 @@ export function SetLibraryView({ user, library }: SetLibraryViewProps) {
             <Button onClick={() => router.push('/conjunto/novo')}>Criar conjunto</Button>
           </header> */}
 
-          {featured && (
+          {/* {featured && (
             <FeaturedSetBanner set={featured} onStartRoom={() => startRoom(featured.id)} />
-          )}
+          )} */}
 
           <div className={styles.tabs}>
             <Tabs

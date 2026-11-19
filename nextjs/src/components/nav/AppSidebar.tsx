@@ -51,9 +51,8 @@ interface NavEntry {
  * está deslogado, mantendo a barra enxuta apenas com as rotas acessíveis.
  */
 const LEADER_ENTRIES: NavEntry[] = [
-  { key: 'perfil', label: 'Perfil', icon: <Icon.Person size={18} />, href: getProfileHref('leader'), requiresAuth: true },
-  { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} />, href: '/conjuntos', requiresAuth: true },
-  { key: 'entrar-sala', label: 'Entrar em uma sala', icon: <Icon.SignIn size={18} />, href: '/sala', requiresAuth: false },
+  { key: 'perfil', label: 'Perfil', icon: <Icon.Person size={18} />, href: '/perfil', requiresAuth: true },
+  { key: 'conjuntos', label: 'Conjuntos de desafios', icon: <Icon.Grid size={18} />, href:'/conjuntos', requiresAuth: true },
   { key: 'salas', label: 'Minhas salas', icon: <Icon.Templates size={18} />, requiresAuth: true },
   { key: 'turmas', label: 'Minhas turmas', icon: <Icon.Users size={18} />, requiresAuth: true },
   { key: 'relatorios', label: 'Relatórios', icon: <Icon.Reports size={18} />, href: '/relatorios', requiresAuth: false },

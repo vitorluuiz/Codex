@@ -13,6 +13,7 @@
   gap: var(--space-6);
   width: 100%;
   max-width: var(--container-wide);
+  /* max-width: var(--container-wide); */
   margin: 0 auto;
   min-width: 0;
 }

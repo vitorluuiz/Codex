@@ -112,6 +112,85 @@ export function MatchHistorySection({
         hasLeadingItems={activeRooms.length > 0}
         emptyMessage="Nenhuma partida realizada ainda."
       />
+      {isEmpty ? (
+        <p className={styles.empty}>Nenhuma partida realizada ainda.</p>
+      ) : (
+        <ul className={styles.list}>
+          {/*
+            Sala aberta vem antes do histórico porque é a única linha em que ainda dá
+            para agir: fechar a aba não encerra a sala, e sem este bloco o líder não
+            tinha caminho de volta — o código foi gerado pelo servidor, ninguém o
+            decorou.
+          */}
+          {activeRooms.map((room) => (
+            <li key={room.code} className={`${styles.row} ${styles.rowActive}`}>
+              <div className={styles.identity}>
+                <span className={styles.setTitle}>
+                  {room.setTitle
+                    ? `${room.setTitle} · ${room.phaseCount ?? 0} fases`
+                    : `${room.phaseCount ?? 0} fases`}
+                </span>
+                <div className={styles.subline}>
+                  <span className={styles.date}>
+                    {room.createdAtLabel}
+                  </span>
+                </div>
+              </div>
+
+              <div className={styles.rowLiveStatus}>
+                {/* <PhaseSparkline values={[]} remainingValuesCount={room.phaseCount && room.currentPhase && (room.phaseCount - room.currentPhase)} /> */}
+                <div className={styles.liveInfos}>
+                  <span className={`${styles.modeChip} ${styles.liveChip}`}>
+                    <span className={styles.liveDot} />
+                    Em andamento
+                  </span>
+                  <span>{room.participantCount} {participantsLabel.toLowerCase()}
+                    {room.currentPhase != null ? ` · fase ${room.currentPhase}` : ' no lobby'}</span>
+                </div>
+              </div>
+
+              <div className={styles.rowActions}>
+                <Button
+                  variant="secondary"
+                  onClick={() => closeRoom(room)}
+                  disabled={closing && closingCode === room.code}
+                >
+                  Encerrar sala
+                </Button>
+                <Link href={roomPath(room)} className={styles.resumeLink}>
+                  Acompanhar
+                </Link>
+              </div>
+            </li>
+          ))}
+
+          {matches.map((match) => (
+            <Link key={match.id} href={`/relatorios/${match.id}`} className={styles.matchNav}>
+              <li className={styles.row}>
+                <div className={styles.identity}>
+                  <span className={styles.setTitle}>{match.setTitle}</span>
+                  <div className={styles.subline}>
+                    <span className={styles.modeChip}>{MODE_LABEL[match.mode]}</span>
+                    <span className={styles.date}>{match.playedAtLabel}</span>
+                  </div>
+                </div>
+
+                <PhaseSparkline values={match.phaseAvgScore} remainingValuesCount={null} />
+
+                <div className={styles.stat}>
+                  <span className={`${styles.statValue} ${styles.statScore}`}>
+                    {match.avgScore}
+                    <span className={styles.statMax}> / {match.maxAvgScore ? match.maxAvgScore : 100}</span>
+                  </span>
+                  <span className={styles.statLabel}>
+                    {match.participantCount} {participantsLabel}
+                  </span>
+                </div>
+              </li>
+            </Link>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

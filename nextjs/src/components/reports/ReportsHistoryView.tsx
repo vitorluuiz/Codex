@@ -97,6 +97,7 @@ export function ReportsHistoryView({ user, serverHistory }: ReportsHistoryViewPr
 
       <main className={styles.content}>
         <div className={styles.container}>
+
           <header className={styles.header}>
             <h1 className={styles.title}>Central de Relatórios</h1>
             <p className={styles.subtitle}>
@@ -128,6 +129,174 @@ export function ReportsHistoryView({ user, serverHistory }: ReportsHistoryViewPr
                   onChange={setActiveTab}
                 />
               </div>
+        <form className={styles.lookupBar} onSubmit={openByInput}>
+          <input
+            type="text"
+            value={linkInput}
+            onChange={(e) => setLinkInput(e.target.value)}
+            placeholder="Cole um link ou token de relatório recebido..."
+            className={styles.lookupInput}
+          />
+          <Button type="submit" size="sm">
+            Abrir relatório
+          </Button>
+        </form>
+
+        {user && (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>
+              Relatórios de Partidas como Líder ({leaderReports.length})
+            </h2>
+
+            {leaderReports.length === 0 ? (
+              <p className={styles.empty}>
+                Você ainda não possui partidas finalizadas como líder.
+              </p>
+            ) : (
+              <div className={styles.list}>
+                {leaderReports.map((item) => (
+                  <div key={item.matchId} className={styles.card}>
+                    <div className={styles.cardMain}>
+                      <span className={styles.cardTitle}>{item.title}</span>
+                      <span className={styles.cardMeta}>
+                        Sala {item.roomCode} · {formatDateBr(item.finishedAt)} · {item.phaseCount}{' '}
+                        fases · {item.participantCount} participantes
+                      </span>
+                    </div>
+
+                    <div className={styles.cardStats}>
+                      <div className={styles.statCol}>
+                        <span className={styles.statValue}>
+                          {item.avgScore} / {item.maxPossibleScore} pts
+                        </span>
+                        <span className={styles.statLabel}>Média da turma</span>
+                      </div>
+                      <div className={styles.statCol}>
+                        <span className={styles.statValue}>{item.accuracyRate}%</span>
+                        <span className={styles.statLabel}>Taxa de acerto</span>
+                      </div>
+                    </div>
+
+                    <div className={styles.cardActions}>
+                      <Link
+                        href={`/relatorios/${item.shareToken}`}
+                        className={styles.primaryAction}
+                      >
+                        <Icon.Eye size={15} />
+                        Ver página
+                      </Link>
+                      <Link
+                        href={`/relatorios/${item.shareToken}?export=pdf`}
+                        className={styles.secondaryAction}
+                        title="Exportar página HTML como PDF"
+                      >
+                        PDF
+                      </Link>
+                      <button
+                        type="button"
+                        className={styles.secondaryAction}
+                        onClick={() =>
+                          window.open(
+                            `/api/reports/share/${encodeURIComponent(item.shareToken)}/export?format=xlsx`,
+                            '_blank',
+                          )
+                        }
+                        title="Baixar Planilha Excel (.xlsx)"
+                      >
+                        Excel
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.secondaryAction}
+                        onClick={() =>
+                          void copyUrl(`/relatorios/${item.shareToken}`, 'Link do relatório')
+                        }
+                        title="Copiar link compartilhável"
+                      >
+                        <Icon.Copy size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {user && (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>
+              Meus Relatórios Individuais como Participante ({participantReports.length})
+            </h2>
+
+            {participantReports.length === 0 ? (
+              <p className={styles.empty}>
+                Nenhuma partida encontrada no seu histórico de participante.
+              </p>
+            ) : (
+              <div className={styles.list}>
+                {participantReports.map((item) => (
+                  <div key={`${item.matchId}-${item.accessToken}`} className={styles.card}>
+                    <div className={styles.cardMain}>
+                      <span className={styles.cardTitle}>{item.title}</span>
+                      <span className={styles.cardMeta}>
+                        Sala {item.roomCode} · {formatDateBr(item.finishedAt)} · Posição #
+                        {item.rank} de {item.participantCount}
+                      </span>
+                    </div>
+
+                    <div className={styles.cardStats}>
+                      <div className={styles.statCol}>
+                        <span className={styles.statValue}>
+                          {item.totalScore} / {item.maxPossibleScore} pts
+                        </span>
+                        <span className={styles.statLabel}>Minha pontuação</span>
+                      </div>
+                      <div className={styles.statCol}>
+                        <span className={styles.statValue}>{item.accuracyRate}%</span>
+                        <span className={styles.statLabel}>
+                          {item.correctCount}/{item.phaseCount} acertos
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className={styles.cardActions}>
+                      <Link
+                        href={`/relatorios/individual/${item.accessToken}`}
+                        className={styles.primaryAction}
+                      >
+                        <Icon.Eye size={15} />
+                        Ver meu relatório
+                      </Link>
+                      <Link
+                        href={`/relatorios/individual/${item.accessToken}?export=pdf`}
+                        className={styles.secondaryAction}
+                        title="Exportar meu relatório HTML como PDF"
+                      >
+                        PDF
+                      </Link>
+                      <button
+                        type="button"
+                        className={styles.secondaryAction}
+                        onClick={() =>
+                          void copyUrl(
+                            `/relatorios/individual/${item.accessToken}`,
+                            'Seu link individual',
+                          )
+                        }
+                        title="Copiar link individual"
+                      >
+                        <Icon.Copy size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+    </main>
 
               <section className={styles.section} role="tabpanel">
                 {activeTab === 'leader' ? (

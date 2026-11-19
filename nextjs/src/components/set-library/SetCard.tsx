@@ -58,6 +58,7 @@ export function SetCard({
   // fazer, e some só o que nunca vai existir aqui.
   const actions: MenuAction[] = owned
     ? [
+      { label: 'Abrir conjunto', icon: <Icon.Eye size={16} />, onSelect: () => router.push(href) },
       { label: 'Iniciar sala com este conjunto', icon: <Icon.Power size={16} />, onSelect: onStartRoom },
       { label: 'Editar conjunto', icon: <Icon.Pencil size={16} />, onSelect: () => router.push(editHref) },
       { label: 'Compartilhar', icon: <Icon.Globe size={16} />, onSelect: onPublish },
@@ -67,6 +68,10 @@ export function SetCard({
     : [
       { label: 'Iniciar sala com este conjunto', icon: <Icon.Power size={16} />, onSelect: onStartRoom },
       { label: 'Importar conjunto', icon: <Icon.Copy size={16} />, onSelect: onCopy },
+      { label: 'Abrir conjunto', icon: <Icon.Eye size={16} />, onSelect: () => router.push(href) },
+      { label: 'Iniciar sala com este conjunto', icon: <Icon.Power size={16} />, onSelect: onStartRoom },
+      { label: 'Importar conjunto', icon: <Icon.Copy size={16} />, onSelect: onCopy },
+      { label: 'Compartilhar', icon: <Icon.Globe size={16} /> },
       { label: 'Exportar', icon: <Icon.Download size={16} /> },
     ];
 
@@ -139,6 +144,57 @@ export function SetCard({
                 </span>
               ))}
             </div>
+      <div className={styles.cover}>
+        {/* Sem capa o card recebe a cor derivada do id, a mesma que o perfil usa
+          (`lib/setColor.ts`). O contorno tracejado do `ImageSlot` não serve
+          aqui: o texto do marcador cairia por cima do título. */}
+        {set.coverUrl ? (
+          <ImageSlot
+            className={styles.coverImage}
+            placeholder={`Capa de ${set.title}`}
+            src={set.coverUrl}
+            shape="rect"
+            onDark
+            width={480}
+            height={300}
+          />
+        ) : (
+          <div
+            className={styles.coverFallback}
+            style={cssVars({ '--set-color': setColor(set.id) })}
+          />
+        )}
+        <div className={styles.coverShade} />
+
+        <button
+          type="button"
+          ref={menuButton}
+          className={styles.menuButton}
+          onClick={handleMenuAnchor}
+          aria-label={`Ações de ${set.title}`}
+        >
+          <Icon.More size={18} />
+        </button>
+
+        <div className={styles.coverText}>
+          {/* O link cobre o card inteiro (ver `.title::after`): assim o alvo é
+            grande sem que a região clicável seja uma `div` com `onClick`. */}
+          <h3 className={styles.title}>
+            <Link href={href}>{set.title}</Link>
+          </h3>
+          {byline && <p className={styles.byline}>{byline}</p>}
+
+          <div className={styles.kinds}>
+            {KIND_ORDER.filter((kind) => (set.phaseKindCounts[kind] ?? 0) > 0).map((kind) => (
+              <span
+                key={kind}
+                className={styles.kind}
+                style={cssVars({ '--kind-color': KIND_META[kind].color })}
+                title={`${set.phaseKindCounts[kind]} fases de ${KIND_META[kind].label}`}
+              >
+                {set.phaseKindCounts[kind]} {KIND_SHORT_LABEL[kind]}
+              </span>
+            ))}
           </div>
         </div>
 
