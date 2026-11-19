@@ -10,9 +10,7 @@ import { Icon } from '@/components/icons/Icons';
 import { RealtimeProvider, useRealtimeEvent } from '@/realtime/RealtimeProvider';
 import { channels } from '@/realtime/protocol';
 import {
-  approveParticipantAction,
   closeRoomAction,
-  rejectParticipantAction,
   removeParticipantAction,
   startMatchAction,
   updateRoomSettingsAction,
@@ -203,17 +201,6 @@ function LobbyContent({
     startTransition(() => void updateRoomSettingsAction(room.code, { requireAccount: next }));
   }
 
-  function approve(participant: Participant) {
-    setPending((list) => list.filter((p) => p.id !== participant.id));
-    setApproved((list) => upsert(list, { ...participant, status: 'approved' }));
-    startTransition(() => void approveParticipantAction(room.code, participant.id));
-  }
-
-  function reject(participant: Participant) {
-    setPending((list) => list.filter((p) => p.id !== participant.id));
-    startTransition(() => void rejectParticipantAction(room.code, participant.id));
-  }
-
   function remove(participant: Participant) {
     setApproved((list) => list.filter((p) => p.id !== participant.id));
     setSelected(null);
@@ -378,48 +365,6 @@ function LobbyContent({
                   </div>
                 )}
               </section>
-
-              <section className={styles.panel}>
-                <h2 className={styles.panelTitle}>Solicitações pendentes ({pending.length})</h2>
-                {pending.length === 0 ? (
-                  <p className={styles.emptyNote}>Nenhuma solicitação no momento.</p>
-                ) : (
-                  <div className={styles.pendingList}>
-                    {pending.map((participant) => (
-                      <div key={participant.id} className={styles.pendingRow}>
-                        <Avatar index={participant.avatarIndex} size="sm" name={participant.displayName} />
-                        <div className={styles.pendingInfo}>
-                          <div className={styles.pendingName}>{participant.displayName}</div>
-                          {!participant.loggedIn && (
-                            <div className={styles.pendingMeta}>Sem conta</div>
-                          )}
-                        </div>
-                        <div className={styles.pendingActions}>
-                          <button
-                            type="button"
-                            className={cx(styles.decisionButton, styles.approveButton)}
-                            disabled={requireAccount && !participant.loggedIn}
-                            title="Aceitar"
-                            aria-label={`Aceitar ${participant.displayName}`}
-                            onClick={() => approve(participant)}
-                          >
-                            <Icon.Check size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            className={cx(styles.decisionButton, styles.rejectButton)}
-                            title="Recusar"
-                            aria-label={`Recusar ${participant.displayName}`}
-                            onClick={() => reject(participant)}
-                          >
-                            <Icon.Close size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
             </div>
 
             <div className={styles.leaderColumn}>
@@ -456,7 +401,7 @@ function LobbyContent({
           <section className={styles.waitingCard}>
             <h1 className={styles.waitingTitle}>Compartilhe o código com a turma</h1>
             <p className={styles.waitingLead}>
-              Quem tiver o código pode pedir para entrar. O líder aprova antes da partida começar.
+              Quem tiver o código pode entrar na sala.
             </p>
 
             <div className={styles.playerGrid}>

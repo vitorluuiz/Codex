@@ -334,12 +334,6 @@ export function PhaseSetView({ set, user, sampleData = false }: PhaseSetViewProp
                   </Tag>
                 )}
 
-                {effectiveIsOwner ? (
-                  <Tag tone="green">Conjunto proprietário</Tag>
-                ) : (
-                  <Tag tone="amber">Visitante da comunidade</Tag>
-                )}
-
                 <Tag tone="neutral">{set.subject}</Tag>
 
                 {effectiveIsOwner && set.folder && <Tag tone="neutral">{set.folder}</Tag>}

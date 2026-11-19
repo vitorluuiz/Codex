@@ -12,7 +12,7 @@
 }
 
 .content {
-  padding: var(--space-6) 0px;
+  padding: var(--space-6) var(--gutter-page);
   display: flex;
   flex-direction: column;
   gap: 36px;

@@ -22,7 +22,7 @@ public class Participant
     public Guid? UserId { get; set; }
     public User? User { get; init; }
 
-    public ParticipantStatus Status { get; set; } = ParticipantStatus.Pending;
+    public ParticipantStatus Status { get; set; } = ParticipantStatus.Approved;
     public DateTimeOffset JoinedAt { get; init; } = DateTimeOffset.UtcNow;
 
     /// <summary>
