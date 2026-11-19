@@ -136,7 +136,7 @@ function IndividualReportBody({ report }: { report: IndividualReport }) {
 
                 <div className={styles.comparisonGrid}>
                   <div className={styles.answerBox}>
-                    <span className={styles.boxLabel}>Sua resposta</span>
+                    <span className={styles.boxLabel}>Resposta enviada</span>
                     <span className={styles.boxValue}>{ans.givenAnswerText}</span>
                   </div>
                   <div className={styles.answerBox}>

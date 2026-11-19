@@ -153,7 +153,7 @@ export function SetCard({
             </div>
             <div className={styles.stat}>
               <dt>
-                <Image src={"/Icons/play_arrow.svg"} alt={''} width={24} height={24}></Image>
+                <Image src="/Icons/play_arrow.svg" alt="" width={18} height={18} aria-hidden="true" />
                 <span className="visuallyHidden">Acerto médio</span>
               </dt>
               <dd style={cssVars({ '--stat-color': set.accuracyRate === null ? 'var(--text-secondary)' : accuracyTone(set.accuracyRate) })}>
