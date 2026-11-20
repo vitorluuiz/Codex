@@ -26,6 +26,8 @@ Este documento define o contrato, arquitetura e padrões da camada de interface 
 | `/sala` | Entrada de participante via código de 6 dígitos. | Client Component com fluxo em 2 etapas. |
 | `/sala/[code]/lobby` | Sala de espera pré-partida (visão de líder ou jogador). | RSC (dados iniciais) + WebSocket Provider. |
 | `/sala/[code]/partida`| Execução dos desafios gamificados e pódio. | RSC (fase inicial) + Máquina de Telas da Casca. |
+| `/configuracoes/pagamentos` | Formulário provisório em etapas (*Next Step*) de intenção de contratação e validação de preço dos planos. | RSC autenticado + Client Wizard (`PlanIntentView`). |
+| `/configuracoes/ia` | Acompanhamento de consumo mensal de créditos e sugestões diárias de IA. | RSC autenticado + Client View (`AiQuotaView`). |
 
 ---
 

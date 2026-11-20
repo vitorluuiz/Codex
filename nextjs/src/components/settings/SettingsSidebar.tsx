@@ -18,7 +18,12 @@ interface SettingsNavEntry {
 
 const SETTINGS_ENTRIES: SettingsNavEntry[] = [
   { key: 'perfil', label: 'Perfil da conta', icon: <Icon.Person size={17} /> },
-  { key: 'pagamentos', label: 'Pagamentos e plano', icon: <Icon.Crown size={17} /> },
+  {
+    key: 'pagamentos',
+    label: 'Pagamentos e plano',
+    icon: <Icon.Crown size={17} />,
+    href: '/configuracoes/pagamentos',
+  },
   {
     key: 'ia',
     label: 'Uso de cotas de IA',

@@ -16,6 +16,7 @@ public static class DocumentServiceCollectionExtensions
         {
             services.AddSingleton<IMatchDocumentStore, MongoMatchDocumentStore>();
             services.AddSingleton<IPhaseSetDocumentStore, MongoPhaseSetDocumentStore>();
+            services.AddSingleton<IPlanIntentDocumentStore, MongoPlanIntentDocumentStore>();
             return services;
         }
 
@@ -23,6 +24,7 @@ public static class DocumentServiceCollectionExtensions
         // partida. No passo 5 isto vira erro de inicializacao.
         services.AddSingleton<IMatchDocumentStore, InMemoryMatchDocumentStore>();
         services.AddSingleton<IPhaseSetDocumentStore, InMemoryPhaseSetDocumentStore>();
+        services.AddSingleton<IPlanIntentDocumentStore, InMemoryPlanIntentDocumentStore>();
         return services;
     }
 }

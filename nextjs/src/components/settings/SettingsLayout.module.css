@@ -12,24 +12,47 @@
   color: var(--text-primary);
 }
 
-/* Container principal de configurações (--container-narrow = 800px):
-   mantém a SettingsSidebar (~220px) e o conteúdo (~556px) unidos e centralizados. */
+/* Grid simétrico de 3 colunas: centraliza matematicamente o conteúdo em
+   --container-compact (520px) mantendo a SettingsSidebar (220px) imediatamente
+   à sua esquerda. */
 .container {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns:
+    minmax(220px, 1fr)
+    minmax(0, var(--container-compact))
+    minmax(0, 1fr);
   align-items: start;
   gap: var(--space-6);
 }
 
+/* Telas de configurações que exibem tabelas comparativas amplas (ex.: Pagamentos e plano)
+   expandem a coluna central para --container-narrow mantendo a sidebar alinhada. */
+.container:has([data-settings-wide='true']) {
+  grid-template-columns:
+    220px
+    minmax(0, var(--container-narrow))
+    minmax(0, 1fr);
+}
+
 .content {
+  grid-column: 2;
   min-width: 0;
   width: 100%;
 }
 
-@media (max-width: 1080px) {
-  .container {
+@media (max-width: 1140px) {
+  .main .container {
+    max-width: var(--container-compact);
     grid-template-columns: 1fr;
     gap: var(--space-5);
+  }
+
+  .main .container:has([data-settings-wide='true']) {
+    max-width: var(--container-narrow);
+  }
+
+  .content {
+    grid-column: 1;
   }
 }
 

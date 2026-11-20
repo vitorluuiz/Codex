@@ -25,7 +25,7 @@ export default async function SettingsLayout({ children }: { children: ReactNode
       />
 
       <main className={styles.main}>
-        <Container size="narrow" padded={false} className={styles.container}>
+        <Container size="wide" padded={false} className={styles.container}>
           <SettingsSidebar />
           <div className={styles.content}>{children}</div>
         </Container>

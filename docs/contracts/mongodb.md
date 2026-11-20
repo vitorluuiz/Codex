@@ -1,6 +1,6 @@
 # Contrato de Banco Orientado a Documentos (MongoDB) — Codex
 
-Este documento define o contrato e a modelagem do banco orientado a documentos (MongoDB 7+) do Codex. O MongoDB atua como repositório para **Partidas Finalizadas (`matches`)**, **Espaço de Trabalho da Biblioteca do Usuário (`user_workspaces`)**, **Conjuntos Privados do Usuário (`private_phase_sets`)** e **Conjuntos Publicados na Comunidade (`community_phase_sets`)**.
+Este documento define o contrato e a modelagem do banco orientado a documentos (MongoDB 7+) do Codex. O MongoDB atua como repositório para **Partidas Finalizadas (`matches`)**, **Espaço de Trabalho da Biblioteca do Usuário (`user_workspaces`)**, **Conjuntos Privados do Usuário (`private_phase_sets`)**, **Conjuntos Publicados na Comunidade (`community_phase_sets`)** e **Intenções de Contratação de Planos (`plan_intents`)**.
 
 ---
 
@@ -270,6 +270,37 @@ db.community_phase_sets.createIndex({ status: 1, publishedAt: -1 });
 db.community_phase_sets.createIndex({ authorId: 1, status: 1, publishedAt: -1 });
 db.community_phase_sets.createIndex({ phaseIds: 1 }); // Multikey: localiza conjuntos que contêm um desafio
 db.community_phase_sets.createIndex({ title: "text" }, { default_language: "portuguese" });
+```
+
+---
+
+### 2.6 Coleção `plan_intents` (Pesquisa Provisória de Intenção de Planos)
+Armazena a resposta mais recente de cada usuário no formulário provisório da seção **Pagamentos e plano** (1 documento por `userId`, atualizado via *upsert*).
+
+```jsonc
+{
+  "_id": "01a069ee-9029-76e7-b874-9508fa1a2f13", // userId (UUID do usuário no PostgreSQL)
+  "userEmail": "marina@escola.br",
+  "userName": "Marina Duarte",
+  "audience": "teacher",                         // "teacher" | "recruiter"
+  "currentPlan": "free",                         // "free" | "intermediate" | "pro"
+  "selectedPlan": "intermediate",                // "free" | "intermediate" | "pro"
+  "suggestedPriceBrl": 11,                       // 0 (free), 11 (intermediate), 35 (pro)
+  "pricePerception": "fair",                     // "expectedLower" | "fair" | "expectedHigher"
+  "subscriptionIntent": "yes",                   // "yes" | "maybe" | "no"
+  "expectedPriceBrl": null,                      // opcional quando pricePerception != "fair"
+  "comment": "Ótimo custo-benefício",            // opcional (máx. 500 caracteres)
+  "submissionCount": 1,
+  "createdAt": ISODate("2026-11-19T23:00:00Z"),
+  "updatedAt": ISODate("2026-11-19T23:00:00Z")
+}
+```
+
+#### Índices da Coleção `plan_intents`
+```javascript
+db.plan_intents.createIndex({ selectedPlan: 1, updatedAt: -1 });
+db.plan_intents.createIndex({ subscriptionIntent: 1, pricePerception: 1 });
+db.plan_intents.createIndex({ updatedAt: -1 });
 ```
 
 ---

@@ -422,7 +422,7 @@ export function AiQuotaView({ user, initialUsage, fetchedAtIso }: AiQuotaViewPro
                     <span className={styles.footerNote}>
                       Precisa de mais créditos para suas turmas ou seleções?
                     </span>
-                    <Link href="/#precos" className={styles.footerLink}>
+                    <Link href="/configuracoes/pagamentos" className={styles.footerLink}>
                       Comparar planos
                       <Icon.ChevronRight size={15} />
                     </Link>

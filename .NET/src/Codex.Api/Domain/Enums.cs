@@ -129,3 +129,17 @@ public enum CommunityResourceStatus
     Published,
     Delisted,
 }
+
+public enum PlanPricePerception
+{
+    ExpectedLower,
+    Fair,
+    ExpectedHigher,
+}
+
+public enum PlanSubscriptionIntent
+{
+    Yes,
+    Maybe,
+    No,
+}

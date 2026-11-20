@@ -141,6 +141,7 @@ export interface PricingPlan {
   name: string;
   price: string;
   priceSuffix: string | null;
+  suggestedPriceBrl: number;
   description: string;
   ctaLabel: string;
   highlighted: boolean;
@@ -153,6 +154,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     name: 'Grátis',
     price: 'R$0',
     priceSuffix: '/sempre',
+    suggestedPriceBrl: 0,
     description: 'Para começar a praticar e testar a plataforma.',
     ctaLabel: 'Começar de graça',
     highlighted: false,
@@ -161,20 +163,22 @@ export const PRICING_PLANS: PricingPlan[] = [
   {
     id: 'intermediate',
     name: 'Intermediário',
-    price: 'R$79',
-    priceSuffix: '/mês por educador',
+    price: 'R$11',
+    priceSuffix: '/mês',
+    suggestedPriceBrl: 11,
     description: 'Para professores com turmas ativas o ano todo.',
-    ctaLabel: 'Assinar Intermediário',
+    ctaLabel: 'Conhecer Intermediário',
     highlighted: true,
     badge: 'Mais popular',
   },
   {
     id: 'pro',
     name: 'Pro',
-    price: 'Sob consulta',
-    priceSuffix: null,
+    price: 'R$35',
+    priceSuffix: '/mês',
+    suggestedPriceBrl: 35,
     description: 'Para recrutadores e instituições com operações maiores.',
-    ctaLabel: 'Falar com vendas',
+    ctaLabel: 'Conhecer Pro',
     highlighted: false,
     badge: null,
   },

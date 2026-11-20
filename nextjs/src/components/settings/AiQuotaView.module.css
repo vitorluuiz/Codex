@@ -239,7 +239,7 @@
   gap: var(--space-3);
   padding: 10px var(--space-3);
   border-radius: var(--radius-s);
-  background: var(--surface-sunken);
+  /* background: var(--surface-sunken); */
 }
 
 .operationInfo {

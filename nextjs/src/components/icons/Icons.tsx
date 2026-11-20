@@ -259,6 +259,14 @@ export const Icon = {
       <path d="M4 4l5 5" />
     </svg>
   ),
+  Swap: ({ size = 24, className }: IconProps) => (
+    <svg {...base(size, className)}>
+      <path d="M16 3l4 4-4 4" />
+      <path d="M20 7H4" />
+      <path d="M8 21l-4-4 4-4" />
+      <path d="M4 17h16" />
+    </svg>
+  ),
   Grid: ({ size = 24, className }: IconProps) => (
     <svg {...base(size, className)}>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />

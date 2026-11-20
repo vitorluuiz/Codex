@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState, useSyncExternalStore, useTransition, type ReactNode } from 'react';
+import { useEffect, useSyncExternalStore, useTransition, type ReactNode } from 'react';
 
 import { Avatar } from '@/components/avatar/Avatar';
 import { Icon } from '@/components/icons/Icons';
@@ -117,16 +117,6 @@ const PARTICIPANT_ENTRIES: NavEntry[] = [
   },
 ];
 
-const PROFILE_OPTIONS: { mode: ProfileMode; label: string; hint: string; icon: ReactNode }[] = [
-  { mode: 'leader', label: 'Perfil de líder', hint: 'Conjuntos, salas e turmas', icon: <Icon.Grid size={15} /> },
-  {
-    mode: 'participant',
-    label: 'Perfil de participante',
-    hint: 'Conquistas e partidas',
-    icon: <Icon.Award size={15} />,
-  },
-];
-
 function getServerLatestReport(): VisitedReportEntry | null {
   return null;
 }
@@ -189,7 +179,6 @@ export function AppSidebar({
   const router = useRouter();
   const pathname = usePathname();
   const [, startTransition] = useTransition();
-  const [switcherOpen, setSwitcherOpen] = useState(false);
 
   const storedProfileMode = useSyncExternalStore(
     subscribeProfileMode,
@@ -238,7 +227,8 @@ export function AppSidebar({
 
   const allEntries = currentProfileMode === 'participant' ? PARTICIPANT_ENTRIES : LEADER_ENTRIES;
   const entries = user ? allEntries : allEntries.filter((entry) => entry.requiresAuth === false);
-  const roleLabel = audienceLabel ?? (user ? AUDIENCE_LABEL[user.audience] : '');
+  const leaderRoleLabel = audienceLabel ?? (user ? AUDIENCE_LABEL[user.audience] : '');
+  const roleLabel = currentProfileMode === 'participant' ? 'Participante' : leaderRoleLabel;
   const displayName = user ? formatShortUserName(user.name) : '';
 
   function resolveSubItems(entry: NavEntry): SidebarSubmenuItem[] {
@@ -298,18 +288,21 @@ export function AppSidebar({
     return Boolean(item.href && pathname === item.href);
   }
 
-  function handleProfileModeSelect(nextMode: ProfileMode) {
-    setSwitcherOpen(false);
-    if (nextMode === currentProfileMode) return;
+  const nextProfileMode: ProfileMode = currentProfileMode === 'leader' ? 'participant' : 'leader';
+  const switchProfileLabel =
+    nextProfileMode === 'participant'
+      ? 'Trocar para perfil de participante'
+      : 'Trocar para perfil de líder';
 
-    writeStoredProfileMode(nextMode);
+  function handleProfileModeToggle() {
+    writeStoredProfileMode(nextProfileMode);
 
     if (onProfileModeChange) {
-      onProfileModeChange(nextMode);
+      onProfileModeChange(nextProfileMode);
     }
 
     if (active !== 'perfil' || !onProfileModeChange) {
-      router.push(getProfileHref(nextMode));
+      router.push(getProfileHref(nextProfileMode));
     }
   }
 
@@ -416,37 +409,12 @@ export function AppSidebar({
       <div className={styles.footer}>
         {user && (
           <div className={styles.switcher}>
-            {switcherOpen && (
-              <div className={styles.switcherPanel}>
-                <div className={styles.switcherHeading}>Trocar de perfil</div>
-                {PROFILE_OPTIONS.map((option) => (
-                  <button
-                    key={option.mode}
-                    type="button"
-                    className={cx(
-                      styles.switcherOption,
-                      option.mode === currentProfileMode && styles.switcherOptionActive,
-                    )}
-                    onClick={() => handleProfileModeSelect(option.mode)}
-                  >
-                    <span className={styles.switcherIcon}>{option.icon}</span>
-                    <span className={styles.switcherText}>
-                      <span className={styles.switcherLabel}>{option.label}</span>
-                      <span className={styles.switcherHint}>{option.hint}</span>
-                    </span>
-                    {option.mode === currentProfileMode && (
-                      <Icon.Check size={16} className={styles.switcherCheck} />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-
             <button
               type="button"
               className={styles.account}
-              title="Trocar de perfil"
-              onClick={() => setSwitcherOpen((open) => !open)}
+              title={switchProfileLabel}
+              aria-label={switchProfileLabel}
+              onClick={handleProfileModeToggle}
             >
               <div className={styles.accountInfo}>
                 <Avatar index={user.avatarIndex} size="sm" name={user.name} />
@@ -455,7 +423,7 @@ export function AppSidebar({
                   <div className={styles.accountRole}>{roleLabel}</div>
                 </div>
               </div>
-              <Icon.ChevronDown size={16} className={styles.switcherChevron} />
+              <Icon.Swap size={16} className={styles.switcherIcon} />
             </button>
           </div>
         )}
