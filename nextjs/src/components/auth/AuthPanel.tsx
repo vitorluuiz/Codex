@@ -5,8 +5,10 @@ import { useActionState, useState } from 'react';
 import { useFormStatus } from 'react-dom';
 
 import { Button, Checkbox, Input } from '@/components/ds';
+import { formatRoomCode } from '@/components/join/RoomCodeInput';
 import { loginAction, signupAction, startOAuthAction, type AuthFormState } from '@/lib/actions/auth';
 import { cx } from '@/lib/cx';
+import { extractRoomCodeFromRedirect } from '@/lib/safeRedirect';
 import { PROVIDERS } from './ProviderIcons';
 import styles from './AuthPanel.module.css';
 
@@ -50,7 +52,15 @@ function ProviderButtons() {
   );
 }
 
-function Providers({ mode, initialError }: { mode: Mode; initialError: string | null }) {
+function Providers({
+  mode,
+  initialError,
+  redirectTo,
+}: {
+  mode: Mode;
+  initialError: string | null;
+  redirectTo: string;
+}) {
   const [state, formAction] = useActionState(startOAuthAction, { error: initialError });
 
   return (
@@ -60,6 +70,7 @@ function Providers({ mode, initialError }: { mode: Mode; initialError: string | 
         action={formAction}
         className={cx(styles.providers, mode === 'signup' && styles.providersTight)}
       >
+        <input type="hidden" name="redirectTo" value={redirectTo} />
         <ProviderButtons />
       </form>
     </>
@@ -76,7 +87,7 @@ function Divider({ label, tight }: { label: string; tight?: boolean }) {
   );
 }
 
-function LoginForm() {
+function LoginForm({ redirectTo }: { redirectTo: string }) {
   const [state, formAction] = useActionState(loginAction, INITIAL_STATE);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -90,6 +101,7 @@ function LoginForm() {
       {state.error && <p className={styles.formError}>{state.error}</p>}
 
       <form action={formAction} className={styles.fields}>
+        <input type="hidden" name="redirectTo" value={redirectTo} />
         <Input
           label="Email"
           name="email"
@@ -123,7 +135,7 @@ function LoginForm() {
   );
 }
 
-function SignupForm() {
+function SignupForm({ redirectTo }: { redirectTo: string }) {
   const [state, formAction] = useActionState(signupAction, INITIAL_STATE);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -150,6 +162,7 @@ function SignupForm() {
       {state.error && <p className={styles.formError}>{state.error}</p>}
 
       <form action={formAction} className={cx(styles.fields, styles.fieldsTight)}>
+        <input type="hidden" name="redirectTo" value={redirectTo} />
         <Input
           label="Nome completo"
           name="name"
@@ -203,16 +216,27 @@ function SignupForm() {
 export function AuthPanel({
   initialMode,
   initialError = null,
+  redirectTo = '/perfil',
 }: {
   initialMode: Mode;
   /** Erro trazido de volta pelo callback do provedor (`/entrar?erro=oauth`). */
   initialError?: string | null;
+  /** Caminho interno seguro para onde voltar após autenticar. */
+  redirectTo?: string;
 }) {
   const [mode, setMode] = useState<Mode>(initialMode);
   const isLogin = mode === 'login';
+  const returningRoomCode = extractRoomCodeFromRedirect(redirectTo);
 
   return (
     <div>
+      {returningRoomCode && (
+        <div className={styles.roomReturnBanner} role="status">
+          Após entrar, você voltará automaticamente para a{' '}
+          <strong>Sala {formatRoomCode(returningRoomCode)}</strong>.
+        </div>
+      )}
+
       <div className={styles.tabs} role="tablist" aria-label="Entrar ou criar conta">
         <button
           type="button"
@@ -234,10 +258,10 @@ export function AuthPanel({
         </button>
       </div>
 
-      {isLogin ? <LoginForm /> : <SignupForm />}
+      {isLogin ? <LoginForm redirectTo={redirectTo} /> : <SignupForm redirectTo={redirectTo} />}
 
       <Divider label={isLogin ? 'ou continue com' : 'ou cadastre-se com'} tight={!isLogin} />
-      <Providers mode={mode} initialError={initialError} />
+      <Providers mode={mode} initialError={initialError} redirectTo={redirectTo} />
 
       <p className={cx(styles.footNote, !isLogin && styles.footNoteTight)}>
         {isLogin ? (

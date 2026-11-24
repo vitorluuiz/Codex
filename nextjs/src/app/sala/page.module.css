@@ -1,15 +1,23 @@
 .page {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Fundo quente exclusivo desta tela, definido no design. */
+  /* Fundo quente exclusivo desta tela no tema claro. */
   background: #f0eee9;
   font-family: var(--font-body);
   padding: var(--space-6) var(--gutter-page);
 }
 
+:global([data-theme='dark']) .page {
+  background: var(--surface-page);
+}
+
 .container {
+  position: relative;
+  z-index: 1;
   width: 100%;
   max-width: var(--container-compact);
   display: flex;
@@ -23,7 +31,7 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
   padding: clamp(24px, 5vw, 36px);
-  box-shadow: var(--shadow-m);
+  box-shadow: var(--shadow-l);
 }
 
 .brand,
@@ -36,5 +44,5 @@
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
 }

@@ -109,6 +109,7 @@ function LobbyContent({
     null,
   );
   const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   /* --- eventos de tempo real --------------------------------------------- */
 
@@ -211,6 +212,14 @@ function LobbyContent({
     });
   }, [room.code]);
 
+  const copyInviteLink = useCallback(() => {
+    const inviteUrl = `${window.location.origin}/sala?codigo=${room.code}`;
+    void navigator.clipboard.writeText(inviteUrl).then(() => {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    });
+  }, [room.code]);
+
   function toggleLocked(next: boolean) {
     setLocked(next);
     startTransition(() => void updateRoomSettingsAction(room.code, { locked: next }));
@@ -274,15 +283,27 @@ function LobbyContent({
             <div className={styles.codeChip}>
               <span className={styles.codeLabel}>Código</span>
               <span className={styles.codeValue}>{room.code}</span>
-              <button
-                type="button"
-                className={styles.iconButton}
-                onClick={copyCode}
-                title={copied ? 'Código copiado' : 'Copiar código'}
-                aria-label={copied ? 'Código copiado' : 'Copiar código'}
-              >
-                {copied ? <Icon.Check size={18} /> : <Icon.Copy size={18} />}
-              </button>
+              <Tooltip label={copied ? 'Código copiado!' : 'Copiar código'}>
+                <button
+                  type="button"
+                  className={styles.iconButton}
+                  onClick={copyCode}
+                  aria-label={copied ? 'Código copiado' : 'Copiar código'}
+                >
+                  {copied ? <Icon.Check size={18} /> : <Icon.Copy size={18} />}
+                </button>
+              </Tooltip>
+              <span className={styles.chipDivider} aria-hidden="true" />
+              <Tooltip label={copiedLink ? 'Link de convite copiado!' : 'Copiar link de convite'}>
+                <button
+                  type="button"
+                  className={styles.iconButton}
+                  onClick={copyInviteLink}
+                  aria-label={copiedLink ? 'Link de convite copiado' : 'Copiar link de convite'}
+                >
+                  {copiedLink ? <Icon.Check size={18} /> : <Icon.Link size={18} />}
+                </button>
+              </Tooltip>
             </div>
 
             <span className={styles.count}>

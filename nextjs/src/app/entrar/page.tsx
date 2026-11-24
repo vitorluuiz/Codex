@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { AuthPanel } from '@/components/auth/AuthPanel';
 import { ImageSlot } from '@/components/media/ImageSlot';
 import { getSession } from '@/lib/api/session';
+import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 import styles from './page.module.css';
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 interface PageProps {
-  searchParams: Promise<{ modo?: string; erro?: string }>;
+  searchParams: Promise<{ modo?: string; erro?: string; proximo?: string }>;
 }
 
 /**
@@ -20,8 +21,9 @@ interface PageProps {
  * Toda a interação (troca de aba, validação, submit) vive em `<AuthPanel>`.
  */
 export default async function AuthPage({ searchParams }: PageProps) {
-  const [{ modo, erro }, session] = await Promise.all([searchParams, getSession()]);
-  if (session.user) redirect('/perfil');
+  const [{ modo, erro, proximo }, session] = await Promise.all([searchParams, getSession()]);
+  const redirectTo = sanitizeRedirectPath(proximo, '/perfil');
+  if (session.user) redirect(redirectTo);
 
   const initialMode = modo === 'criar' ? 'signup' : 'login';
 
@@ -54,7 +56,11 @@ export default async function AuthPage({ searchParams }: PageProps) {
 
       <div className={styles.formColumn}>
         <div className={styles.formShell}>
-          <AuthPanel initialMode={initialMode} initialError={initialError} />
+          <AuthPanel
+            initialMode={initialMode}
+            initialError={initialError}
+            redirectTo={redirectTo}
+          />
         </div>
       </div>
     </main>

@@ -10,6 +10,7 @@ import {
   SESSION_COOKIE,
   persistSession,
 } from '@/lib/cookies';
+import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 import type { OAuthProvider } from '@/lib/types';
 import type { User } from '@/lib/types';
 
@@ -40,6 +41,7 @@ export async function loginAction(
   _prev: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
+  const redirectTo = sanitizeRedirectPath(String(formData.get('redirectTo') ?? ''), '/perfil');
   try {
     const result = await apiRequest<AuthResponse>('/auth/login', {
       method: 'POST',
@@ -54,7 +56,7 @@ export async function loginAction(
   } catch (error) {
     return { error: describe(error) };
   }
-  redirect('/perfil');
+  redirect(redirectTo);
 }
 
 /** `POST /auth/signup` */
@@ -62,6 +64,7 @@ export async function signupAction(
   _prev: AuthFormState,
   formData: FormData,
 ): Promise<AuthFormState> {
+  const redirectTo = sanitizeRedirectPath(String(formData.get('redirectTo') ?? ''), '/perfil');
   try {
     const result = await apiRequest<AuthResponse>('/auth/signup', {
       method: 'POST',
@@ -76,7 +79,7 @@ export async function signupAction(
   } catch (error) {
     return { error: describe(error) };
   }
-  redirect('/perfil');
+  redirect(redirectTo);
 }
 
 /**
@@ -109,12 +112,13 @@ export async function startOAuthAction(
   formData: FormData,
 ): Promise<AuthFormState> {
   const provider = String(formData.get('provider') ?? '') as OAuthProvider;
+  const redirectTo = sanitizeRedirectPath(String(formData.get('redirectTo') ?? ''), '/perfil');
 
   let authorizeUrl: string;
   try {
     const result = await apiRequest<{ authorizeUrl: string; state: string }>(
       `/auth/oauth/${provider}/authorize`,
-      { method: 'POST', withSession: false, body: { redirectTo: '/perfil' } },
+      { method: 'POST', withSession: false, body: { redirectTo } },
     );
     authorizeUrl = result.authorizeUrl;
 
