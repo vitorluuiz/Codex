@@ -118,6 +118,62 @@ public class ActiveRoomsTests
         Assert.Equal(RoomMembershipRole.Participant, room.Role);
     }
 
+    [Fact]
+    public async Task Logged_in_participant_joining_via_service_appears_in_active_rooms()
+    {
+        var ctx = new RoomTestContext();
+        var player = ctx.AddUser("Carla Lima", "carla@escola.br");
+        var join = await ctx.Participants.JoinAsync(
+            ctx.Room.Code,
+            new JoinRoomRequest("Carla Lima", 1),
+            RoomTestContext.AsUser(player.Id),
+            CancellationToken.None);
+
+        var byUser = Assert.Single(await ctx.Rooms.ListActiveAsync(RoomTestContext.AsUser(player.Id), CancellationToken.None));
+        Assert.Equal(ctx.Room.Code, byUser.Code);
+        Assert.Equal(RoomMembershipRole.Participant, byUser.Role);
+
+        var byFullSession = Assert.Single(await ctx.Rooms.ListActiveAsync(
+            ctx.AsParticipant(join.Participant.Id, player.Id),
+            CancellationToken.None));
+        Assert.Equal(ctx.Room.Code, byFullSession.Code);
+        Assert.Equal(RoomMembershipRole.Participant, byFullSession.Role);
+    }
+
+    [Fact]
+    public async Task Removed_logged_in_participant_no_longer_sees_the_room()
+    {
+        var ctx = new RoomTestContext();
+        var player = ctx.AddUser("Diego Souza", "diego@escola.br");
+        var join = await ctx.Participants.JoinAsync(
+            ctx.Room.Code,
+            new JoinRoomRequest("Diego Souza", 2),
+            RoomTestContext.AsUser(player.Id),
+            CancellationToken.None);
+
+        await ctx.Participants.RemoveAsync(ctx.Room.Code, join.Participant.Id, ctx.AsLeader, CancellationToken.None);
+
+        Assert.Empty(await ctx.Rooms.ListActiveAsync(RoomTestContext.AsUser(player.Id), CancellationToken.None));
+        Assert.Empty(await ctx.Rooms.ListActiveAsync(ctx.AsParticipant(join.Participant.Id, player.Id), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Deleted_room_disappears_for_logged_in_participant()
+    {
+        var ctx = new RoomTestContext();
+        var player = ctx.AddUser("Elena Rocha", "elena@escola.br");
+        var join = await ctx.Participants.JoinAsync(
+            ctx.Room.Code,
+            new JoinRoomRequest("Elena Rocha", 3),
+            RoomTestContext.AsUser(player.Id),
+            CancellationToken.None);
+
+        await ctx.Rooms.DeleteAsync(ctx.Room.Code, ctx.AsLeader, CancellationToken.None);
+
+        Assert.Empty(await ctx.Rooms.ListActiveAsync(RoomTestContext.AsUser(player.Id), CancellationToken.None));
+        Assert.Empty(await ctx.Rooms.ListActiveAsync(ctx.AsParticipant(join.Participant.Id, player.Id), CancellationToken.None));
+    }
+
     /// <summary>
     /// A fila e leader-only (403 NOT_ROOM_LEADER em GET /rooms/{code}/queue). O titulo do conjunto
     /// aqui contornaria essa regra por outra rota, entao ele — e a contagem de fases — nao sai

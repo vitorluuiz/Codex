@@ -40,10 +40,6 @@ function PlanColumn({ plan }: { plan: PricingPlan }) {
     <div className={cx(styles.planCell, plan.highlighted && styles.planHighlighted)}>
       {plan.badge && <Tag tone="blue">{plan.badge}</Tag>}
       <div className={styles.planName}>{plan.name}</div>
-      <div>
-        <span className={styles.planPrice}>{plan.price}</span>
-        {plan.priceSuffix && <span className={styles.planSuffix}> {plan.priceSuffix}</span>}
-      </div>
       <p className={styles.planDescription}>{plan.description}</p>
       <Link href="/entrar" className={styles.planCta}>
         <Button variant={plan.highlighted ? 'primary' : 'secondary'} block>
@@ -113,7 +109,7 @@ export default function LandingPage() {
               Recursos
             </a>
             <a className={styles.navLink} href="#precos">
-              Preços
+              Planos
             </a>
           </nav>
           <div className={styles.navActions}>

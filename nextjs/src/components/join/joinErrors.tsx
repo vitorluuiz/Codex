@@ -1,10 +1,24 @@
 import type { ReactNode } from 'react';
 
 import type { JoinRejectionReason } from '@/lib/types';
+import { formatRoomCode } from './RoomCodeInput';
+
+export interface JoinErrorContext {
+  code: string;
+  name: string;
+  serverMessage?: string;
+}
 
 export interface JoinErrorPresentation {
+  /**
+   * - `'inline'`: erro ligado ao campo digitado (código/nome); exibido junto ao
+   *   input mantendo o texto intacto para correção rápida.
+   * - `'banner'`: bloqueio da sala ou de sistema; exibido em alerta contextual
+   *   dentro do card com ação direta (login ou tentar novamente).
+   */
+  display: 'inline' | 'banner';
   title: string;
-  message: (context: { code: string; name: string }) => string;
+  message: (context: JoinErrorContext) => string;
   /** Classe do círculo colorido do ícone (definida em JoinRoomFlow.module.css). */
   toneClass:
     | 'toneDanger'
@@ -14,13 +28,13 @@ export interface JoinErrorPresentation {
     | 'toneBlue'
     | 'toneNeutral';
   icon: ReactNode;
-  /** Rótulo do botão primário, quando faz sentido oferecer uma ação. */
-  primaryAction: 'retry-code' | 'change-name' | 'login' | 'retry-network' | null;
+  /** Ação primária exibida nos banners contextuais. */
+  primaryAction: 'login' | 'retry' | null;
 }
 
 const strokeProps = {
-  width: 26,
-  height: 26,
+  width: 22,
+  height: 22,
   viewBox: '0 0 24 24',
   fill: 'none',
   stroke: '#fff',
@@ -30,11 +44,12 @@ const strokeProps = {
 
 export const JOIN_ERRORS: Record<JoinRejectionReason, JoinErrorPresentation> = {
   not_found: {
+    display: 'inline',
     title: 'Sala não encontrada',
     message: ({ code }) =>
-      `Não existe nenhuma sala com o código "${code}". Confira o código e tente de novo.`,
+      `Nenhuma sala encontrada com o código ${formatRoomCode(code)}. Confira os dígitos e tente de novo.`,
     toneClass: 'toneDanger',
-    primaryAction: 'retry-code',
+    primaryAction: null,
     icon: (
       <svg {...strokeProps}>
         <circle cx="11" cy="11" r="7" />
@@ -43,10 +58,12 @@ export const JOIN_ERRORS: Record<JoinRejectionReason, JoinErrorPresentation> = {
     ),
   },
   locked: {
+    display: 'banner',
     title: 'Sala fechada',
-    message: () => 'O apresentador travou a entrada de novos jogadores nesta sala.',
+    message: () =>
+      'O apresentador travou a entrada de novos jogadores nesta sala. Peça para destrancar e tente novamente.',
     toneClass: 'toneWarning',
-    primaryAction: null,
+    primaryAction: 'retry',
     icon: (
       <svg {...strokeProps}>
         <rect x="5" y="11" width="14" height="9" rx="2" />
@@ -55,9 +72,10 @@ export const JOIN_ERRORS: Record<JoinRejectionReason, JoinErrorPresentation> = {
     ),
   },
   account_required: {
+    display: 'banner',
     title: 'Conta necessária',
     message: () =>
-      'Esta sala exige login para participar. Entre com sua conta para continuar.',
+      'Esta sala exige login para participar. Entre com sua conta — você voltará para esta sala automaticamente.',
     toneClass: 'toneViolet',
     primaryAction: 'login',
     icon: (
@@ -68,11 +86,12 @@ export const JOIN_ERRORS: Record<JoinRejectionReason, JoinErrorPresentation> = {
     ),
   },
   username_taken: {
+    display: 'inline',
     title: 'Nome já em uso',
     message: ({ name }) =>
-      `Já tem alguém na sala usando o nome "${name}". Escolha outro para continuar.`,
+      `Já existe alguém na sala usando "${name.trim()}". Escolha outro nome para continuar.`,
     toneClass: 'tonePink',
-    primaryAction: 'change-name',
+    primaryAction: null,
     icon: (
       <svg {...strokeProps}>
         <circle cx="9" cy="9" r="4" />
@@ -82,10 +101,12 @@ export const JOIN_ERRORS: Record<JoinRejectionReason, JoinErrorPresentation> = {
     ),
   },
   full: {
+    display: 'banner',
     title: 'Sala cheia',
-    message: () => 'Esta sala já atingiu o número máximo de jogadores.',
+    message: () =>
+      'Esta sala atingiu o número máximo de jogadores. Se uma vaga abrir, você pode tentar novamente.',
     toneClass: 'toneBlue',
-    primaryAction: null,
+    primaryAction: 'retry',
     icon: (
       <svg {...strokeProps}>
         <circle cx="8" cy="9" r="3.2" />
@@ -94,12 +115,41 @@ export const JOIN_ERRORS: Record<JoinRejectionReason, JoinErrorPresentation> = {
       </svg>
     ),
   },
+  rate_limited: {
+    display: 'banner',
+    title: 'Muitas tentativas',
+    message: () =>
+      'Você fez várias tentativas em sequência. Aguarde alguns segundos e tente novamente.',
+    toneClass: 'toneWarning',
+    primaryAction: 'retry',
+    icon: (
+      <svg {...strokeProps}>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+    ),
+  },
+  validation: {
+    display: 'inline',
+    title: 'Dados inválidos',
+    message: ({ serverMessage }) =>
+      serverMessage?.trim() || 'Confira os dados informados e tente novamente.',
+    toneClass: 'toneDanger',
+    primaryAction: null,
+    icon: (
+      <svg {...strokeProps}>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 8v4M12 16h.01" />
+      </svg>
+    ),
+  },
   network: {
+    display: 'banner',
     title: 'Falha de conexão',
     message: () =>
       'Não conseguimos conectar à sala. Verifique sua internet e tente novamente.',
     toneClass: 'toneNeutral',
-    primaryAction: 'retry-network',
+    primaryAction: 'retry',
     icon: (
       <svg {...strokeProps}>
         <path d="M2 8.5a15.5 15.5 0 0 1 20 0M5.5 12.5a10.5 10.5 0 0 1 13 0M9.3 16.3a5.7 5.7 0 0 1 5.4 0" />

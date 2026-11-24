@@ -43,6 +43,33 @@ export interface Session {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Planos e pesquisa provisória de intenção                                    */
+/* -------------------------------------------------------------------------- */
+
+export type PlanPricePerception = 'expectedLower' | 'fair' | 'expectedHigher';
+export type PlanSubscriptionIntent = 'yes' | 'maybe' | 'no';
+
+export interface PlanIntent {
+  selectedPlan: PlanId;
+  suggestedPriceBrl: number;
+  pricePerception: PlanPricePerception;
+  subscriptionIntent: PlanSubscriptionIntent;
+  expectedPriceBrl: number | null;
+  comment: string | null;
+  submissionCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SavePlanIntentInput {
+  selectedPlan: PlanId;
+  pricePerception: PlanPricePerception;
+  subscriptionIntent: PlanSubscriptionIntent;
+  expectedPriceBrl?: number | null;
+  comment?: string | null;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Sala e participantes                                                        */
 /* -------------------------------------------------------------------------- */
 
@@ -120,13 +147,15 @@ export interface Participant {
   inResults: boolean;
 }
 
-/** Motivos de recusa na entrada — cada um vira um diálogo próprio na UI. */
+/** Motivos de recusa na entrada — exibidos inline ou em alerta contextual na UI. */
 export type JoinRejectionReason =
   | 'not_found'
   | 'locked'
   | 'account_required'
   | 'username_taken'
   | 'full'
+  | 'rate_limited'
+  | 'validation'
   | 'network';
 
 /* -------------------------------------------------------------------------- */

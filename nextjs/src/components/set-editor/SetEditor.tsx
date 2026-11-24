@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 
 import { Button, Dialog, Toast, ToastViewport, Tooltip } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
+import { clearLastVisitedSetIfMatches } from '@/components/nav/sidebarSubmenus';
 import { decideGenerationAction, generatePhaseAction } from '@/lib/actions/ai';
 import { deletePhaseSetAction, savePhaseSetAction } from '@/lib/actions/phaseSets';
 import { cssVars } from '@/lib/cssVars';
@@ -394,6 +395,7 @@ export function SetEditor({
     startTransition(async () => {
       try {
         await deletePhaseSetAction(initialDraft.id!);
+        clearLastVisitedSetIfMatches([initialDraft.id!]);
         clearStoredDraft();
         setDeleteDialogOpen(false);
         router.push('/perfil');

@@ -16,7 +16,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  border-radius: var(--radius-m);
+  border-radius: var(--radius-s);
   background: var(--surface-card);
   border: 1.5px solid var(--border-subtle);
   transition: all var(--dur-fast) var(--ease-out);
@@ -65,7 +65,7 @@
   width: 100%;
   min-height: 160px;
   padding: 16px 18px;
-  border-radius: var(--radius-l);
+  border-radius: var(--radius-s);
   border: 1.5px solid var(--border-subtle);
   background: var(--surface-sunken);
   color: var(--text-primary);
@@ -84,6 +84,6 @@
 .textareaCompact {
   min-height: 100px;
   padding: 12px 14px;
-  border-radius: var(--radius-m);
+  border-radius: var(--radius-s);
   font-size: var(--text-body-s);
 }

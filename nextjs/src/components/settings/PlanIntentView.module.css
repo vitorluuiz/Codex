@@ -1,0 +1,794 @@
+.page {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* --- Cabeçalho ------------------------------------------------------------ */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.eyebrow {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-display-s);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  color: var(--text-primary);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+  line-height: var(--lh-normal);
+}
+
+/* --- Stepper Next Step ---------------------------------------------------- */
+
+.stepper {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-s);
+}
+
+.stepperList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.stepperItem {
+  min-width: 0;
+}
+
+.stepperButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-s);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.stepperButton:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.stepperButton:not(:disabled):hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+
+.stepperItemCurrent .stepperButton {
+  background: var(--blue-100);
+  color: var(--blue-700);
+  opacity: 1;
+}
+
+.stepperItemCompleted .stepperButton {
+  color: var(--text-primary);
+}
+
+.stepperNumber {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  flex-shrink: 0;
+}
+
+.stepperItemCurrent .stepperNumber {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #fff;
+}
+
+.stepperItemCompleted .stepperNumber {
+  background: var(--tone-green-surface);
+  border-color: var(--green-500);
+  color: var(--green-600);
+}
+
+.stepperLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Cartões e avisos ----------------------------------------------------- */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-body-l);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.sectionHint {
+  margin: 4px 0 0;
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+  line-height: var(--lh-normal);
+}
+
+.bodyText {
+  margin: 0;
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+  line-height: var(--lh-relaxed);
+}
+
+.noticeWarning,
+.noticeInfo {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-s);
+  font-size: var(--text-body-s);
+  line-height: var(--lh-normal);
+}
+
+.noticeWarning {
+  background: var(--tone-amber-surface);
+  color: var(--ink-800);
+  border: 1px solid color-mix(in srgb, var(--amber-500) 35%, transparent);
+}
+
+.noticeInfo {
+  background: var(--blue-50);
+  color: var(--blue-800);
+  border: 1px solid var(--blue-200);
+}
+
+.noticeIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--amber-600);
+}
+
+.noticeInfo .noticeIcon {
+  color: var(--blue-600);
+}
+
+.noticeTitle {
+  display: block;
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-bold);
+  color: var(--ink-900);
+  margin-bottom: 4px;
+}
+
+.noticeBody {
+  margin: 0;
+  color: var(--ink-700);
+}
+
+/* --- Etapa 1: Explicação -------------------------------------------------- */
+
+.introContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.howItWorks {
+  list-style: none;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.howItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-s);
+  background: var(--surface-sunken);
+}
+
+.howItem strong {
+  display: block;
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.howItem p {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  line-height: var(--lh-normal);
+}
+
+.howBadge {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  background: var(--blue-100);
+  color: var(--blue-700);
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.currentPlanBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 10px var(--space-3);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+}
+
+/* --- Etapa 2: Tabela comparativa sem preço -------------------------------- */
+
+.stepTwoHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.landingLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-link);
+  white-space: nowrap;
+  padding-top: 2px;
+}
+
+.tableWrapper {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-m);
+  overflow-x: auto;
+  background: var(--surface-card);
+}
+
+.comparisonGrid {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.35fr) repeat(3, minmax(135px, 1fr));
+  min-width: 600px;
+}
+
+.cornerCell {
+  display: flex;
+  align-items: flex-end;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  background: var(--surface-card);
+}
+
+.planHeaderCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-3);
+  border: 0;
+  border-left: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.planHeaderCell:hover {
+  background: var(--surface-sunken);
+}
+
+.planHeaderPopular {
+  background: var(--blue-50);
+}
+
+.planHeaderSelected,
+.planHeaderSelected:hover {
+  background: var(--blue-100);
+  box-shadow: inset 0 3px 0 0 var(--accent-primary);
+}
+
+.planHeaderTop {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 24px;
+}
+
+.planHeaderName {
+  font-family: var(--font-display);
+  font-size: var(--text-body-l);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+
+.planHeaderDesc {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  line-height: var(--lh-snug);
+  flex: 1;
+}
+
+.selectPill {
+  margin-top: var(--space-1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+}
+
+.selectPillActive {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+.tableRowContents {
+  display: contents;
+}
+
+.featureLabelCell,
+.featureValueCell {
+  padding: 12px var(--space-3);
+  display: flex;
+  align-items: center;
+  font-size: var(--text-caption);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.featureLabelCell {
+  padding-inline: var(--space-4);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+  line-height: var(--lh-snug);
+}
+
+.featureValueCell {
+  justify-content: center;
+  text-align: center;
+  border-left: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.rowZebra {
+  background: var(--surface-sunken);
+}
+
+.colSelected {
+  background: color-mix(in srgb, var(--blue-100) 55%, var(--surface-card));
+  font-weight: var(--fw-semibold);
+}
+
+.cellText {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.iconYes {
+  color: var(--green-600);
+  flex-shrink: 0;
+}
+
+.iconNo {
+  color: var(--ink-300);
+  flex-shrink: 0;
+}
+
+.selectionBar {
+  padding: 10px var(--space-3);
+  border-radius: var(--radius-s);
+  background: var(--surface-sunken);
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+}
+
+.selectionBar strong {
+  color: var(--text-primary);
+}
+
+/* --- Etapa 3: Revelação de preço e validação ------------------------------ */
+
+.priceReveal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--radius-m);
+  background: linear-gradient(135deg, var(--blue-50), var(--surface-card));
+  border: 1px solid var(--blue-200);
+  flex-wrap: wrap;
+}
+
+.priceRevealMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  max-width: 420px;
+}
+
+.priceRevealTitle {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--text-heading);
+  font-weight: var(--fw-bold);
+  color: var(--text-primary);
+}
+
+.priceRevealDesc {
+  margin: 0;
+  font-size: var(--text-body-s);
+  color: var(--text-secondary);
+}
+
+.priceRevealAmount {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-s);
+  background: var(--surface-card);
+  border: 1px solid var(--blue-200);
+  box-shadow: var(--shadow-s);
+}
+
+.priceNumber {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  color: var(--blue-700);
+  font-variant-numeric: tabular-nums;
+}
+
+.priceSuffix {
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.benefitsRecap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.recapLabel {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-bold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.recapChips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.recapChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  font-size: var(--text-caption);
+  color: var(--text-primary);
+}
+
+.divider {
+  height: 1px;
+  background: var(--border-subtle);
+  border: 0;
+  margin: 0;
+}
+
+.questionGroup {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.questionLegend {
+  padding: 0;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.optionStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.choiceCard {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+
+.choiceCard:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-sunken);
+}
+
+.choiceCardSelected,
+.choiceCardSelected:hover {
+  border-color: var(--accent-primary);
+  background: color-mix(in srgb, var(--accent-primary) 8%, var(--surface-card));
+}
+
+.radioDot {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--border-strong);
+  background: var(--surface-card);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.radioDotSelected {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+  color: #fff;
+}
+
+.choiceText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.choiceTitle {
+  font-size: var(--text-body-s);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.choiceDesc {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  line-height: var(--lh-snug);
+}
+
+.expectedPriceField {
+  max-width: 320px;
+}
+
+.commentField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.charCount {
+  align-self: flex-end;
+  font-family: var(--font-mono);
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+/* --- Rodapé das etapas ---------------------------------------------------- */
+
+.stepActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+/* --- Tela de resumo salvo ------------------------------------------------- */
+
+.summaryTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.summaryHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.summaryBadgeIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-pill);
+  background: var(--tone-green-surface);
+  color: var(--green-600);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.summaryGrid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.summaryItem {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-s);
+  background: var(--surface-sunken);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summaryItemFull {
+  grid-column: 1 / -1;
+}
+
+.summaryItem dt {
+  font-size: var(--text-caption);
+  font-weight: var(--fw-semibold);
+  color: var(--text-secondary);
+}
+
+.summaryItem dd {
+  margin: 0;
+  font-size: var(--text-body-s);
+  color: var(--text-primary);
+  line-height: var(--lh-snug);
+}
+
+.monoValue {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.summaryFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.updatedAt {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+}
+
+/* --- Responsividade ------------------------------------------------------- */
+
+@media (max-width: 640px) {
+  .stepperList {
+    grid-template-columns: 1fr;
+  }
+
+  .summaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .priceReveal {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

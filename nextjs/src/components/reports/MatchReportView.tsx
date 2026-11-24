@@ -275,7 +275,19 @@ export function MatchReportView({
 
   return (
     <div className={styles.layout}>
-      <AppSidebar user={user} active="relatorios" />
+      <AppSidebar
+        user={user}
+        active="relatorios"
+        currentSubmenu={{
+          section: 'relatorios',
+          item: {
+            key: `report:leader:${report.shareToken}`,
+            label: report.title,
+            meta: `Sala ${report.roomCode}`,
+            href: `/relatorios/${report.shareToken}`,
+          },
+        }}
+      />
 
       <main className={styles.content}>
         <div className={styles.container}>

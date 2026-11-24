@@ -63,7 +63,7 @@
   padding: var(--space-3) var(--space-4);
   background: transparent;
   border: none;
-  border-radius: var(--radius-m);
+  border-radius: var(--radius-s);
   cursor: pointer;
   text-align: left;
   font-family: var(--font-body);

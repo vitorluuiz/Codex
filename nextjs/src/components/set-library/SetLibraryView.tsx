@@ -8,6 +8,7 @@ import { Icon } from '@/components/icons/Icons';
 import { ImageSlot } from '@/components/media/ImageSlot';
 import { AppSidebar } from '@/components/nav/AppSidebar';
 import { AUDIENCE_LABEL } from '@/components/nav/audienceLabels';
+import { clearLastVisitedSetIfMatches } from '@/components/nav/sidebarSubmenus';
 import { logoutAction } from '@/lib/actions/auth';
 import {
   copyPhaseSetAction,
@@ -111,6 +112,7 @@ export function SetLibraryView({ user, library }: SetLibraryViewProps) {
     setPendingDelete(null);
     setSets((current) => current.filter((set) => !ids.includes(set.id)));
     setSelected((current) => current.filter((id) => !ids.includes(id)));
+    clearLastVisitedSetIfMatches(ids);
     const done = ids.length === 1 ? 'Conjunto excluído.' : `${ids.length} conjuntos excluídos.`;
     startTransition(async () => {
       await Promise.all(ids.map((id) => deletePhaseSetAction(id)));

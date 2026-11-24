@@ -254,7 +254,19 @@ export function IndividualReportView({ report, user = null }: IndividualReportVi
 
   return (
     <div className={styles.layout}>
-      <AppSidebar user={user} active="relatorios" />
+      <AppSidebar
+        user={user}
+        active="relatorios"
+        currentSubmenu={{
+          section: 'relatorios',
+          item: {
+            key: `report:individual:${p.accessToken}`,
+            label: report.title,
+            meta: `Individual · Sala ${report.roomCode}`,
+            href: `/relatorios/individual/${p.accessToken}`,
+          },
+        }}
+      />
 
       <main className={styles.content}>
         <div className={styles.container}>

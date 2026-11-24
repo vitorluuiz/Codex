@@ -1,3 +1,8 @@
+'use client';
+
+import { useEffect } from 'react';
+
+import { clearLastActiveRoomIfMatches } from '@/components/nav/sidebarSubmenus';
 import styles from './LeftRoomNotice.module.css';
 
 /**
@@ -13,7 +18,16 @@ import styles from './LeftRoomNotice.module.css';
  * são a mesma coisa: você não está mais lá, e voltar exige o código de novo.
  */
 export function LeftRoomNotice({ reason }: { reason: string | undefined }) {
-  if (reason !== 'removido' && reason !== 'encerrada' && reason !== 'sala_encerrada') return null;
+  const isRoomExit =
+    reason === 'removido' || reason === 'encerrada' || reason === 'sala_encerrada';
+
+  useEffect(() => {
+    if (isRoomExit) {
+      clearLastActiveRoomIfMatches();
+    }
+  }, [isRoomExit]);
+
+  if (!isRoomExit) return null;
 
   if (reason === 'encerrada' || reason === 'sala_encerrada') {
     return (

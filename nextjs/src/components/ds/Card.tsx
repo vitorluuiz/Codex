@@ -6,7 +6,7 @@ import styles from './Card.module.css';
 export interface CardProps {
   children: ReactNode;
   inverse?: boolean;
-  /** Aplica `--radius-xl` (28px) no lugar do padrão de 20px. */
+  /** Aplica `--radius-xl` (28px) no lugar do padrão `--radius-m` (14px) em destaques e interfaces únicas. */
   large?: boolean;
   /** Padding `clamp(24px, 4vw, 40px)` dos painéis grandes. */
   roomy?: boolean;

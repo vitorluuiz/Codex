@@ -1,0 +1,67 @@
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+  background: var(--surface-page);
+  font-family: var(--font-body);
+}
+
+.main {
+  padding: var(--space-8) var(--gutter-page);
+  min-width: 0;
+  color: var(--text-primary);
+}
+
+/* Grid simétrico de 3 colunas: centraliza matematicamente o conteúdo em
+   --container-compact (520px) mantendo a SettingsSidebar (220px) imediatamente
+   à sua esquerda. */
+.container {
+  display: grid;
+  grid-template-columns:
+    minmax(220px, 1fr)
+    minmax(0, var(--container-compact))
+    minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-6);
+}
+
+/* Telas de configurações que exibem tabelas comparativas amplas (ex.: Pagamentos e plano)
+   expandem a coluna central para --container-narrow mantendo a sidebar alinhada. */
+.container:has([data-settings-wide='true']) {
+  grid-template-columns:
+    220px
+    minmax(0, var(--container-narrow))
+    minmax(0, 1fr);
+}
+
+.content {
+  grid-column: 2;
+  min-width: 0;
+  width: 100%;
+}
+
+@media (max-width: 1140px) {
+  .main .container {
+    max-width: var(--container-compact);
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
+  }
+
+  .main .container:has([data-settings-wide='true']) {
+    max-width: var(--container-narrow);
+  }
+
+  .content {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .main {
+    padding: var(--space-6) var(--gutter-page);
+  }
+}

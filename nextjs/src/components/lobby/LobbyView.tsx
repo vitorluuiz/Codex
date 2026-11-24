@@ -7,6 +7,10 @@ import { useCallback, useEffect, useMemo, useState, useTransition } from 'react'
 import { Avatar } from '@/components/avatar/Avatar';
 import { Button, Popover, Switch, Tooltip, anchorFrom, type AnchorRect } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
+import {
+  clearLastActiveRoomIfMatches,
+  recordLastActiveRoom,
+} from '@/components/nav/sidebarSubmenus';
 import { RealtimeProvider, useRealtimeEvent } from '@/realtime/RealtimeProvider';
 import { channels } from '@/realtime/protocol';
 import {
@@ -105,6 +109,7 @@ function LobbyContent({
     null,
   );
   const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   /* --- eventos de tempo real --------------------------------------------- */
 
@@ -156,6 +161,20 @@ function LobbyContent({
   });
 
   useEffect(() => {
+    if (rejected) {
+      clearLastActiveRoomIfMatches(room.code);
+      return;
+    }
+    recordLastActiveRoom({
+      code: room.code,
+      status: room.status,
+      role: isLeader ? 'leader' : 'participant',
+      leaderName: room.leader.name,
+      setTitle: queue.sets[0]?.title ?? null,
+    });
+  }, [room.code, room.status, room.leader.name, isLeader, queue.sets, rejected]);
+
+  useEffect(() => {
     if (room.status === 'running' && !awaitingApproval && !isLeader) {
       router.push(`/sala/${room.code}/partida`);
     }
@@ -173,10 +192,12 @@ function LobbyContent({
   // `replace`, não `push`: o lobby de onde a pessoa acabou de sair responde 404
   // para ela agora, então voltar por ele não é um caminho que exista mais.
   useRealtimeEvent('participant.removed', () => {
+    clearLastActiveRoomIfMatches(room.code);
     router.replace('/sala?saida=removido');
   });
 
   useRealtimeEvent('room.closed', () => {
+    clearLastActiveRoomIfMatches(room.code);
     if (!isLeader) {
       router.replace('/sala?saida=encerrada');
     }
@@ -188,6 +209,14 @@ function LobbyContent({
     void navigator.clipboard.writeText(room.code).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    });
+  }, [room.code]);
+
+  const copyInviteLink = useCallback(() => {
+    const inviteUrl = `${window.location.origin}/sala?codigo=${room.code}`;
+    void navigator.clipboard.writeText(inviteUrl).then(() => {
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
     });
   }, [room.code]);
 
@@ -217,6 +246,7 @@ function LobbyContent({
   function closeRoom(room: Room) {
     startTransition(async () => {
       await closeRoomAction(room.code);
+      clearLastActiveRoomIfMatches(room.code);
       router.replace('/perfil');
     });
   }
@@ -253,15 +283,27 @@ function LobbyContent({
             <div className={styles.codeChip}>
               <span className={styles.codeLabel}>Código</span>
               <span className={styles.codeValue}>{room.code}</span>
-              <button
-                type="button"
-                className={styles.iconButton}
-                onClick={copyCode}
-                title={copied ? 'Código copiado' : 'Copiar código'}
-                aria-label={copied ? 'Código copiado' : 'Copiar código'}
-              >
-                {copied ? <Icon.Check size={18} /> : <Icon.Copy size={18} />}
-              </button>
+              <Tooltip label={copied ? 'Código copiado!' : 'Copiar código'}>
+                <button
+                  type="button"
+                  className={styles.iconButton}
+                  onClick={copyCode}
+                  aria-label={copied ? 'Código copiado' : 'Copiar código'}
+                >
+                  {copied ? <Icon.Check size={18} /> : <Icon.Copy size={18} />}
+                </button>
+              </Tooltip>
+              <span className={styles.chipDivider} aria-hidden="true" />
+              <Tooltip label={copiedLink ? 'Link de convite copiado!' : 'Copiar link de convite'}>
+                <button
+                  type="button"
+                  className={styles.iconButton}
+                  onClick={copyInviteLink}
+                  aria-label={copiedLink ? 'Link de convite copiado' : 'Copiar link de convite'}
+                >
+                  {copiedLink ? <Icon.Check size={18} /> : <Icon.Link size={18} />}
+                </button>
+              </Tooltip>
             </div>
 
             <span className={styles.count}>

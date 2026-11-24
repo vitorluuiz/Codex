@@ -20,27 +20,36 @@ import type {
 
 export type CheckCodeResult =
   | { ok: true; room: Pick<Room, 'code' | 'capacity' | 'requireAccount'> }
-  | { ok: false; reason: JoinRejectionReason };
+  | { ok: false; reason: JoinRejectionReason; message?: string };
 
-function toReason(error: unknown): JoinRejectionReason {
-  if (error instanceof ApiNotConfiguredError) return 'network';
+function toFailure(error: unknown): { ok: false; reason: JoinRejectionReason; message?: string } {
+  if (error instanceof ApiNotConfiguredError) return { ok: false, reason: 'network' };
   if (error instanceof ApiError) {
     switch (error.code) {
       case 'ROOM_NOT_FOUND':
-        return 'not_found';
+        return { ok: false, reason: 'not_found' };
       case 'ROOM_LOCKED':
-        return 'locked';
+        return { ok: false, reason: 'locked' };
       case 'ACCOUNT_REQUIRED':
-        return 'account_required';
+        return { ok: false, reason: 'account_required' };
       case 'ROOM_FULL':
-        return 'full';
+        return { ok: false, reason: 'full' };
       case 'USERNAME_TAKEN':
-        return 'username_taken';
+        return { ok: false, reason: 'username_taken' };
+      case 'RATE_LIMITED':
+        return { ok: false, reason: 'rate_limited' };
+      case 'VALIDATION_ERROR':
+        return { ok: false, reason: 'validation', message: error.message };
       default:
-        return error.status === 404 ? 'not_found' : 'network';
+        if (error.status === 404) return { ok: false, reason: 'not_found' };
+        if (error.status === 429) return { ok: false, reason: 'rate_limited' };
+        if (error.status === 400) {
+          return { ok: false, reason: 'validation', message: error.message };
+        }
+        return { ok: false, reason: 'network' };
     }
   }
-  return 'network';
+  return { ok: false, reason: 'network' };
 }
 
 /**
@@ -48,19 +57,28 @@ function toReason(error: unknown): JoinRejectionReason {
  * Valida o código antes de pedir nome e avatar, para o erro aparecer no passo certo.
  */
 export async function checkRoomCodeAction(code: string): Promise<CheckCodeResult> {
+  const cleanCode = code.replace(/\D/g, '').slice(0, 6);
+  if (cleanCode.length !== 6) {
+    return {
+      ok: false,
+      reason: 'validation',
+      message: 'Digite os 6 dígitos do código da sala.',
+    };
+  }
+
   try {
     const room = await apiRequest<Pick<Room, 'code' | 'capacity' | 'requireAccount'>>(
-      `/rooms/${code}/availability`,
+      `/rooms/${cleanCode}/availability`,
     );
     return { ok: true, room };
   } catch (error) {
-    return { ok: false, reason: toReason(error) };
+    return toFailure(error);
   }
 }
 
 export type JoinResult =
   | { ok: true; participant: Participant }
-  | { ok: false; reason: JoinRejectionReason };
+  | { ok: false; reason: JoinRejectionReason; message?: string };
 
 /** `POST /rooms/{code}/participants` */
 export async function joinRoomAction(
@@ -68,10 +86,28 @@ export async function joinRoomAction(
   displayName: string,
   avatarIndex: AvatarIndex,
 ): Promise<JoinResult> {
+  const cleanCode = code.replace(/\D/g, '').slice(0, 6);
+  const trimmedName = displayName.trim();
+
+  if (cleanCode.length !== 6) {
+    return {
+      ok: false,
+      reason: 'validation',
+      message: 'O código da sala precisa ter 6 dígitos.',
+    };
+  }
+  if (!trimmedName || trimmedName.length > 80) {
+    return {
+      ok: false,
+      reason: 'validation',
+      message: 'O nome de usuário deve ter entre 1 e 80 caracteres.',
+    };
+  }
+
   try {
     const result = await apiRequest<{ participant: Participant; token: string; expiresIn: number }>(
-      `/rooms/${code}/participants`,
-      { method: 'POST', body: { displayName, avatarIndex } },
+      `/rooms/${cleanCode}/participants`,
+      { method: 'POST', body: { displayName: trimmedName, avatarIndex } },
     );
 
     const store = await cookies();
@@ -85,7 +121,7 @@ export async function joinRoomAction(
 
     return { ok: true, participant: result.participant };
   } catch (error) {
-    return { ok: false, reason: toReason(error) };
+    return toFailure(error);
   }
 }
 

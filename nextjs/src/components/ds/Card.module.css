@@ -2,7 +2,7 @@
   background: var(--surface-card);
   color: var(--text-primary);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-l);
+  border-radius: var(--radius-m);
   padding: var(--space-6);
   box-shadow: var(--shadow-s);
 }

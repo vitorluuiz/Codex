@@ -26,6 +26,8 @@ Este documento define o contrato, arquitetura e padrões da camada de interface 
 | `/sala` | Entrada de participante via código de 6 dígitos. | Client Component com fluxo em 2 etapas. |
 | `/sala/[code]/lobby` | Sala de espera pré-partida (visão de líder ou jogador). | RSC (dados iniciais) + WebSocket Provider. |
 | `/sala/[code]/partida`| Execução dos desafios gamificados e pódio. | RSC (fase inicial) + Máquina de Telas da Casca. |
+| `/configuracoes/pagamentos` | Formulário provisório em etapas (*Next Step*) de intenção de contratação e validação de preço dos planos. | RSC autenticado + Client Wizard (`PlanIntentView`). |
+| `/configuracoes/ia` | Acompanhamento de consumo mensal de créditos e sugestões diárias de IA. | RSC autenticado + Client View (`AiQuotaView`). |
 
 ---
 
@@ -74,5 +76,6 @@ Novos formatos de desafio são integrados registrando o módulo correspondente n
 ## 5. Padrões Visuais e Estilização
 
 * **CSS Modules:** Estilização componentizada em arquivos `.module.css` dedicados. Classes utilitárias globais (Tailwind) não são utilizadas.
-* **Tokens de Design:** Variáveis CSS nativas (`--accent-primary`, `--radius-xl`, `--text-body-l`) declaradas centralmente em `src/styles/tokens/`.
+* **Tokens de Design:** Variáveis CSS nativas (`--accent-primary`, `--radius-m`, `--text-body-l`) declaradas centralmente em `src/styles/tokens/`.
+* **Hierarquia de Raios de Borda (`border-radius`):** Preferir `--radius-m` (`14px`) para cartões, diálogos e superfícies principais; `--radius-s` (`8px`) para elementos internos (linhas, avisos, inputs, badges); reservar `--radius-l` (`20px`) e `--radius-xl` (`28px`) para itens esporádicos de destaque (como botões especiais e interfaces únicas); usar `--radius-pill` para botões pílula, tags, switches e medidores.
 * **Valores Dinâmicos em Runtime:** Proporções de barras de progresso, alturas de degraus do pódio e cores dinâmicas de conjuntos são repassadas ao CSS unicamente através de custom properties via utilitário `cssVars()`, preservando a separação entre layout estrutural e cálculo matemático.

@@ -469,6 +469,11 @@ public class MatchService(
 
         await repo.RemoveParticipantAsync(room.Id.ToString(), id.ToString(), pData.DisplayName.ToLowerInvariant(), ct);
 
+        if (pData.UserId is not null)
+        {
+            await repo.RemoveFromJoinedAsync(pData.UserId, room.Id.ToString(), ct);
+        }
+
         // The submissions are kept in Redis. They will be ignored during calculations because the participant is rejected.
 
         await events.ParticipantRemovedAsync(room, id, ct);

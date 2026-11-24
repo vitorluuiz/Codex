@@ -472,6 +472,16 @@ Todas as rotas exigem sessão de usuário autenticado (`403 ACCOUNT_REQUIRED`). 
 * `POST /ai/generations/{generationId}/decision` -> `204 No Content`:
   * **Corpo:** `{ "decision": "accepted|partial|discarded", "acceptedCount": 1 }`. Registra a decisão do autor na revisão.
 
+#### 3.4.2 Pesquisa Provisória de Planos (`/billing`)
+
+Rotas autenticadas (`403 ACCOUNT_REQUIRED` sem sessão) da seção provisória **Pagamentos e plano**, persistidas na coleção `plan_intents` do MongoDB.
+
+* `GET /billing/plan-intent` -> `200 OK`: Retorna `{ "intent": PlanIntent | null }`.
+* `PUT /billing/plan-intent` -> `200 OK`:
+  * **Corpo:** `{ "selectedPlan": "free|intermediate|pro", "pricePerception": "expectedLower|fair|expectedHigher", "subscriptionIntent": "yes|maybe|no", "expectedPriceBrl": null, "comment": null }`.
+  * **Resposta:** Objeto `PlanIntent` salvo, com `suggestedPriceBrl` definido autoritativamente no servidor (`0`, `11` ou `35`), `submissionCount`, `createdAt` e `updatedAt`.
+  * **Erros:** `403 ACCOUNT_REQUIRED`, `400 VALIDATION_ERROR`.
+
 ---
 
 ### 3.5 Fila de Fases da Sala

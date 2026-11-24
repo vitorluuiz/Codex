@@ -74,6 +74,11 @@ public class ParticipantService(
             throw new ApiException(StatusCodes.Status409Conflict, ErrorCodes.RoomFull, "A sala atingiu a capacidade maxima.");
         }
 
+        if (userId is not null)
+        {
+            await repo.AddToJoinedAsync(userId, room.Id, ct);
+        }
+
         var lifetime = TimeSpan.FromHours(configuration.GetValue("CodexApi:GuestParticipantLifetimeHours", 4));
         var expiresAt = DateTimeOffset.UtcNow.Add(lifetime);
         var token = tokenService.Issue(new SessionTokenPayload(principal.GetUserId(), Guid.Parse(participant.Id), room.Code, expiresAt));
@@ -119,6 +124,11 @@ public class ParticipantService(
                           ?? throw new ApiException(StatusCodes.Status404NotFound, ErrorCodes.ParticipantNotFound, "Participante nao encontrado nesta sala.");
 
         await repo.RemoveParticipantAsync(room.Id, participantId.ToString(), participant.DisplayName.ToLowerInvariant(), ct);
+
+        if (participant.UserId is not null)
+        {
+            await repo.RemoveFromJoinedAsync(participant.UserId, room.Id, ct);
+        }
 
         await realtime.PublishAsync(
             room.Code,

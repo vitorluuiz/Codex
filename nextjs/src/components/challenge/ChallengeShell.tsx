@@ -4,6 +4,10 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
 import { RealtimeProvider, useRealtime, useRealtimeEvent } from '@/realtime/RealtimeProvider';
+import {
+  clearLastActiveRoomIfMatches,
+  recordLastActiveRoom,
+} from '@/components/nav/sidebarSubmenus';
 import { channels } from '@/realtime/protocol';
 import { useServerCountdown } from '@/realtime/useServerCountdown';
 import {
@@ -409,11 +413,21 @@ function ChallengeContent({
     }
   });
 
+  useEffect(() => {
+    recordLastActiveRoom({
+      code: roomCode,
+      status: match.status === 'finished' ? 'lobby' : 'running',
+      role: isLeader ? 'leader' : 'participant',
+    });
+  }, [roomCode, match.status, isLeader]);
+
   useRealtimeEvent('participant.removed', () => {
+    clearLastActiveRoomIfMatches(roomCode);
     router.replace('/sala?saida=removido');
   });
 
   useRealtimeEvent('room.closed', () => {
+    clearLastActiveRoomIfMatches(roomCode);
     if (!isLeader) {
       router.replace('/sala?saida=encerrada');
     }
