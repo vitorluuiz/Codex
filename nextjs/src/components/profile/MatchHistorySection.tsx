@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
 
@@ -25,6 +26,7 @@ interface MatchHistorySectionProps {
   /** "Participantes" ou "Candidatos", conforme o público da conta. */
   participantsLabel: string;
   onCloseRoom: (room: ActiveRoom) => void;
+  onCreateRoom?: () => void;
 }
 
 export function MatchHistorySection({
@@ -32,6 +34,7 @@ export function MatchHistorySection({
   activeRooms,
   participantsLabel,
   onCloseRoom,
+  onCreateRoom,
 }: MatchHistorySectionProps) {
   const [closing, startClosing] = useTransition();
   const [closingCode, setClosingCode] = useState<string | null>(null);
@@ -102,16 +105,36 @@ export function MatchHistorySection({
     </li>
   ));
 
+  const isEmpty = activeRooms.length === 0 && items.length === 0;
+
   return (
     <section className={styles.section}>
       <h2 className={styles.title}>Histórico de partidas como líder</h2>
 
-      <MatchHistoryList
-        items={items}
-        leadingItems={activeRoomRows}
-        hasLeadingItems={activeRooms.length > 0}
-        emptyMessage="Nenhuma partida realizada ainda."
-      />
+      {isEmpty ? (
+        <div className={styles.emptyState}>
+          <Image
+            className={styles.emptyImage}
+            src="/Ilustrations/EmptyStateReports.svg"
+            alt="Ilustração de histórico de partidas vazio"
+            width={200}
+            height={200}
+          />
+          <p className={styles.empty}>Nenhuma partida realizada ainda.</p>
+          {onCreateRoom && (
+            <Button size="sm" onClick={onCreateRoom}>
+              Criar sala
+            </Button>
+          )}
+        </div>
+      ) : (
+        <MatchHistoryList
+          items={items}
+          leadingItems={activeRoomRows}
+          hasLeadingItems={activeRooms.length > 0}
+          emptyMessage="Nenhuma partida realizada ainda."
+        />
+      )}
     </section>
   );
 }

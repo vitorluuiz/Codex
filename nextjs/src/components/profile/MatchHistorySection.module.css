@@ -4,6 +4,30 @@
   gap: var(--space-4);
 }
 
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-self: flex-start;
+  align-items: center;
+  width: min(100%, 360px);
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  text-align: center;
+}
+
+.emptyImage {
+  width: 100%;
+  max-width: 200px;
+  height: auto;
+  object-fit: contain;
+}
+
+.empty {
+  color: var(--text-secondary);
+  font-size: var(--text-body-s);
+  margin: 0;
+}
+
 .title {
   font-family: var(--font-display);
   font-weight: var(--fw-medium);

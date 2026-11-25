@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -49,20 +50,32 @@ export function SetsSection({ sets, onCreate, onEdit, onStart }: SetsSectionProp
     <section className={styles.section}>
       <div className={styles.head}>
         <h2 className={styles.title}>Conjuntos de desafios criados</h2>
-        <div className={styles.headActions}>
-          {sets.length > 0 && (
+        {sets.length > 0 && (
+          <div className={styles.headActions}>
             <button type="button" className={styles.link} onClick={() => redirect('/conjuntos')}>
               Ver todos ({sets.length})
             </button>
-          )}
+            <Button size="sm" onClick={onCreate}>
+              Criar novo conjunto
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {sets.length === 0 ? (
+        <div className={styles.emptyState}>
+          <Image
+            className={styles.emptyImage}
+            src="/Ilustrations/EmptyState.svg"
+            alt="Ilustração de lista de conjuntos vazia"
+            width={200}
+            height={200}
+          />
+          <p className={styles.empty}>Você ainda não criou nenhum conjunto de desafios.</p>
           <Button size="sm" onClick={onCreate}>
             Criar novo conjunto
           </Button>
         </div>
-      </div>
-
-      {sets.length === 0 ? (
-        <p className={styles.empty}>Você ainda não criou nenhum conjunto de desafios.</p>
       ) : (
         <div className={styles.railWrapper}>
           <div className={styles.rail} ref={railRef} onScroll={syncArrows}>

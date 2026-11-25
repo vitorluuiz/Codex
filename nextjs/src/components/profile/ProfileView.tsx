@@ -169,6 +169,7 @@ export function ProfileView({
                   activeRooms={ledRooms}
                   participantsLabel={participantsLabel}
                   onCloseRoom={closeRoom}
+                  onCreateRoom={isOwnProfile ? () => openRoom() : undefined}
                 />
               </>
             ) : (

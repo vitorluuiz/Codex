@@ -12,6 +12,7 @@
   flex-direction: column;
   width: 100%;
   max-width: var(--container-wide);
+  margin: 0 auto;
   min-width: 0;
   color: var(--text-primary);
 }

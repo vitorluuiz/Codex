@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import Image from 'next/image';
 import { Button, Tabs, type TabItem } from '@/components/ds';
 import {
   MatchHistoryList,
@@ -131,15 +132,38 @@ export function ReportsHistoryView({ user, serverHistory }: ReportsHistoryViewPr
 
               <section className={styles.section} role="tabpanel">
                 {activeTab === 'leader' ? (
-                  <MatchHistoryList
-                    items={leaderItems}
-                    emptyMessage="Você ainda não possui partidas finalizadas como líder."
-                  />
+                  leaderItems.length === 0 ?
+                    <div className={styles.emptyState}>
+                      <Image
+                        className={styles.emptyImage}
+                        src="/Ilustrations/EmptyStateReports.svg"
+                        alt="Ilustração de lista de conjuntos vazia"
+                        width={400}
+                        height={400}
+                      />
+                      <p className={styles.emptyAction}>Nenhum relatório foi encontrado. Lídere partidas e seus relatórios aparecerão aqui.</p>
+                    </div> :
+                    <MatchHistoryList
+                      items={leaderItems}
+                      emptyMessage="Você ainda não possui partidas finalizadas como líder."
+                    />
                 ) : (
-                  <MatchHistoryList
-                    items={participantItems}
-                    emptyMessage="Nenhuma partida encontrada no seu histórico de participante."
-                  />
+                  participantItems.length === 0 ?
+                    <div className={styles.emptyState}>
+                      <Image
+                        className={styles.emptyImage}
+                        src="/Ilustrations/EmptyStateReports.svg"
+                        alt="Ilustração de lista de conjuntos vazia"
+                        width={400}
+                        height={400}
+                      />
+                      <p className={styles.emptyAction}>Nenhum relatório foi encontrado. Participe de partidas e seus relatórios aparecerão aqui.</p>
+                    </div>
+                    :
+                    <MatchHistoryList
+                      items={participantItems}
+                      emptyMessage="Nenhuma partida encontrada no seu histórico de participante."
+                    />
                 )}
               </section>
             </>

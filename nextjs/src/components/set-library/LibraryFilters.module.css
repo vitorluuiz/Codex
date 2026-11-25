@@ -83,8 +83,8 @@
   padding: 6px;
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-l);
-  box-shadow: var(--shadow-l);
+  border-radius: var(--radius-m);
+  box-shadow: var(--shadow-m);
 }
 
 .option {
