@@ -5,7 +5,6 @@ import { JoinRoomFlow, type JoinErrorState } from '@/components/join/JoinRoomFlo
 import { AnimatedBackground } from '@/components/media/AnimatedBackground';
 import { LeftRoomNotice } from '@/components/room/LeftRoomNotice';
 import { ResumeRoomPanel } from '@/components/room/ResumeRoomPanel';
-import { SalaBackButton } from '@/components/room/SalaBackButton';
 import { checkRoomCodeAction } from '@/lib/actions/room';
 import { getActiveRooms } from '@/lib/api/rooms';
 import { getSession } from '@/lib/api/session';
@@ -60,7 +59,6 @@ export default async function JoinRoomPage({ searchParams }: PageProps) {
     <main className={styles.page}>
       <AnimatedBackground mode={bgVideo ? 'video' : 'canvas'} videoSrc={bgVideo} />
       <div className={styles.container}>
-        <SalaBackButton />
         <div className={styles.card}>
           <Link href="/" className={styles.brand}>
             Codex

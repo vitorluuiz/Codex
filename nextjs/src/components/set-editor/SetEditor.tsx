@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 
 import { Button, Dialog, Toast, ToastViewport, Tooltip } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
+import { PREVIOUS_PAGE_KEY } from '@/components/nav/NavigationTracker';
 import { clearLastVisitedSetIfMatches } from '@/components/nav/sidebarSubmenus';
 import { decideGenerationAction, generatePhaseAction } from '@/lib/actions/ai';
 import { deletePhaseSetAction, savePhaseSetAction } from '@/lib/actions/phaseSets';
@@ -382,6 +383,37 @@ export function SetEditor({
     }
   }
 
+  function handleBack() {
+    const fallback = initialDraft.id ? `/conjunto/${initialDraft.id}` : '/conjuntos';
+
+    try {
+      const currentUrl = window.location.pathname + window.location.search;
+      const previousPage = sessionStorage.getItem(PREVIOUS_PAGE_KEY);
+
+      if (previousPage && previousPage !== currentUrl) {
+        if (window.history.length > 1) {
+          router.back();
+          return;
+        }
+        router.push(previousPage);
+        return;
+      }
+
+      if (document.referrer) {
+        const refUrl = new URL(document.referrer);
+        const refPath = refUrl.pathname + refUrl.search;
+        if (refUrl.origin === window.location.origin && refPath !== currentUrl) {
+          router.push(refPath);
+          return;
+        }
+      }
+    } catch {
+      // Ignora indisponibilidade de storage/referrer e usa o fallback
+    }
+
+    router.push(fallback);
+  }
+
   function cancel() {
     clearStoredDraft();
     router.push(initialDraft.id ? `/conjunto/${initialDraft.id}` : '/conjuntos');
@@ -473,9 +505,9 @@ export function SetEditor({
             <button
               type="button"
               className={styles.backButton}
-              onClick={() => router.push(initialDraft.id ? `/conjunto/${initialDraft.id}` : '/conjuntos')}
+              onClick={handleBack}
               title="Voltar"
-              aria-label={initialDraft.id ? 'Voltar para o conjunto' : 'Voltar para conjuntos'}
+              aria-label="Voltar para a tela anterior"
             >
               <Icon.ArrowLeft size={17} />
             </button>

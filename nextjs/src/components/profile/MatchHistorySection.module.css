@@ -6,7 +6,7 @@
 
 .title {
   font-family: var(--font-display);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   font-size: var(--text-heading);
   color: var(--text-primary);
   margin: 0;

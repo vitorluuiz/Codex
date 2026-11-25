@@ -57,8 +57,8 @@ interface FloatingShape {
   depth: number;
 }
 
-const LIGHT_PALETTE = ['#2f6fed', '#8b5cf6', '#f59e0b', '#ec4899', '#22c55e'];
-const DARK_PALETTE = ['#4c85fb', '#a78bfa', '#fbbf24', '#f472b6', '#4ade80'];
+const LIGHT_PALETTE = ['#2f6fed'];
+const DARK_PALETTE = ['#4c85fb'];
 
 const ORBS: AmbientOrb[] = [
   { xFrac: 0.16, yFrac: 0.22, radiusFrac: 0.34, colorIndex: 0, driftX: 28, driftY: 20, phase: 0.3, speed: 0.32 },
@@ -78,7 +78,7 @@ function seededRandom(seed: number) {
 
 function createShapes(width: number, height: number): FloatingShape[] {
   const rand = seededRandom(20261124);
-  const count = Math.max(12, Math.min(22, Math.round((width * height) / 72000)));
+  const count = Math.max(24, Math.min(48, Math.round((width * height) / 36000)));
   const kinds: ShapeKind[] = ['circle', 'triangle', 'diamond', 'square', 'plus'];
   const shapes: FloatingShape[] = [];
 

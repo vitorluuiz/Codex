@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
+import Image from 'next/image';
 
 import { Button, Dialog, Tabs, Toast, ToastViewport } from '@/components/ds';
 import { Icon } from '@/components/icons/Icons';
@@ -63,7 +64,7 @@ export function SetLibraryView({ user, library }: SetLibraryViewProps) {
   const visible = useMemo(() => filterSets(sets, filters), [sets, filters]);
   const owned = filters.scope === 'owned';
   const featured = sets.find((set) => set.source === 'owned') ?? null;
-  
+
   function patchFilters(patch: Partial<LibraryFilterState>) {
     setFilters((current) => ({ ...current, ...patch }));
   }
@@ -203,7 +204,7 @@ export function SetLibraryView({ user, library }: SetLibraryViewProps) {
             />
           ))}
 
-          {owned && (
+          {owned && visible.length > 0 && (
             <button
               type="button"
               className={styles.ghost}
@@ -216,11 +217,23 @@ export function SetLibraryView({ user, library }: SetLibraryViewProps) {
         </div>
 
         {visible.length === 0 && (
-          <p className={styles.empty}>Nenhum conjunto encontrado com esses filtros.</p>
+          <div className={styles.emptyState}>
+            <Image
+              className={styles.emptyImage}
+              src="/Ilustrations/EmptyState.svg"
+              alt="Ilustração de lista de conjuntos vazia"
+              width={400}
+              height={400}
+            />
+            <p className={styles.emptyAction}>Nenhum conjunto encontrado com esses filtros.</p>
+            <Button size="sm" onClick={() => router.push('/conjunto/novo')}>
+              Criar novo conjunto
+            </Button>
+          </div>
         )}
       </main>
 
-      
+
       {pendingDelete && (
         <Dialog
           open
